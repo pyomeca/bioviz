@@ -1,1 +1,2 @@
-pyoviz
+# pyoviz
+Pyomeca visualization toolkit
