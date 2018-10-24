@@ -51,7 +51,7 @@ class FieldsAssignment(QtWidgets.QMainWindow):
 
     def init_window(self):
         """Initialize main window."""
-        self.setWindowTitle(f"Pyomeca's fields assignment")
+        self.setWindowTitle(f"Pyoviz's fields assignment")
         self.resize(1200, 700)
         self.show()
 
