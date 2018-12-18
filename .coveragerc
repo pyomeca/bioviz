@@ -1,4 +1,6 @@
 [report]
 omit =
     setup.py
+    pyoviz/_version.py
+    versioneer.py
     tests/*

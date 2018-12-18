@@ -1,0 +1,13 @@
+# create a dev conda environment with: `make create_env` or `conda env create -f environment.yml`
+name: pyoviz
+channels:
+  - defaults
+  - pyomeca
+  - conda-forge
+dependencies:
+  - python
+  - numpy
+  - pyqt
+  - vtk
+  - pyomeca
+  - ezc3d
