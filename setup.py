@@ -1,16 +1,13 @@
 import yaml
 from setuptools import setup
 
-import versioneer
-
 with open("env.yml", 'r') as stream:
     out = yaml.load(stream)
     requirements = out['dependencies'][1:]  # we do not return python
 
 setup(
     name='pyoviz',
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    version='2018.1',
     description="Pyomeca visualization toolkit",
     author="Romain Martinez",
     author_email='martinez.staps@gmail.com',
