@@ -11,7 +11,7 @@ setup(
     name='pyoviz',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description="Pyomeca visualization toolkit",
+    description="Pyomeca viz toolkit",
     author="Romain Martinez",
     author_email='martinez.staps@gmail.com',
     url='https://github.com/pyomeca/pyoviz',
