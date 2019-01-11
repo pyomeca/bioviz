@@ -3,11 +3,11 @@ name: pyoviz
 channels:
   - defaults
   - pyomeca
-  - conda-forge
+#  - conda-forge
 dependencies:
   - python
   - numpy
   - pyqt
-  - vtk
   - pyomeca
   - ezc3d
+  - #  - vtk
