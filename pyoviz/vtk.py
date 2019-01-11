@@ -6,8 +6,19 @@
 # from PyQt5 import QtWidgets
 # from PyQt5.QtGui import QPalette, QColor
 #
-# from vtk import vtkActor, vtkCellArray, vtkInteractorStyleTrackballCamera, vtkLine, vtkPoints, vtkPolyData, \
-#     vtkPolyDataMapper, vtkPolyLine, vtkRenderer, vtkSphereSource, vtkUnsignedCharArray
+# from vtk import (
+#     vtkActor,
+#     vtkCellArray,
+#     vtkInteractorStyleTrackballCamera,
+#     vtkLine,
+#     vtkPoints,
+#     vtkPolyData,
+#     vtkPolyDataMapper,
+#     vtkPolyLine,
+#     vtkRenderer,
+#     vtkSphereSource,
+#     vtkUnsignedCharArray,
+# )
 # from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 #
 # from pyomeca import Markers3d, RotoTrans, RotoTransCollection
@@ -82,13 +93,20 @@
 #         color : tuple(int)
 #         """
 #         self.ren.SetBackground(color)
-#         self.setPalette(QPalette(QColor(color[0] * 255, color[1] * 255, color[2] * 255)))
+#         self.setPalette(
+#             QPalette(QColor(color[0] * 255, color[1] * 255, color[2] * 255))
+#         )
 #
 #
 # class VtkModel(QtWidgets.QWidget):
-#     def __init__(self, parent,
-#                  markers_size=5, markers_color=(1, 1, 1), markers_opacity=1.0,
-#                  rt_size=25):
+#     def __init__(
+#         self,
+#         parent,
+#         markers_size=5,
+#         markers_color=(1, 1, 1),
+#         markers_opacity=1.0,
+#         rt_size=25,
+#     ):
 #         """
 #         Creates a model that will holds things to plot
 #         Parameters
@@ -300,7 +318,10 @@
 #             raise IndexError("Mesh should be from one frame only")
 #
 #         for i in range(len(all_meshes)):
-#             if all_meshes.get_mesh(i).get_num_vertex() is not self.all_meshes.get_mesh(i).get_num_vertex():
+#             if (
+#                 all_meshes.get_mesh(i).get_num_vertex()
+#                 is not self.all_meshes.get_mesh(i).get_num_vertex()
+#             ):
 #                 self.new_mesh_set(all_meshes)
 #                 return  # Prevent calling update_markers recursively
 #

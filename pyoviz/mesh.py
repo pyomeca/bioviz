@@ -3,7 +3,9 @@ from pyomeca import FrameDependentNpArrayCollection, Markers3d
 
 
 class Mesh(Markers3d):
-    def __new__(cls, vertex=np.ndarray((3, 0, 0)), triangles=np.ndarray((0, 3)), *args, **kwargs):
+    def __new__(
+        cls, vertex=np.ndarray((3, 0, 0)), triangles=np.ndarray((0, 3)), *args, **kwargs
+    ):
         """
         Parameters
         ----------
@@ -20,7 +22,7 @@ class Mesh(Markers3d):
 
         s = triangles.shape
         if s[1] != 3:
-            raise NotImplementedError('Mesh only implements triangle connections')
+            raise NotImplementedError("Mesh only implements triangle connections")
 
         obj = super(Mesh, cls).__new__(cls, data=vertex, *args, **kwargs)
         obj.triangles = triangles
@@ -31,7 +33,7 @@ class Mesh(Markers3d):
         # Allow slicing
         if obj is None or not isinstance(obj, Mesh):
             return
-        self.triangles = getattr(obj, 'triangles')
+        self.triangles = getattr(obj, "triangles")
 
     # --- Get metadata methods
 

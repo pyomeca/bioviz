@@ -27,9 +27,11 @@ class FieldsAssignment(QtWidgets.QMainWindow):
         Prefix in channel names (keeps the part after prefix)
     """
 
-    def __init__(self, directory, targets, kind, prefix=':'):
+    def __init__(self, directory, targets, kind, prefix=":"):
         # set parameters
-        self.trials = [ifile for idir in directory for ifile in Path(idir).glob('*.c3d')]
+        self.trials = [
+            ifile for idir in directory for ifile in Path(idir).glob("*.c3d")
+        ]
         self.targets = targets
         self.kind = kind
         self.prefix = prefix
@@ -74,34 +76,34 @@ class FieldsAssignment(QtWidgets.QMainWindow):
         # current trial label
         self.current_trial = QtWidgets.QLabel(self.central_widget)
         self.grid_layout.addWidget(self.current_trial, 0, 3, 1, 1)
-        self.current_trial.setText('Current trial')
+        self.current_trial.setText("Current trial")
 
         # current fields label
         self.current_fields = QtWidgets.QLabel(self.central_widget)
         self.grid_layout.addWidget(self.current_fields, 1, 0, 1, 1)
-        self.current_fields.setText('Current fields')
+        self.current_fields.setText("Current fields")
 
         # target fields label
         self.target_fields = QtWidgets.QLabel(self.central_widget)
         self.grid_layout.addWidget(self.target_fields, 1, 4, 1, 1)
-        self.target_fields.setText('Assigned fields')
+        self.target_fields.setText("Assigned fields")
 
         # current target label
         self.current_target = QtWidgets.QLabel(self.central_widget)
         self.grid_layout.addWidget(self.current_target, 0, 0, 1, 1)
-        self.current_target.setStyleSheet('font-size: 16pt')
-        self.current_target.setText(f'Current target: {self.targets[self.itarget]}')
+        self.current_target.setStyleSheet("font-size: 16pt")
+        self.current_target.setText(f"Current target: {self.targets[self.itarget]}")
 
     def init_lists(self):
         """Initialize lists."""
         # current fields list
         self.current_list = QtWidgets.QListWidget(self.central_widget)
-        self.current_list.setStyleSheet('font-size: 16pt')
+        self.current_list.setStyleSheet("font-size: 16pt")
         self.grid_layout.addWidget(self.current_list, 5, 0, 1, 1)
 
         # assigned fields list
         self.assigned_list = QtWidgets.QListWidget(self.central_widget)
-        self.assigned_list.setStyleSheet('font-size: 16pt')
+        self.assigned_list.setStyleSheet("font-size: 16pt")
         self.grid_layout.addWidget(self.assigned_list, 5, 4, 1, 1)
 
     def init_buttons(self):
@@ -109,29 +111,29 @@ class FieldsAssignment(QtWidgets.QMainWindow):
         # assign push button
         self.button_assign = QtWidgets.QPushButton(self.central_widget)
         self.grid_layout.addWidget(self.button_assign, 6, 3, 1, 1)
-        self.button_assign.setText('Assign [1]')
-        self.button_assign.setShortcut('1')
+        self.button_assign.setText("Assign [1]")
+        self.button_assign.setShortcut("1")
         self.button_assign.clicked.connect(self.action_assign)
 
         # nan push button
         self.button_nan = QtWidgets.QPushButton(self.central_widget)
         self.grid_layout.addWidget(self.button_nan, 7, 3, 1, 1)
-        self.button_nan.setText('NaN [2]')
-        self.button_nan.setShortcut('2')
+        self.button_nan.setText("NaN [2]")
+        self.button_nan.setShortcut("2")
         self.button_nan.clicked.connect(self.action_nan)
 
         # undo push button
         self.button_undo = QtWidgets.QPushButton(self.central_widget)
         self.grid_layout.addWidget(self.button_undo, 8, 3, 1, 1)
-        self.button_undo.setText('Undo [3]')
-        self.button_undo.setShortcut('3')
+        self.button_undo.setText("Undo [3]")
+        self.button_undo.setShortcut("3")
         self.button_undo.clicked.connect(self.action_undo)
 
         # done push button
         self.button_done = QtWidgets.QPushButton(self.central_widget)
         self.grid_layout.addWidget(self.button_done, 9, 3, 1, 1)
-        self.button_done.setText('Done [q]')
-        self.button_done.setShortcut('q')
+        self.button_done.setText("Done [q]")
+        self.button_done.setShortcut("q")
         self.button_done.clicked.connect(self.action_done)
 
     def init_progress_bar(self):
@@ -165,8 +167,7 @@ class FieldsAssignment(QtWidgets.QMainWindow):
         for index in range(self.current_list.count()):
             items.append(self.current_list.item(index))
         labels = [i.text() for i in items]
-        closest = difflib.get_close_matches(self.targets[self.itarget],
-                                            labels, n=1)
+        closest = difflib.get_close_matches(self.targets[self.itarget], labels, n=1)
         if closest:
             self.current_list.clear()
             names = [i for i in labels if i != closest[0]]
@@ -177,14 +178,14 @@ class FieldsAssignment(QtWidgets.QMainWindow):
     def action_assign(self):
         """Assign a field to the item selected in current_list."""
         choice = {
-            'index': self.current_list.currentIndex().row(),
-            'item': self.current_list.currentItem().text()
+            "index": self.current_list.currentIndex().row(),
+            "item": self.current_list.currentItem().text(),
         }
 
-        self.current_list.takeItem(choice['index'])
-        self.assigned_list.addItem(choice['item'])
+        self.current_list.takeItem(choice["index"])
+        self.assigned_list.addItem(choice["item"])
 
-        self.iassigned.append(choice['item'])
+        self.iassigned.append(choice["item"])
 
         if len(self.iassigned) >= len(self.targets):
             self.assigned.append(self.iassigned)  # append this file's assignment
@@ -196,13 +197,13 @@ class FieldsAssignment(QtWidgets.QMainWindow):
             self.read_and_check()
         else:
             self.itarget += 1
-            self.current_target.setText(f'Current target: {self.targets[self.itarget]}')
+            self.current_target.setText(f"Current target: {self.targets[self.itarget]}")
             self.sort_list()
 
     def action_nan(self):
         """Assign a field to a nan."""
-        self.assigned_list.addItem('NaN')
-        self.iassigned.append('')
+        self.assigned_list.addItem("NaN")
+        self.iassigned.append("")
 
         if len(self.iassigned) >= len(self.targets):
             self.assigned.append(self.iassigned)  # append this file's assignment
@@ -214,7 +215,7 @@ class FieldsAssignment(QtWidgets.QMainWindow):
             self.read_and_check()
         else:
             self.itarget += 1
-            self.current_target.setText(f'Current target: {self.targets[self.itarget]}')
+            self.current_target.setText(f"Current target: {self.targets[self.itarget]}")
             self.sort_list()
 
     def action_undo(self):
@@ -222,22 +223,21 @@ class FieldsAssignment(QtWidgets.QMainWindow):
         choice = self.assigned_list.item(0)
         self.assigned_list.takeItem(0)
 
-        if choice.text() != 'NaN':
+        if choice.text() != "NaN":
             self.current_list.addItem(choice.text())
 
         self.iassigned.pop()
         self.itarget -= 1
-        self.current_target.setText(f'Current target: {self.targets[self.itarget]}')
+        self.current_target.setText(f"Current target: {self.targets[self.itarget]}")
         self.sort_list()
 
     def action_done(self):
         """When you are done and want to quit."""
-        choice = QtWidgets.QMessageBox.question(self,
-                                                'Done?',
-                                                'Exit?',
-                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        choice = QtWidgets.QMessageBox.question(
+            self, "Done?", "Exit?", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+        )
         if choice == QtWidgets.QMessageBox.Yes:
-            print('Assignment done.')
+            print("Assignment done.")
             self.export()
             self.close()
 
@@ -249,16 +249,16 @@ class FieldsAssignment(QtWidgets.QMainWindow):
 
         # ezc3d version
         reader = ezc3d.c3d(str(self.trials[self.i]))
-        if self.kind == 'markers':
-            kind_str = 'POINT'
-        elif self.kind == 'analogs' or self.kind == 'emg':
-            kind_str = 'ANALOG'
+        if self.kind == "markers":
+            kind_str = "POINT"
+        elif self.kind == "analogs" or self.kind == "emg":
+            kind_str = "ANALOG"
         else:
-            raise ValueError(f'`kind` shoud be "analogs", "emg" or "markers". You provided {self.kind}')
+            raise ValueError(
+                f'`kind` shoud be "analogs", "emg" or "markers". You provided {self.kind}'
+            )
 
-        channel_names = [i.c_str().split(self.prefix)[-1] for i in
-                         reader.parameters().group(kind_str).parameter('LABELS').valuesAsString()]
-        return channel_names
+        return reader["parameters"][kind_str]["LABELS"]["value"]
 
     @staticmethod
     def test_in_assigned(x, channel_names):
@@ -271,7 +271,10 @@ class FieldsAssignment(QtWidgets.QMainWindow):
             # test if channel_names contains all targets
             self.read_and_check()
         else:
-            if self.assigned and np.isin(self.assigned, channel_names).any(axis=1).any():
+            if (
+                self.assigned
+                and np.isin(self.assigned, channel_names).any(axis=1).any()
+            ):
                 # test if one of the assigned contains al targets
                 self.read_and_check()
             else:
@@ -281,9 +284,65 @@ class FieldsAssignment(QtWidgets.QMainWindow):
 
     def export(self):
         """Set the output dict to object"""
-        self.output = {
-            self.kind: {
-                'targets': self.targets,
-                'assigned': self.assigned
-            }
-        }
+        self.output = {self.kind: {"targets": self.targets, "assigned": self.assigned}}
+
+
+if __name__ == "__main__":
+    dir = "/media/romain/F/Data/Shoulder/RAW/IRSST_DapOd/trials"
+    targets = [
+        "ASISl",
+        "ASISr",
+        "PSISl",
+        "PSISr",
+        "STER",
+        "STERl",
+        "STERr",
+        "T1",
+        "T10",
+        "XIPH",
+        "CLAVm",
+        "CLAVl",
+        "CLAV_ant",
+        "CLAV_post",
+        "CLAV_SC",
+        "ACRO_tip",
+        "SCAP_AA",
+        "SCAPl",
+        "SCAPm",
+        "SCAP_CP",
+        "SCAP_RS",
+        "SCAP_SA",
+        "SCAP_IA",
+        "CLAV_AC",
+        "DELT",
+        "ARMl",
+        "ARMm",
+        "ARMp_up",
+        "ARMp_do",
+        "EPICl",
+        "EPICm",
+        "LARMm",
+        "LARMl",
+        "LARM_elb",
+        "LARM_ant",
+        "STYLr",
+        "STYLr_up",
+        "STYLu",
+        "WRIST",
+        "INDEX",
+        "LASTC",
+        "MEDH",
+        "LATH",
+        "boite_gauche_ext",
+        "boite_gauche_int",
+        "boite_droite_int",
+        "boite_droite_ext",
+        "boite_avant_gauche",
+        "boite_avant_droit",
+        "boite_arriere_droit",
+        "boite_arriere_gauche",
+    ]
+
+    print("debug")
+    fields = FieldsAssignment(directory=[dir], targets=targets, kind="markers")
+    print("debug")

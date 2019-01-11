@@ -8,6 +8,6 @@ dependencies:
   - python
   - numpy
   - pyqt
-#  - vtk
   - pyomeca
   - ezc3d
+  - #  - vtk
