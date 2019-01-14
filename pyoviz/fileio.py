@@ -27,7 +27,7 @@ class FieldsAssignment(QtWidgets.QMainWindow):
         Prefix in channel names (keeps the part after prefix)
     """
 
-    def __init__(self, directory, targets, kind, prefix=":"):
+    def __init__(self, directory, targets, kind, prefix=":", previous=None):
         # set parameters
         self.trials = [
             ifile for idir in directory for ifile in Path(idir).glob("*.c3d")
@@ -35,6 +35,7 @@ class FieldsAssignment(QtWidgets.QMainWindow):
         self.targets = targets
         self.kind = kind
         self.prefix = prefix
+        self.previous = previous
 
         self.iassigned, self.assigned = [], []
         self.i, self.itarget = -1, 0
@@ -257,8 +258,10 @@ class FieldsAssignment(QtWidgets.QMainWindow):
             raise ValueError(
                 f'`kind` shoud be "analogs", "emg" or "markers". You provided {self.kind}'
             )
-
-        return reader["parameters"][kind_str]["LABELS"]["value"]
+        channels = reader["parameters"][kind_str]["LABELS"]["value"]
+        if self.prefix:
+            channels = [i.split(self.prefix)[-1] for i in channels]
+        return channels
 
     @staticmethod
     def test_in_assigned(x, channel_names):
@@ -277,6 +280,18 @@ class FieldsAssignment(QtWidgets.QMainWindow):
             ):
                 # test if one of the assigned contains al targets
                 self.read_and_check()
+            elif (
+                self.previous
+                and np.isin(self.previous, channel_names).any(axis=1).any()
+            ):
+                print("\t\t\tfind previous assignment")
+                self.assigned.append(
+                    self.previous[
+                        np.argwhere(np.isin(self.previous, channel_names).any(axis=1))[
+                            0
+                        ][0]
+                    ]
+                )
             else:
                 self.iassigned, self.itarget = [], 0
                 self.current_list.addItems(channel_names)
