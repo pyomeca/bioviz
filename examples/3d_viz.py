@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from pyomeca import Markers3d, RotoTrans, RotoTransCollection
-from pyoviz import VtkModel, VtkWindow, Mesh, MeshCollection
+from pyoviz.vtk import VtkModel, VtkWindow, Mesh, MeshCollection
 
 # Path to data
 DATA_FOLDER = Path('..') / 'tests' / 'data'
