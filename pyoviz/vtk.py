@@ -105,7 +105,11 @@ class VtkModel(QtWidgets.QWidget):
         markers_size=5,
         markers_color=(1, 1, 1),
         markers_opacity=1.0,
-        rt_size=25,
+        mesh_color=(1, 1, 1),
+        mesh_opacity=1.0,
+        muscle_color=(1, 0, 0),
+        muscle_opacity=1.0,
+        rt_size=0.1,
     ):
         """
         Creates a model that will holds things to plot
@@ -143,7 +147,14 @@ class VtkModel(QtWidgets.QWidget):
         self.parent_window.should_reset_camera = True
 
         self.all_meshes = MeshCollection()
+        self.mesh_color = mesh_color
+        self.mesh_opacity = mesh_opacity
         self.mesh_actors = list()
+
+        self.all_muscles = MeshCollection()
+        self.muscle_color = muscle_color
+        self.muscle_opacity = muscle_opacity
+        self.muscle_actors = list()
 
     def set_markers_color(self, markers_color):
         """
@@ -241,6 +252,31 @@ class VtkModel(QtWidgets.QWidget):
             source.SetRadius(self.markers_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
+    def set_mesh_color(self, mesh_color):
+        """
+        Dynamically change the color of the mesh
+        Parameters
+        ----------
+        mesh_color : tuple(int)
+            Color the mesh should be drawn (1 is max brightness)
+        """
+        self.mesh_color = mesh_color
+        self.update_mesh(self.all_meshes)
+
+    def set_mesh_opacity(self, mesh_opacity):
+        """
+        Dynamically change the opacity of the mesh
+        Parameters
+        ----------
+        mesh_opacity : float
+            Opacity of the mesh (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.mesh_opacity = mesh_opacity
+        self.update_mesh(self.all_meshes)
+
     def new_mesh_set(self, all_meshes):
         """
         Define a new mesh set. This function must be called each time the number of meshes change
@@ -293,6 +329,8 @@ class VtkModel(QtWidgets.QWidget):
             # Create an actor
             self.mesh_actors.append(vtkActor())
             self.mesh_actors[i].SetMapper(mapper)
+            self.mesh_actors[i].GetProperty().SetColor(self.mesh_color)
+            self.mesh_actors[i].GetProperty().SetOpacity(self.mesh_opacity)
 
             self.parent_window.ren.AddActor(self.mesh_actors[i])
             self.parent_window.ren.ResetCamera()
@@ -336,6 +374,130 @@ class VtkModel(QtWidgets.QWidget):
                 points.InsertNextPoint(mesh[0:3, j])
 
             poly_line = self.mesh_actors[i].GetMapper().GetInput()
+            poly_line.SetPoints(points)
+
+    def set_muscle_color(self, muscle_color):
+        """
+        Dynamically change the color of the muscles
+        Parameters
+        ----------
+        muscle_color : tuple(int)
+            Color the muscles should be drawn
+        """
+        self.muscle_color = muscle_color
+        self.update_muscles(self.all_muscles)
+
+    def set_muscle_opacity(self, muscle_opacity):
+        """
+        Dynamically change the opacity of the muscles
+        Parameters
+        ----------
+        muscle_opacity : float
+            Opacity of the muscles (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.muscle_opacity = muscle_opacity
+        self.update_muscle(self.all_muscles)
+
+    def new_muscle_set(self, all_muscles):
+        """
+        Define a new muscle set. This function must be called each time the number of muscles change
+        Parameters
+        ----------
+        all_muscles : MeshCollection
+            One frame of mesh
+
+        """
+        if isinstance(all_muscles, Mesh):
+            musc_tp = MeshCollection()
+            musc_tp.append(all_muscles)
+            all_muscles = musc_tp
+
+        if all_muscles.get_num_frames() is not 1:
+            raise IndexError("Muscles should be from one frame only")
+
+        if not isinstance(all_muscles, MeshCollection):
+            raise TypeError("Please send a list of muscle to update_muscle")
+        self.all_muscles = all_muscles
+
+        # Remove previous actors from the scene
+        for actor in self.muscle_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.muscle_actors = list()
+
+        # Create the geometry of a point (the coordinate) points = vtkPoints()
+        for (i, mesh) in enumerate(self.all_muscles):
+            points = vtkPoints()
+            for j in range(mesh.get_num_vertex()):
+                points.InsertNextPoint([0, 0, 0])
+
+            # Create an array for each triangle
+            cell = vtkCellArray()
+            for j in range(mesh.get_num_triangles()):  # For each triangle
+                line = vtkPolyLine()
+                line.GetPointIds().SetNumberOfIds(4)
+                for k in range(len(mesh.triangles[j])):  # For each index
+                    line.GetPointIds().SetId(k, mesh.triangles[j, k])
+                line.GetPointIds().SetId(3, mesh.triangles[j, 0])  # Close the triangle
+                cell.InsertNextCell(line)
+            poly_line = vtkPolyData()
+            poly_line.SetPoints(points)
+            poly_line.SetLines(cell)
+
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(poly_line)
+
+            # Create an actor
+            self.muscle_actors.append(vtkActor())
+            self.muscle_actors[i].SetMapper(mapper)
+            self.muscle_actors[i].GetProperty().SetColor(self.muscle_color)
+            self.muscle_actors[i].GetProperty().SetOpacity(self.muscle_opacity)
+
+            self.parent_window.ren.AddActor(self.muscle_actors[i])
+            self.parent_window.ren.ResetCamera()
+
+        # Update marker position
+        self.update_muscle(self.all_muscles)
+
+    def update_muscle(self, all_muscles):
+        """
+        Update position of the muscles on the screen (but do not repaint)
+        Parameters
+        ----------
+        all_muscles : MeshCollection
+            One frame of muscle mesh
+
+        """
+        if isinstance(all_muscles, Mesh):
+            musc_tp = MeshCollection()
+            musc_tp.append(all_muscles)
+            all_muscles = musc_tp
+
+        if all_muscles.get_num_frames() is not 1:
+            raise IndexError("Muscle should be from one frame only")
+
+        for i in range(len(all_muscles)):
+            if (
+                all_muscles.get_mesh(i).get_num_vertex()
+                is not self.all_muscles.get_mesh(i).get_num_vertex()
+            ):
+                self.new_muscle_set(all_muscles)
+                return  # Prevent calling update_markers recursively
+
+        if not isinstance(all_muscles, MeshCollection):
+            raise TypeError("Please send a list of muscles to update_muscle")
+
+        self.all_muscles = all_muscles
+
+        for (i, mesh) in enumerate(self.all_muscles):
+            points = vtkPoints()
+            for j in range(mesh.get_num_vertex()):
+                points.InsertNextPoint(mesh[0:3, j])
+
+            poly_line = self.muscle_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
 
     def new_rt_set(self, all_rt):
