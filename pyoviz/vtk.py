@@ -455,6 +455,7 @@ class VtkModel(QtWidgets.QWidget):
             self.muscle_actors[i].SetMapper(mapper)
             self.muscle_actors[i].GetProperty().SetColor(self.muscle_color)
             self.muscle_actors[i].GetProperty().SetOpacity(self.muscle_opacity)
+            self.muscle_actors[i].GetProperty().SetLineWidth(5)
 
             self.parent_window.ren.AddActor(self.muscle_actors[i])
             self.parent_window.ren.ResetCamera()
@@ -576,7 +577,7 @@ class VtkModel(QtWidgets.QWidget):
             # Create an actor
             self.rt_actors.append(vtkActor())
             self.rt_actors[i].SetMapper(mapper)
-            self.rt_actors[i].GetProperty().SetLineWidth(5)
+            self.rt_actors[i].GetProperty().SetLineWidth(2)
 
             self.parent_window.ren.AddActor(self.rt_actors[i])
             self.parent_window.ren.ResetCamera()
