@@ -76,17 +76,20 @@ class BiorbdViz():
         # Update everything at the position Q=0
         self.set_q(self.Q)
         if add_sliders:
+            self.animated_Q = []
             self.double_factor = 10000
             self.sliders = list()
+            self.movement_slider = []
             self.add_options_panel()
 
     def add_options_panel(self):
         # Prepare the sliders
-        options_box = QHBoxLayout()
         options_layout = QVBoxLayout()
         pal = QPalette()
         pal.setColor(QPalette.WindowText, QColor(Qt.black))
         pal.setColor(QPalette.ButtonText, QColor(Qt.black))
+        pal_inactive = QPalette()
+        pal_inactive.setColor(QPalette.WindowText, QColor(Qt.gray))
         options_layout.addStretch()  # Centralize the sliders
         max_label_width = -1
         for i in range(self.model.nbDof()):
@@ -107,7 +110,6 @@ class BiorbdViz():
             slider.setMinimum(-np.pi*self.double_factor)
             slider.setMaximum(np.pi*self.double_factor)
             slider.setValue(0)
-            slider.sliderMoved.connect(self.move_avatar_from_sliders)
             slider.valueChanged.connect(self.move_avatar_from_sliders)
             slider_layout.addWidget(slider)
 
@@ -134,12 +136,38 @@ class BiorbdViz():
 
         # Finalize the options panel
         options_layout.addStretch()  # Centralize the sliders
-        options_widget = QWidget()
-        options_widget.setLayout(options_layout)
+
+        # Animation panel
+        animation_layout = QVBoxLayout()
+        animation_layout.addWidget(self.vtk_window.vtkWidget)
+
+        # Add the animation slider
+        animation_slider_layout = QHBoxLayout()
+        load_push_button = QPushButton("Load movement")
+        load_push_button.setPalette(pal)
+        load_push_button.released.connect(self.load_movement)
+        animation_slider_layout.addWidget(load_push_button)
+
+        slider = QSlider(Qt.Horizontal)
+        slider.setMinimum(0)
+        slider.setMaximum(100)
+        slider.setValue(0)
+        slider.setEnabled(False)
+        slider.valueChanged.connect(self.animate_from_slider)
+        animation_slider_layout.addWidget(slider)
+
+        # Add the frame count
+        frame_label = QLabel()
+        frame_label.setText(f" {0}")
+        frame_label.setPalette(pal_inactive)
+        animation_slider_layout.addWidget(frame_label)
+
+        self.movement_slider = (slider, frame_label)
+        animation_layout.addLayout(animation_slider_layout)
 
         # Add the options part and the main window and make them 1:2 ratio
-        self.vtk_window.vl.addWidget(options_widget, 33)
-        self.vtk_window.vl.addWidget(self.vtk_window.vtkWidget, 66)
+        self.vtk_window.main_QHBoxLayout.addLayout(options_layout, 33)
+        self.vtk_window.main_QHBoxLayout.addLayout(animation_layout, 66)
 
         # Change the size of the window to account for the new sliders
         self.vtk_window.resize(self.vtk_window.size().width() * 2, self.vtk_window.size().height())
@@ -148,8 +176,35 @@ class BiorbdViz():
         for i, slide in enumerate(self.sliders):
             self.Q[i] = slide[1].value()/self.double_factor
             slide[2].setText(f" {self.Q[i]:.2f}")
-        # print (self.Q)
         self.set_q(self.Q, refresh_window=False)
+
+    def animate_from_slider(self):
+        # Move the avatar
+        self.movement_slider[1].setText(f"{self.movement_slider[0].value()}")
+        self.Q = self.animated_Q[self.movement_slider[0].value()-1]  # 1-based
+        self.set_q(self.Q)
+
+        # Update the slider
+        for i, slide in enumerate(self.sliders):
+            slide[1].blockSignals(True)
+            slide[1].setValue(self.Q[i]*self.double_factor)
+            slide[1].blockSignals(False)
+            slide[2].setText(f" {self.Q[i]:.2f}")
+
+    def load_movement(self):
+        # Load the actual movement
+        n_frames = 200
+        self.animated_Q = np.ndarray((n_frames, self.nQ))
+        self.animated_Q[:, 4] = np.linspace(0, np.pi / 2, n_frames)
+
+        # Update the slider bar and frame count
+        self.movement_slider[0].setEnabled(True)
+        self.movement_slider[0].setMinimum(1)
+        self.movement_slider[0].setMaximum(self.animated_Q.shape[0])
+        pal = QPalette()
+        pal.setColor(QPalette.WindowText, QColor(Qt.black))
+        self.movement_slider[1].setPalette(pal)
+        self.movement_slider[1].setText(f"{1}")
 
     def reset_q(self):
         self.Q = np.zeros(self.Q.shape)

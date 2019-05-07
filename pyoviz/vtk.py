@@ -34,7 +34,8 @@ class VtkWindow(QtWidgets.QMainWindow):
     def __init__(self, background_color=(0, 0, 0)):
         """
         Main window of a pyoviz object. If one is interested in placing the main window inside another widget, they
-        should call VktWindow first, add whatever widgets they want in 'self.vtk_window.vl' including self.vtkWidget..
+        should call VktWindow first, add whatever widgets they want in 'self.vtk_window.main_QHBoxLayout',
+        including self.vtkWidget.
         Parameters
         ----------
         background_color : tuple(int)
@@ -56,9 +57,9 @@ class VtkWindow(QtWidgets.QMainWindow):
         self.interactor.Initialize()
         self.change_background_color(background_color)
 
-        self.vl = QtWidgets.QHBoxLayout()
-        self.vl.addWidget(self.vtkWidget)
-        self.frame.setLayout(self.vl)
+        self.main_QHBoxLayout = QtWidgets.QHBoxLayout()
+        self.main_QHBoxLayout.addWidget(self.vtkWidget)
+        self.frame.setLayout(self.main_QHBoxLayout)
 
         self.show()
         app._in_event_loop = True
