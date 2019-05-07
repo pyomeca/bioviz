@@ -3,11 +3,15 @@ import biorbd
 
 from pyomeca import Markers3d
 from pyoviz.vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
+from PyQt5.QtWidgets import QWidget, QSlider, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
 
 
 class BiorbdViz():
     def __init__(self, loaded_model=None, model_path=None,
-                 show_markers=True, show_rt=True, show_muscles=True, show_meshes=True):
+                 show_markers=True, show_rt=True, show_muscles=True, show_meshes=True,
+                 add_sliders=True):
         """
         Class that easily shows a biorbd model
         Args:
@@ -71,12 +75,97 @@ class BiorbdViz():
             self.rt.append(RotoTrans(rt.get_array()))
         # Update everything at the position Q=0
         self.set_q(self.Q)
+        if add_sliders:
+            self.double_factor = 10000
+            self.sliders = list()
+            self.add_options_panel()
+
+    def add_options_panel(self):
+        # Prepare the sliders
+        options_box = QHBoxLayout()
+        options_layout = QVBoxLayout()
+        pal = QPalette()
+        pal.setColor(QPalette.WindowText, QColor(Qt.black))
+        pal.setColor(QPalette.ButtonText, QColor(Qt.black))
+        options_layout.addStretch()  # Centralize the sliders
+        max_label_width = -1
+        for i in range(self.model.nbDof()):
+            slider_layout = QHBoxLayout()
+
+            # Add a name
+            name_label = QLabel()
+            name = f"{self.model.nameDof()[i]}"
+            name_label.setText(name)
+            name_label.setPalette(pal)
+            label_width = name_label.fontMetrics().boundingRect(name_label.text()).width()
+            if label_width > max_label_width:
+                max_label_width = label_width
+            slider_layout.addWidget(name_label)
+
+            # Add the slider
+            slider = QSlider(Qt.Horizontal)
+            slider.setMinimum(-np.pi*self.double_factor)
+            slider.setMaximum(np.pi*self.double_factor)
+            slider.setValue(0)
+            slider.sliderMoved.connect(self.move_avatar_from_sliders)
+            slider.valueChanged.connect(self.move_avatar_from_sliders)
+            slider_layout.addWidget(slider)
+
+            # Add the value
+            value_label = QLabel()
+            value_label.setText(f" {0:.2f}")
+            value_label.setPalette(pal)
+            slider_layout.addWidget(value_label)
+
+            # Add to the main sliders
+            self.sliders.append((name_label, slider, value_label))
+            options_layout.addLayout(slider_layout)
+        # Adjust the size of the names
+        for name_label, _, _ in self.sliders:
+            name_label.setFixedWidth(max_label_width+1)
+
+        # Add reset button
+        button_layout = QHBoxLayout()
+        reset_push_button = QPushButton("Reset")
+        reset_push_button.setPalette(pal)
+        reset_push_button.released.connect(self.reset_q)
+        button_layout.addWidget(reset_push_button)
+        options_layout.addLayout(button_layout)
+
+        # Finalize the options panel
+        options_layout.addStretch()  # Centralize the sliders
+        options_widget = QWidget()
+        options_widget.setLayout(options_layout)
+
+        # Add the options part and the main window and make them 1:2 ratio
+        self.vtk_window.vl.addWidget(options_widget, 33)
+        self.vtk_window.vl.addWidget(self.vtk_window.vtkWidget, 66)
+
+        # Change the size of the window to account for the new sliders
+        self.vtk_window.resize(self.vtk_window.size().width() * 2, self.vtk_window.size().height())
+
+    def move_avatar_from_sliders(self):
+        for i, slide in enumerate(self.sliders):
+            self.Q[i] = slide[1].value()/self.double_factor
+            slide[2].setText(f" {self.Q[i]:.2f}")
+        # print (self.Q)
+        self.set_q(self.Q, refresh_window=False)
+
+    def reset_q(self):
+        self.Q = np.zeros(self.Q.shape)
+        for slider in self.sliders:
+            slider[1].setValue(0)
+            slider[2].setText(f" {0:.2f}")
+        self.set_q(self.Q)
 
     def set_q(self, Q, refresh_window=True):
         """
         Manually update
         Args:
             Q: np.array
+                Generalized coordinate
+            refresh_window: bool
+                If the window should be refreshed now or not
         """
         if not isinstance(Q, np.ndarray) and len(Q.shape) > 1 and Q.shape[0] != self.nQ:
             raise TypeError(f"Q should be a {self.nQ} column vector")
@@ -101,6 +190,10 @@ class BiorbdViz():
 
         """
         self.vtk_window.update_frame()
+
+    def exec(self):
+        while self.vtk_window.is_active:
+            self.refresh_window()
 
     def __set_markers_from_q(self):
         markers = self.model.Tags(self.model, self.Q)
