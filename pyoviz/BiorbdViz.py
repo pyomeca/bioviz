@@ -6,7 +6,8 @@ import biorbd
 
 from pyomeca import Markers3d
 from pyoviz.vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
-from PyQt5.QtWidgets import QSlider, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog, QScrollArea, QWidget
+from PyQt5.QtWidgets import QSlider, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, \
+    QFileDialog, QScrollArea, QWidget, QMessageBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 import pyoviz
@@ -37,6 +38,8 @@ class BiorbdViz():
         # Create the plot
         self.vtk_window = VtkWindow(background_color=(.5, .5, .5))
         self.vtk_model = VtkModel(self.vtk_window, markers_color=(0, 0, 1))
+        self.is_executing = False
+        self.animation_warning_already_shown = False
 
         # Set Z vertical
         cam = self.vtk_window.ren.GetActiveCamera()
@@ -152,12 +155,14 @@ class BiorbdViz():
         self.vtk_window.update_frame()
 
     def exec(self):
+        self.is_executing = True
         while self.vtk_window.is_active:
             if self.show_options and self.is_animating:
                 self.movement_slider[0].setValue(
                     (self.movement_slider[0].value() + 1) % self.movement_slider[0].maximum()
                 )
             self.refresh_window()
+        self.is_executing = False
 
     def add_options_panel(self):
         # Prepare the sliders
@@ -280,6 +285,13 @@ class BiorbdViz():
         self.set_q(self.Q)
 
     def __start_stop_animation(self):
+        if not self.is_executing and not self.animation_warning_already_shown:
+            QMessageBox.warning(self.vtk_window, 'Not executing',
+                                "BiorbdViz has detected that it is not actually executing.\n\n"
+                                "Unless you know what you are doing, the automatic play of the animation will "
+                                "therefore not work. Please call the BiorbdViz.exec() method to be able to play "
+                                "the animation.\n\nPlease note that the animation slider will work in any case.")
+            self.animation_warning_already_shown = True
         if self.is_animating:
             self.is_animating = False
             self.play_stop_push_button.setIcon(self.start_icon)
