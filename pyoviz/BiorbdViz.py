@@ -1,3 +1,6 @@
+import os
+import copy
+
 import numpy as np
 import biorbd
 
@@ -6,6 +9,7 @@ from pyoviz.vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, Rot
 from PyQt5.QtWidgets import QSlider, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog, QScrollArea, QWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
+import pyoviz
 
 
 class BiorbdViz():
@@ -84,8 +88,8 @@ class BiorbdViz():
 
             self.play_stop_push_button = []
             self.is_animating = False
-            self.start_icon = QIcon(QPixmap("../pyoviz/ressources/start.png"))
-            self.stop_icon = QIcon(QPixmap("../pyoviz/ressources/pause.png"))
+            self.start_icon = QIcon(QPixmap(f"{os.path.dirname(pyoviz.__file__)}/ressources/start.png"))
+            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(pyoviz.__file__)}/ressources/pause.png"))
 
             self.double_factor = 10000
             self.sliders = list()
@@ -267,21 +271,21 @@ class BiorbdViz():
         for i, slide in enumerate(self.sliders):
             self.Q[i] = slide[1].value()/self.double_factor
             slide[2].setText(f" {self.Q[i]:.2f}")
-        self.set_q(self.Q, refresh_window=False)
+        self.set_q(self.Q)
 
     def __animate_from_slider(self):
         # Move the avatar
         self.movement_slider[1].setText(f"{self.movement_slider[0].value()}")
-        self.Q = self.animated_Q[self.movement_slider[0].value()-1]  # 1-based
+        self.Q = copy.copy(self.animated_Q[self.movement_slider[0].value()-1])  # 1-based
         self.set_q(self.Q)
 
     def __start_stop_animation(self):
-        if not self.is_animating:
-            self.is_animating = True
-            self.play_stop_push_button.setIcon(self.stop_icon)
-        else:
+        if self.is_animating:
             self.is_animating = False
             self.play_stop_push_button.setIcon(self.start_icon)
+        else:
+            self.is_animating = True
+            self.play_stop_push_button.setIcon(self.stop_icon)
 
     def __load_movement(self):
         # Load the actual movement
