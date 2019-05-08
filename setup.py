@@ -17,7 +17,9 @@ setup(
     url='https://github.com/pyomeca/pyoviz',
     license='Apache 2.0',
     packages=['pyoviz'],
-    install_requires=requirements,
+    package_data={'': ['ressources/*.png']},
+    include_package_data=True,
+    # install_requires=requirements,
     keywords='pyoviz',
     classifiers=[
         'Programming Language :: Python :: 3.6',
