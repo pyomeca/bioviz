@@ -31,35 +31,35 @@ if first:
 
 
 class VtkWindow(QtWidgets.QMainWindow):
-    def __init__(self, parent=None, background_color=(0, 0, 0)):
+    def __init__(self, background_color=(0, 0, 0)):
         """
-        Main window
+        Main window of a pyoviz object. If one is interested in placing the main window inside another widget, they
+        should call VktWindow first, add whatever widgets/layouts they want in the 'VtkWindow.main_layout',
+        including, of course, the actual avatar from 'VtkWindow.vtkWidget'.
         Parameters
         ----------
-        parent
-            Qt parent if the main window should be embedded to a parent window
         background_color : tuple(int)
             Color of the background
         """
-        QtWidgets.QMainWindow.__init__(self, parent)
+        QtWidgets.QMainWindow.__init__(self)
         self.frame = QtWidgets.QFrame()
-
-        self.vl = QtWidgets.QVBoxLayout()
-        self.vtkWidget = QVTKRenderWindowInteractor(self.frame)
-        self.vl.addWidget(self.vtkWidget)
-
-        self.frame.setLayout(self.vl)
         self.setCentralWidget(self.frame)
 
         self.ren = vtkRenderer()
         self.ren.SetBackground(background_color)
-        self.vtkWidget.GetRenderWindow().SetSize(1000, 100)
-        self.vtkWidget.GetRenderWindow().AddRenderer(self.ren)
 
-        self.interactor = self.vtkWidget.GetRenderWindow().GetInteractor()
+        self.avatar_widget = QVTKRenderWindowInteractor(self.frame)
+        self.avatar_widget.GetRenderWindow().SetSize(1000, 100)
+        self.avatar_widget.GetRenderWindow().AddRenderer(self.ren)
+
+        self.interactor = self.avatar_widget.GetRenderWindow().GetInteractor()
         self.interactor.SetInteractorStyle(vtkInteractorStyleTrackballCamera())
         self.interactor.Initialize()
         self.change_background_color(background_color)
+
+        self.main_layout = QtWidgets.QGridLayout()
+        self.main_layout.addWidget(self.avatar_widget)
+        self.frame.setLayout(self.main_layout)
 
         self.show()
         app._in_event_loop = True
@@ -102,13 +102,11 @@ class VtkModel(QtWidgets.QWidget):
     def __init__(
         self,
         parent,
-        markers_size=5,
-        markers_color=(1, 1, 1),
-        markers_opacity=1.0,
-        mesh_color=(1, 1, 1),
-        mesh_opacity=1.0,
-        muscle_color=(1, 0, 0),
-        muscle_opacity=1.0,
+        markers_size=0.010, markers_color=(1, 1, 1), markers_opacity=1.0,
+        global_center_of_mass_size=0.0075, global_center_of_mass_color=(0, 0, 0), global_center_of_mass_opacity=1.0,
+        segments_center_of_mass_size=0.005, segments_center_of_mass_color=(0, 0, 0), segments_center_of_mass_opacity=1.0,
+        mesh_color=(0, 0, 0), mesh_opacity=1.0,
+        muscle_color=(150/255, 15/255, 15/255), muscle_opacity=1.0,
         rt_size=0.1,
     ):
         """
@@ -139,6 +137,18 @@ class VtkModel(QtWidgets.QWidget):
         self.markers_color = markers_color
         self.markers_opacity = markers_opacity
         self.markers_actors = list()
+
+        self.global_center_of_mass = Markers3d()
+        self.global_center_of_mass_size = global_center_of_mass_size
+        self.global_center_of_mass_color = global_center_of_mass_color
+        self.global_center_of_mass_opacity = global_center_of_mass_opacity
+        self.global_center_of_mass_actors = list()
+
+        self.segments_center_of_mass = Markers3d()
+        self.segments_center_of_mass_size = segments_center_of_mass_size
+        self.segments_center_of_mass_color = segments_center_of_mass_color
+        self.segments_center_of_mass_opacity = segments_center_of_mass_opacity
+        self.segments_center_of_mass_actors = list()
 
         self.all_rt = RotoTransCollection()
         self.n_rt = 0
@@ -250,6 +260,200 @@ class VtkModel(QtWidgets.QWidget):
             source = vtkSphereSource()
             source.SetCenter(markers[0:3, i])
             source.SetRadius(self.markers_size)
+            mapper.SetInputConnection(source.GetOutputPort())
+
+    def set_global_center_of_mass_color(self, global_center_of_mass_color):
+        """
+        Dynamically change the color of the global center of mass
+        Parameters
+        ----------
+        global_center_of_mass_color : tuple(int)
+            Color the center of mass should be drawn (1 is max brightness)
+        """
+        self.global_center_of_mass_color = global_center_of_mass_color
+        self.update_global_center_of_mass(self.global_center_of_mass)
+
+    def set_global_center_of_mass_size(self, global_center_of_mass_size):
+        """
+        Dynamically change the size of the global center of mass
+        Parameters
+        ----------
+        global_center_of_mass_size : float
+            Size the center of mass should be drawn
+        """
+        self.global_center_of_mass_size = global_center_of_mass_size
+        self.update_global_center_of_mass(self.global_center_of_mass)
+
+    def set_global_center_of_mass_opacity(self, global_center_of_mass_opacity):
+        """
+        Dynamically change the opacity of the global center of mass
+        Parameters
+        ----------
+        global_center_of_mass_opacity : float
+            Opacity of the center of mass (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.global_center_of_mass_opacity = global_center_of_mass_opacity
+        self.update_global_center_of_mass(self.global_center_of_mass)
+
+    def new_global_center_of_mass_set(self, global_center_of_mass):
+        """
+        Define a new global center of mass set. This function must be called each time the number of center
+        of mass change
+        Parameters
+        ----------
+        global_center_of_mass : Markers3d
+            One frame of segment center of mas
+
+        """
+        if global_center_of_mass.get_num_frames() is not 1:
+            raise IndexError("Global center of mass should be from one frame only")
+        self.global_center_of_mass = global_center_of_mass
+
+        # Remove previous actors from the scene
+        for actor in self.global_center_of_mass_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.global_center_of_mass_actors = list()
+
+        # Create the geometry of a point (the coordinate) points = vtk.vtkPoints()
+        for i in range(global_center_of_mass.get_num_markers()):
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+
+            # Create an actor
+            self.global_center_of_mass_actors.append(vtkActor())
+            self.global_center_of_mass_actors[i].SetMapper(mapper)
+
+            self.parent_window.ren.AddActor(self.global_center_of_mass_actors[i])
+            self.parent_window.ren.ResetCamera()
+
+        # Update marker position
+        self.update_global_center_of_mass(self.global_center_of_mass)
+
+    def update_global_center_of_mass(self, global_center_of_mass):
+        """
+        Update position of the segment center of mass on the screen (but do not repaint)
+        Parameters
+        ----------
+        global_center_of_mass : Markers3d
+            One frame of center of mass
+
+        """
+
+        if global_center_of_mass.get_num_frames() is not 1:
+            raise IndexError("Segment center of mass should be from one frame only")
+        if global_center_of_mass.get_num_markers() is not self.global_center_of_mass.get_num_markers():
+            self.new_global_center_of_mass_set(global_center_of_mass)
+            return  # Prevent calling update_center_of_mass recursively
+        self.global_center_of_mass = global_center_of_mass
+
+        for i, actor in enumerate(self.global_center_of_mass_actors):
+            # mapper = actors.GetNextActor().GetMapper()
+            mapper = actor.GetMapper()
+            self.global_center_of_mass_actors[i].GetProperty().SetColor(self.global_center_of_mass_color)
+            self.global_center_of_mass_actors[i].GetProperty().SetOpacity(self.global_center_of_mass_opacity)
+            source = vtkSphereSource()
+            source.SetCenter(global_center_of_mass[0:3, i])
+            source.SetRadius(self.global_center_of_mass_size)
+            mapper.SetInputConnection(source.GetOutputPort())
+
+    def set_segments_center_of_mass_color(self, segments_center_of_mass_color):
+        """
+        Dynamically change the color of the segments center of mass
+        Parameters
+        ----------
+        segments_center_of_mass_color : tuple(int)
+            Color the center of mass should be drawn (1 is max brightness)
+        """
+        self.segments_center_of_mass_color = segments_center_of_mass_color
+        self.update_segments_center_of_mass(self.segments_center_of_mass)
+
+    def set_segments_center_of_mass_size(self, segments_center_of_mass_size):
+        """
+        Dynamically change the size of the segments center of mass
+        Parameters
+        ----------
+        segments_center_of_mass_size : float
+            Size the center of mass should be drawn
+        """
+        self.segments_center_of_mass_size = segments_center_of_mass_size
+        self.update_segments_center_of_mass(self.segments_center_of_mass)
+
+    def set_segments_center_of_mass_opacity(self, segments_center_of_mass_opacity):
+        """
+        Dynamically change the opacity of the segments center of mass
+        Parameters
+        ----------
+        segments_center_of_mass_opacity : float
+            Opacity of the center of mass (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.segments_center_of_mass_opacity = segments_center_of_mass_opacity
+        self.update_segments_center_of_mass(self.segments_center_of_mass)
+
+    def new_segments_center_of_mass_set(self, segments_center_of_mass):
+        """
+        Define a new segments center of mass set. This function must be called each time the number of center
+        of mass change
+        Parameters
+        ----------
+        segments_center_of_mass : Markers3d
+            One frame of segment center of mas
+
+        """
+        if segments_center_of_mass.get_num_frames() is not 1:
+            raise IndexError("Segments center of mass should be from one frame only")
+        self.segments_center_of_mass = segments_center_of_mass
+
+        # Remove previous actors from the scene
+        for actor in self.segments_center_of_mass_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.segments_center_of_mass_actors = list()
+
+        # Create the geometry of a point (the coordinate) points = vtk.vtkPoints()
+        for i in range(segments_center_of_mass.get_num_markers()):
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+
+            # Create an actor
+            self.segments_center_of_mass_actors.append(vtkActor())
+            self.segments_center_of_mass_actors[i].SetMapper(mapper)
+
+            self.parent_window.ren.AddActor(self.segments_center_of_mass_actors[i])
+            self.parent_window.ren.ResetCamera()
+
+        # Update marker position
+        self.update_segments_center_of_mass(self.segments_center_of_mass)
+
+    def update_segments_center_of_mass(self, segments_center_of_mass):
+        """
+        Update position of the segment center of mass on the screen (but do not repaint)
+        Parameters
+        ----------
+        segments_center_of_mass : Markers3d
+            One frame of center of mass
+
+        """
+
+        if segments_center_of_mass.get_num_frames() is not 1:
+            raise IndexError("Segment center of mass should be from one frame only")
+        if segments_center_of_mass.get_num_markers() is not self.segments_center_of_mass.get_num_markers():
+            self.new_segments_center_of_mass_set(segments_center_of_mass)
+            return  # Prevent calling update_center_of_mass recursively
+        self.segments_center_of_mass = segments_center_of_mass
+
+        for i, actor in enumerate(self.segments_center_of_mass_actors):
+            # mapper = actors.GetNextActor().GetMapper()
+            mapper = actor.GetMapper()
+            self.segments_center_of_mass_actors[i].GetProperty().SetColor(self.segments_center_of_mass_color)
+            self.segments_center_of_mass_actors[i].GetProperty().SetOpacity(self.segments_center_of_mass_opacity)
+            source = vtkSphereSource()
+            source.SetCenter(segments_center_of_mass[0:3, i])
+            source.SetRadius(self.segments_center_of_mass_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
     def set_mesh_color(self, mesh_color):
