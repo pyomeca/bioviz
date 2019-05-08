@@ -232,7 +232,7 @@ class BiorbdViz():
 
         # Animation panel
         animation_layout = QVBoxLayout()
-        animation_layout.addWidget(self.vtk_window.vtkWidget)
+        animation_layout.addWidget(self.vtk_window.avatar_widget)
 
         # Add the animation slider
         animation_slider_layout = QHBoxLayout()
@@ -265,9 +265,10 @@ class BiorbdViz():
         self.movement_slider = (slider, frame_label)
         animation_layout.addLayout(animation_slider_layout)
 
-        # Add the options part and the main window and make them 1:2 ratio
-        self.vtk_window.main_QHBoxLayout.addLayout(options_layout, 33)
-        self.vtk_window.main_QHBoxLayout.addLayout(animation_layout, 66)
+        self.vtk_window.main_layout.addLayout(options_layout, 0, 0)
+        self.vtk_window.main_layout.addLayout(animation_layout, 0, 1)
+        self.vtk_window.main_layout.setColumnStretch(0, 1)
+        self.vtk_window.main_layout.setColumnStretch(1, 2)
 
         # Change the size of the window to account for the new sliders
         self.vtk_window.resize(self.vtk_window.size().width() * 2, self.vtk_window.size().height())
