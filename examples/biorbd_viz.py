@@ -11,7 +11,7 @@ animate_by_hand = False
 
 if animate_by_hand:
     n_frames = 200
-    Q = np.ndarray((n_frames, b.nQ))
+    Q = np.zeros((n_frames, b.nQ))
     Q[:, 4] = np.linspace(0, np.pi/2, n_frames)
     i = 0
     while b.vtk_window.is_active:
