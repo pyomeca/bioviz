@@ -15,6 +15,7 @@ import pyoviz
 
 class BiorbdViz():
     def __init__(self, loaded_model=None, model_path=None,
+                 show_global_ref_frame=True,
                  show_markers=True, show_global_center_of_mass=True, show_segments_center_of_mass=True,
                  show_rt=True, show_muscles=True, show_meshes=True,
                  show_options=True):
@@ -49,6 +50,7 @@ class BiorbdViz():
 
         # Get the options
         self.show_markers = show_markers
+        self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
         self.show_rt = show_rt
@@ -84,6 +86,9 @@ class BiorbdViz():
         self.rt = RotoTransCollection()
         for rt in self.model.globalJCS(self.Q):
             self.rt.append(RotoTrans(rt.get_array()))
+
+        if self.show_global_ref_frame:
+            self.vtk_model.create_global_ref_frame()
 
         self.show_options = show_options
         if self.show_options:
