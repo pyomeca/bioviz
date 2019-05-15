@@ -243,7 +243,7 @@ class BiorbdViz():
         animation_slider_layout = QHBoxLayout()
         load_push_button = QPushButton("Load movement")
         load_push_button.setPalette(pal)
-        load_push_button.released.connect(self.__load_movement)
+        load_push_button.released.connect(self.__load_movement_from_button)
         animation_slider_layout.addWidget(load_push_button)
 
         self.play_stop_push_button = QPushButton()
@@ -305,7 +305,7 @@ class BiorbdViz():
             self.is_animating = True
             self.play_stop_push_button.setIcon(self.stop_icon)
 
-    def __load_movement(self):
+    def __load_movement_from_button(self):
         # Load the actual movement
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
@@ -314,11 +314,17 @@ class BiorbdViz():
         if not file_name[0]:
             return
         self.animated_Q = np.load(file_name[0])
-        # Example file was produced using the following lines
-        # n_frames = 200
-        # self.animated_Q = np.zeros((n_frames, self.nQ))
-        # self.animated_Q[:, 4] = np.linspace(0, np.pi / 2, n_frames)
+        self.__load_movement()
 
+    def load_movement(self, all_q, auto_start=True, ignore_animation_warning=True):
+        self.animated_Q = all_q
+        self.__load_movement()
+        if ignore_animation_warning:
+            self.animation_warning_already_shown = True
+        if auto_start:
+            self.__start_stop_animation()
+
+    def __load_movement(self):
         # Activate the start button
         self.is_animating = False
         self.play_stop_push_button.setEnabled(True)
