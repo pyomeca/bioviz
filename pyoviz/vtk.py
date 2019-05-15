@@ -103,11 +103,12 @@ class VtkModel(QtWidgets.QWidget):
         self,
         parent,
         markers_size=0.010, markers_color=(1, 1, 1), markers_opacity=1.0,
+        global_ref_frame_length=0.15, global_ref_frame_width=5,
         global_center_of_mass_size=0.0075, global_center_of_mass_color=(0, 0, 0), global_center_of_mass_opacity=1.0,
         segments_center_of_mass_size=0.005, segments_center_of_mass_color=(0, 0, 0), segments_center_of_mass_opacity=1.0,
         mesh_color=(0, 0, 0), mesh_opacity=1.0,
         muscle_color=(150/255, 15/255, 15/255), muscle_opacity=1.0,
-        rt_size=0.1,
+        rt_length=0.1, rt_width=2
     ):
         """
         Creates a model that will holds things to plot
@@ -121,7 +122,7 @@ class VtkModel(QtWidgets.QWidget):
             Color the markers should be drawn (1 is max brightness)
         markers_opacity : float
             Opacity of the markers (0.0 is completely transparent, 1.0 completely opaque)
-        rt_size : int
+        rt_length : int
             Length of the axes of the system of axes
         """
         QtWidgets.QWidget.__init__(self, parent)
@@ -138,6 +139,10 @@ class VtkModel(QtWidgets.QWidget):
         self.markers_opacity = markers_opacity
         self.markers_actors = list()
 
+        self.has_global_ref_frame = False
+        self.global_ref_frame_length = global_ref_frame_length
+        self.global_ref_frame_width = global_ref_frame_width
+
         self.global_center_of_mass = Markers3d()
         self.global_center_of_mass_size = global_center_of_mass_size
         self.global_center_of_mass_color = global_center_of_mass_color
@@ -152,7 +157,8 @@ class VtkModel(QtWidgets.QWidget):
 
         self.all_rt = RotoTransCollection()
         self.n_rt = 0
-        self.rt_size = rt_size
+        self.rt_length = rt_length
+        self.rt_width = rt_width
         self.rt_actors = list()
         self.parent_window.should_reset_camera = True
 
@@ -781,7 +787,7 @@ class VtkModel(QtWidgets.QWidget):
             # Create an actor
             self.rt_actors.append(vtkActor())
             self.rt_actors[i].SetMapper(mapper)
-            self.rt_actors[i].GetProperty().SetLineWidth(2)
+            self.rt_actors[i].GetProperty().SetLineWidth(self.rt_width)
 
             self.parent_window.ren.AddActor(self.rt_actors[i])
             self.parent_window.ren.ResetCamera()
@@ -820,10 +826,79 @@ class VtkModel(QtWidgets.QWidget):
             # Update the end points of the axes and the origin
             pts = vtkPoints()
             pts.InsertNextPoint(rt.translation())
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 0] * self.rt_size)
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 1] * self.rt_size)
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 2] * self.rt_size)
+            pts.InsertNextPoint(rt.translation() + rt[0:3, 0] * self.rt_length)
+            pts.InsertNextPoint(rt.translation() + rt[0:3, 1] * self.rt_length)
+            pts.InsertNextPoint(rt.translation() + rt[0:3, 2] * self.rt_length)
 
             # Update polydata in mapper
             lines_poly_data = self.rt_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(pts)
+
+    def create_global_ref_frame(self):
+        """
+        Define a new global reference frame set. This function must be called once
+        Parameters
+        ----------
+        global_ref_frame : RotoTrans
+            One frame of all RotoTrans to draw
+
+        """
+
+        if self.has_global_ref_frame:
+            raise RuntimeError("create_global_ref_frame should only be called once")
+        self.has_global_ref_frame = True
+
+        # Create the polyline which will hold the actors
+        lines_poly_data = vtkPolyData()
+
+        # Create four points of a generic system of axes
+        pts = vtkPoints()
+        pts.InsertNextPoint([0, 0, 0])
+        pts.InsertNextPoint([self.global_ref_frame_length, 0, 0])
+        pts.InsertNextPoint([0, self.global_ref_frame_length, 0])
+        pts.InsertNextPoint([0, 0, self.global_ref_frame_length])
+        lines_poly_data.SetPoints(pts)
+
+        # Create the first line(between Origin and P0)
+        line0 = vtkLine()
+        line0.GetPointIds().SetId(0, 0)
+        line0.GetPointIds().SetId(1, 1)
+
+        # Create the second line(between Origin and P1)
+        line1 = vtkLine()
+        line1.GetPointIds().SetId(0, 0)
+        line1.GetPointIds().SetId(1, 2)
+
+        # Create the second line(between Origin and P1)
+        line2 = vtkLine()
+        line2.GetPointIds().SetId(0, 0)
+        line2.GetPointIds().SetId(1, 3)
+
+        # Create a vtkCellArray container and store the lines in it
+        lines = vtkCellArray()
+        lines.InsertNextCell(line0)
+        lines.InsertNextCell(line1)
+        lines.InsertNextCell(line2)
+
+        # Add the lines to the polydata container
+        lines_poly_data.SetLines(lines)
+
+        # Create a vtkUnsignedCharArray container and store the colors in it
+        colors = vtkUnsignedCharArray()
+        colors.SetNumberOfComponents(3)
+        colors.InsertNextTuple([255, 0, 0])
+        colors.InsertNextTuple([0, 255, 0])
+        colors.InsertNextTuple([0, 0, 255])
+        lines_poly_data.GetCellData().SetScalars(colors)
+
+        # Create a mapper
+        mapper = vtkPolyDataMapper()
+        mapper.SetInputData(lines_poly_data)
+
+        # Create an actor
+        actor = vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetLineWidth(self.global_ref_frame_width)
+
+        self.parent_window.ren.AddActor(actor)
+        self.parent_window.ren.ResetCamera()
