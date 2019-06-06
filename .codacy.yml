@@ -1,9 +1,0 @@
-# Config file for automatic testing at codacy.com
----
-exclude_paths:
-  - 'pyoviz/_version.py'
-  - 'tests/**/*'
-  - 'tests/*'
-  - 'benchmarks/**/*'
-  - 'setup.py'
-  - 'versioneer.py'
