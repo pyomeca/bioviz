@@ -5,8 +5,7 @@ matrix:
   - os: linux
     dist: trusty
   - os: osx
-  - os: windows
-
+  
 before_install:
   # Add stuff for Python3 tests as well
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then 
