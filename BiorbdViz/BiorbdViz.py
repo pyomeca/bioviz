@@ -5,12 +5,12 @@ import numpy as np
 import biorbd
 
 from pyomeca import Markers3d
-from pyoviz.vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
+from BiorbdViz.vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
 from PyQt5.QtWidgets import QSlider, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, \
     QFileDialog, QScrollArea, QWidget, QMessageBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
-import pyoviz
+import BiorbdViz
 
 
 class BiorbdViz():
@@ -96,8 +96,8 @@ class BiorbdViz():
 
             self.play_stop_push_button = []
             self.is_animating = False
-            self.start_icon = QIcon(QPixmap(f"{os.path.dirname(pyoviz.__file__)}/ressources/start.png"))
-            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(pyoviz.__file__)}/ressources/pause.png"))
+            self.start_icon = QIcon(QPixmap(f"{os.path.dirname(BiorbdViz.__file__)}/ressources/start.png"))
+            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(BiorbdViz.__file__)}/ressources/pause.png"))
 
             self.double_factor = 10000
             self.sliders = list()
