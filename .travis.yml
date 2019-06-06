@@ -4,7 +4,6 @@ matrix:
   include:
   - os: linux
     dist: trusty
-  - os: osx
   
 before_install:
   # Add stuff for Python3 tests as well
@@ -23,10 +22,10 @@ before_install:
   - conda config --set always_yes yes --set changeps1 no
   - conda config --set auto_update_conda no
   - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then conda update -q conda; fi
-  - source activate
 
 install:
   - conda env update -n root -f environment.yml
+  - source activate root
   - python setup.py install
   
 script:
