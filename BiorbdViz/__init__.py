@@ -81,6 +81,8 @@ class BiorbdViz():
                     musc = biorbd.s2mMuscleHillType(musc_tp)
                 elif muscle_type == "HillThelen":
                     musc = biorbd.s2mMuscleHillTypeThelen(musc_tp)
+                elif muscle_type == "HillSimple":
+                    musc = biorbd.s2mMuscleHillTypeSimple(musc_tp)
                 tp = np.ndarray((3, len(musc.position().musclesPointsInGlobal()), 1))
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     tp[:, k, 0] = pts.get_array()
@@ -378,6 +380,8 @@ class BiorbdViz():
                     musc = biorbd.s2mMuscleHillType(musc_tp)
                 elif muscle_type == "HillThelen":
                     musc = biorbd.s2mMuscleHillTypeThelen(musc_tp)
+                elif muscle_type == "HillSimple":
+                    musc = biorbd.s2mMuscleHillTypeSimple(musc_tp)
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     self.muscles.get_frame(0)[idx][0:3, k] = pts.get_array()
                 idx += 1
