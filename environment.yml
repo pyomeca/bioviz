@@ -2,12 +2,8 @@
 name: pyoviz
 channels:
   - conda-forge
-  - defaults
-  - pyomeca
 dependencies:
-  - python
-  - biorbd
-  - numpy
   - pyomeca
   - vtk
   - pyqt
+  - biorbd
