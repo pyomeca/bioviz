@@ -25,7 +25,7 @@ before_install:
 
 install:
   - conda env update -n root -f environment.yml
-  - source activate root
+  - source activate pyoviz
   - python setup.py install
   
 script:
