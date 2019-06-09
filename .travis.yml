@@ -36,7 +36,7 @@ before_script:
 
 script:
   - conda install pytest
-  - pytest -v --color=yes tests
+  - python tests/test_viz.py
 
 after_success:
   - conda install -c conda-forge codecov
