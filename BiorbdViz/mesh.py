@@ -24,6 +24,12 @@ class Mesh(Markers3d):
         if s[1] != 3:
             raise NotImplementedError("Mesh only implements triangle connections")
 
+        # If triangle is empty, join lines in order
+        if s[0] == 0 and vertex.shape[1] > 0:
+            triangles = np.ndarray((vertex.shape[1]-1, 3), dtype='int')
+            for i in range(vertex.shape[1]-1):
+                triangles[i, :] = [i, i+1, i]
+
         obj = super(Mesh, cls).__new__(cls, data=vertex, *args, **kwargs)
         obj.triangles = triangles
         return obj

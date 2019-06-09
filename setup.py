@@ -1,24 +1,15 @@
-import yaml
 from setuptools import setup
 
-import versioneer
-
-with open("environment.yml", 'r') as stream:
-    out = yaml.load(stream)
-    requirements = out['dependencies'][1:]  # we do not return python
-
 setup(
-    name='pyoviz',
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
-    description="Pyomeca visualization toolkit",
-    author="Romain Martinez",
-    author_email='martinez.staps@gmail.com',
-    url='https://github.com/pyomeca/pyoviz',
+    name='biorbd_viz',
+    description="Biorbd Vizualization ToolKit",
+    author="Pariterre",
+    author_email='pariterre@hotmail.com',
+    url='https://github.com/pyomeca/biorbd-viz',
     license='Apache 2.0',
-    packages=['pyoviz'],
-    install_requires=requirements,
-    keywords='pyoviz',
+    packages=['BiorbdViz'],
+    package_data={'': ['ressources/*.png']},
+    keywords='BiorbdViz',
     classifiers=[
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
