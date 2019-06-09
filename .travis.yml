@@ -24,8 +24,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then conda update -q conda; fi
 
 install:
-  - conda env update -n root -f environment.yml
-  - conda activate root
+  - conda env update -f environment.yml
   - python setup.py install
   
 script:
