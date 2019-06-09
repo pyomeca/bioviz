@@ -3,8 +3,7 @@ name: pyoviz
 channels:
   - conda-forge
 dependencies:
-  - python
-  - numpy
-  - pyqt
   - pyomeca
-  - ezc3d
+  - vtk
+  - pyqt
+  - biorbd
