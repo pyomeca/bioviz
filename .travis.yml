@@ -30,8 +30,7 @@ install:
   
 script:
   - conda install pytest
-  - pwd
-  - pytest -v --color=yes tests
+  - python tests/test_viz.py
 
 after_success:
   - conda install -c conda-forge codecov
