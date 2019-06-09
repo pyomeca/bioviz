@@ -24,7 +24,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then conda update -q conda; fi
 
 install:
-  - conda env update -n base -f environment.yml
+  - conda install pyomeca vtk pyqt biorbd -cconda-forge
   - python setup.py install
   
 script:
