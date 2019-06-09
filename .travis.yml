@@ -28,13 +28,9 @@ install:
   - source activate root
   - python setup.py install
 
-# Read more here: https://docs.travis-ci.com/user/gui-and-headless-browsers/#Using-xvfb-to-Run-Tests-That-Require-a-GUI
-before_script:
-  - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x32"
-
 script:
   - conda install pytest
-  - pytest -v --color=yes tests
+  - xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes tests
 
 after_success:
   - conda install -c conda-forge codecov
