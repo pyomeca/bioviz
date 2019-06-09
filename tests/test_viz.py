@@ -8,6 +8,6 @@ def test_model_load():
     # From path
     b1 = BiorbdViz(model_path=model_path)
     
-    # From a loaded model
-    m = biorbd.s2mMusculoSkeletalModel(model_path)
-    b1 = BiorbdViz(loaded_model=m, show_muscles=False, show_meshes=False)
+    # # From a loaded model
+    # m = biorbd.s2mMusculoSkeletalModel(model_path)
+    # b1 = BiorbdViz(loaded_model=m, show_muscles=False, show_meshes=False)
