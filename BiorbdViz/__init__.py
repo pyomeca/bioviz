@@ -100,8 +100,8 @@ class BiorbdViz():
 
             self.play_stop_push_button = []
             self.is_animating = False
-            self.start_icon = QIcon(QPixmap(f"{os.path.dirname(BiorbdViz.__file__)}/ressources/start.png"))
-            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(BiorbdViz.__file__)}/ressources/pause.png"))
+            self.start_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/start.png"))
+            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/pause.png"))
 
             self.double_factor = 10000
             self.sliders = list()
