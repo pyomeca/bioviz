@@ -1,3 +1,6 @@
+from .mesh import *
+from .vtk import *
+
 import os
 import copy
 
@@ -5,12 +8,11 @@ import numpy as np
 import biorbd
 
 from pyomeca import Markers3d
-from pyoviz.vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
+from BiorbdViz.vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
 from PyQt5.QtWidgets import QSlider, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, \
     QFileDialog, QScrollArea, QWidget, QMessageBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
-import pyoviz
 
 
 class BiorbdViz():
@@ -79,6 +81,8 @@ class BiorbdViz():
                     musc = biorbd.s2mMuscleHillType(musc_tp)
                 elif muscle_type == "HillThelen":
                     musc = biorbd.s2mMuscleHillTypeThelen(musc_tp)
+                elif muscle_type == "HillSimple":
+                    musc = biorbd.s2mMuscleHillTypeSimple(musc_tp)
                 tp = np.ndarray((3, len(musc.position().musclesPointsInGlobal()), 1))
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     tp[:, k, 0] = pts.get_array()
@@ -96,8 +100,8 @@ class BiorbdViz():
 
             self.play_stop_push_button = []
             self.is_animating = False
-            self.start_icon = QIcon(QPixmap(f"{os.path.dirname(pyoviz.__file__)}/ressources/start.png"))
-            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(pyoviz.__file__)}/ressources/pause.png"))
+            self.start_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/start.png"))
+            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/pause.png"))
 
             self.double_factor = 10000
             self.sliders = list()
@@ -376,6 +380,8 @@ class BiorbdViz():
                     musc = biorbd.s2mMuscleHillType(musc_tp)
                 elif muscle_type == "HillThelen":
                     musc = biorbd.s2mMuscleHillTypeThelen(musc_tp)
+                elif muscle_type == "HillSimple":
+                    musc = biorbd.s2mMuscleHillTypeSimple(musc_tp)
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     self.muscles.get_frame(0)[idx][0:3, k] = pts.get_array()
                 idx += 1
