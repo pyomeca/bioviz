@@ -30,6 +30,7 @@ install:
   
 script:
   - conda install pytest
+  - pwd
   - pytest -v --color=yes tests
 
 after_success:
