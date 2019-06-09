@@ -29,7 +29,8 @@ install:
   - python setup.py install
   
 script:
-  - python -c "import biorbd"
+  - conda install pytest
+  - pytest -v --color=yes tests
 
 after_success:
   - conda install -c conda-forge codecov
