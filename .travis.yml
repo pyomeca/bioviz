@@ -30,7 +30,7 @@ install:
 
 script:
   - conda install pytest
-  - xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes tests
+  - xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes testsTravis
 
 after_success:
   - conda install -c conda-forge codecov
