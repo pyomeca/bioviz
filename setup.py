@@ -8,6 +8,7 @@ setup(
     url='https://github.com/pyomeca/biorbd-viz',
     license='Apache 2.0',
     packages=['BiorbdViz'],
+    package_data={'': ['ressources/*.png']},
     keywords='BiorbdViz',
     classifiers=[
         'Programming Language :: Python :: 3.6',
