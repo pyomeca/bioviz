@@ -56,8 +56,14 @@ class BiorbdViz():
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
         self.show_rt = show_rt
-        self.show_muscles = show_muscles
-        self.show_meshes = show_meshes
+        if self.model.nbMuscleTotal() > 0:
+            self.show_muscles = show_muscles
+        else:
+            self.show_muscles = False
+        if sum([len(i) for i in self.model.meshPoints(np.zeros(self.model.nbQ()))]) > 0:
+            self.show_meshes = show_meshes
+        else:
+            self.show_meshes = 0
 
         # Create all the reference to the things to plot
         self.nQ = self.model.nbQ()
