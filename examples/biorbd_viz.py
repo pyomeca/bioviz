@@ -4,9 +4,9 @@
 
 import numpy as np
 
-from pyoviz.BiorbdViz import BiorbdViz
+from BiorbdViz import BiorbdViz
 
-b = BiorbdViz(model_path="pyomecaman.s2mMod")
+b = BiorbdViz(model_path="pyomecaman.bioMod")
 animate_by_hand = 1
 
 if animate_by_hand == 0:
