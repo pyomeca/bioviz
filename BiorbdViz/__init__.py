@@ -16,7 +16,7 @@ from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
 
 class BiorbdViz():
-    def __init__(self, loaded_model=None, model_path=None,
+    def __init__(self, model_path=None, loaded_model=None,
                  show_global_ref_frame=True,
                  show_markers=True, show_global_center_of_mass=True, show_segments_center_of_mass=True,
                  show_rt=True, show_muscles=True, show_meshes=True,
