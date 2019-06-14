@@ -3,15 +3,14 @@ import copy
 
 import numpy as np
 import biorbd
-
 from pyomeca import Markers3d
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
-from PyQt5.QtWidgets import QSlider, QGridLayout, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, \
+from PyQt5.QtWidgets import QSlider, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, \
     QFileDialog, QScrollArea, QWidget, QMessageBox, QRadioButton, QGroupBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib import pyplot as plt
+
+from .analyses import MuscleAnalyses
 
 
 class BiorbdViz:
@@ -323,7 +322,7 @@ class BiorbdViz:
         self.vtk_window.resize(self.vtk_window.size().width() * 2, self.vtk_window.size().height())
 
         # Prepare all the analyses panel
-        self.__prepare_muscle_analyses_panel()
+        MuscleAnalyses(self.analyses_muscle_widget, self.model, self.palette_active, self.palette_inactive)
         self.__select_analyses_panel(radio_muscle, 1)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
@@ -373,40 +372,8 @@ class BiorbdViz:
         # Give the parent as main window
         if self.active_analyses_widget is not None:
             self.vtk_window.main_layout.addWidget(self.active_analyses_widget, 0, 2)
-            self.vtk_window.main_layout.setColumnStretch(2, 1)
+            self.vtk_window.main_layout.setColumnStretch(2, 2)
             self.active_analyses_widget.setVisible(True)
-
-    def __prepare_muscle_analyses_panel(self):
-        # Centralize the materials
-        analyses_muscle_layout = QVBoxLayout(self.analyses_muscle_widget)
-        analyses_muscle_layout.addStretch()
-
-        # Add plots
-        analyses_layout = QGridLayout()
-        canvas = FigureCanvasQTAgg(plt.figure())
-        ax = canvas.figure.subplots()
-        t = np.linspace(0, 10, 501)
-        ax.plot(t, np.tan(t), ".")
-        analyses_layout.addWidget(canvas, 0, 0)
-        canvas = FigureCanvasQTAgg(plt.figure())
-        ax = canvas.figure.subplots()
-        t = np.linspace(0, 10, 501)
-        ax.plot(t, np.tan(t), "-")
-        analyses_layout.addWidget(canvas, 1, 0)
-        canvas = FigureCanvasQTAgg(plt.figure())
-        ax = canvas.figure.subplots()
-        t = np.linspace(0, 10, 501)
-        ax.plot(t, np.tan(t), "--")
-        analyses_layout.addWidget(canvas, 0, 1)
-        canvas = FigureCanvasQTAgg(plt.figure())
-        ax = canvas.figure.subplots()
-        t = np.linspace(0, 10, 501)
-        ax.plot(t, np.tan(t), "-.")
-        analyses_layout.addWidget(canvas, 1, 1)
-        analyses_muscle_layout.addLayout(analyses_layout)
-
-        # Centralize the materials
-        analyses_muscle_layout.addStretch()
 
     def __move_avatar_from_sliders(self):
         for i, slide in enumerate(self.sliders):
