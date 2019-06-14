@@ -2,6 +2,7 @@
 Visualization toolkit in pyomeca
 """
 
+import time
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QPalette, QColor
@@ -22,7 +23,7 @@ from vtk import (
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from pyomeca import Markers3d, RotoTrans, RotoTransCollection
-from BiorbdViz import Mesh, MeshCollection
+from .mesh import Mesh, MeshCollection
 
 first = True
 if first:
@@ -73,6 +74,9 @@ class VtkWindow(QtWidgets.QMainWindow):
         """
         self.is_active = False
         app._in_event_loop = False
+        # It seems that interactor closes slower than the windows preventing from properly closing the interface.
+        # The work-around is to wait a little bit
+        time.sleep(0.1)
         super()
 
     def update_frame(self):
