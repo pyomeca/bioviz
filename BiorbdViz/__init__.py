@@ -324,6 +324,7 @@ class BiorbdViz:
 
         # Prepare all the analyses panel
         self.__prepare_muscle_analyses_panel()
+        self.__select_analyses_panel(radio_muscle, 1)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
         if not radio_button.isChecked():
@@ -364,7 +365,7 @@ class BiorbdViz:
         if self.active_analyses_widget is None:
             return
         # Remove from main window
-        self.analyses_muscle_widget.setVisible(False)
+        self.active_analyses_widget.setVisible(False)
         self.vtk_window.main_layout.removeWidget(self.active_analyses_widget)
         self.vtk_window.main_layout.setColumnStretch(2, 0)
 
@@ -373,7 +374,7 @@ class BiorbdViz:
         if self.active_analyses_widget is not None:
             self.vtk_window.main_layout.addWidget(self.active_analyses_widget, 0, 2)
             self.vtk_window.main_layout.setColumnStretch(2, 1)
-            self.analyses_muscle_widget.setVisible(True)
+            self.active_analyses_widget.setVisible(True)
 
     def __prepare_muscle_analyses_panel(self):
         # Centralize the materials
@@ -381,7 +382,6 @@ class BiorbdViz:
         analyses_muscle_layout.addStretch()
 
         # Add plots
-        tata = QVBoxLayout()
         analyses_layout = QGridLayout()
         canvas = FigureCanvasQTAgg(plt.figure())
         ax = canvas.figure.subplots()
@@ -403,10 +403,7 @@ class BiorbdViz:
         t = np.linspace(0, 10, 501)
         ax.plot(t, np.tan(t), "-.")
         analyses_layout.addWidget(canvas, 1, 1)
-        tata.addLayout(analyses_layout)
-        push = QPushButton()
-        tata.addWidget(push)
-        analyses_muscle_layout.addLayout(tata)
+        analyses_muscle_layout.addLayout(analyses_layout)
 
         # Centralize the materials
         analyses_muscle_layout.addStretch()
