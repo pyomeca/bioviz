@@ -323,6 +323,8 @@ class BiorbdViz:
 
         # Prepare all the analyses panel
         MuscleAnalyses(self.analyses_muscle_widget, self.model, self.palette_active, self.palette_inactive)
+        if self.model.nbMuscleTotal() == 0:
+            radio_muscle.setEnabled(False)
         self.__select_analyses_panel(radio_muscle, 1)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
