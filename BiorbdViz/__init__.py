@@ -335,7 +335,7 @@ class BiorbdViz:
         self.__hide_analyses_panel()
 
         size_factor_none = 1
-        size_factor_muscle = 1.25
+        size_factor_muscle = 1.40
 
         # Find the size factor to get back to normal size
         if self.active_analyses_widget is None:
@@ -374,7 +374,7 @@ class BiorbdViz:
         # Give the parent as main window
         if self.active_analyses_widget is not None:
             self.vtk_window.main_layout.addWidget(self.active_analyses_widget, 0, 2)
-            self.vtk_window.main_layout.setColumnStretch(2, 2)
+            self.vtk_window.main_layout.setColumnStretch(2, 4)
             self.active_analyses_widget.setVisible(True)
 
     def __move_avatar_from_sliders(self):
