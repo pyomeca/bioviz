@@ -199,6 +199,7 @@ class BiorbdViz:
         max_label_width = -1
         for i in range(self.model.nbDof()):
             slider_layout = QHBoxLayout()
+            sliders_layout.addLayout(slider_layout)
 
             # Add a name
             name_label = QLabel()
@@ -227,7 +228,6 @@ class BiorbdViz:
 
             # Add to the main sliders
             self.sliders.append((name_label, slider, value_label))
-            sliders_layout.addLayout(slider_layout)
         # Adjust the size of the names
         for name_label, _, _ in self.sliders:
             name_label.setFixedWidth(max_label_width + 1)
@@ -243,11 +243,11 @@ class BiorbdViz:
 
         # Add reset button
         button_layout = QHBoxLayout()
+        options_layout.addLayout(button_layout)
         reset_push_button = QPushButton("Reset")
         reset_push_button.setPalette(self.palette_active)
         reset_push_button.released.connect(self.reset_q)
         button_layout.addWidget(reset_push_button)
-        options_layout.addLayout(button_layout)
 
         # Add the radio button for analyses
         option_analyses_group = QGroupBox()
@@ -283,6 +283,7 @@ class BiorbdViz:
 
         # Add the animation slider
         animation_slider_layout = QHBoxLayout()
+        animation_layout.addLayout(animation_slider_layout)
         load_push_button = QPushButton("Load movement")
         load_push_button.setPalette(self.palette_active)
         load_push_button.released.connect(self.__load_movement_from_button)
@@ -311,8 +312,8 @@ class BiorbdViz:
         animation_slider_layout.addWidget(frame_label)
 
         self.movement_slider = (slider, frame_label)
-        animation_layout.addLayout(animation_slider_layout)
 
+        # Global placement of the window
         self.vtk_window.main_layout.addLayout(options_layout, 0, 0)
         self.vtk_window.main_layout.addLayout(animation_layout, 0, 1)
         self.vtk_window.main_layout.setColumnStretch(0, 1)
