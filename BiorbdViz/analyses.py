@@ -1,4 +1,6 @@
 from functools import partial
+from copy import copy
+
 import numpy as np
 from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QVBoxLayout, QGroupBox, QCheckBox, QComboBox, QScrollArea, \
     QLabel, QSlider
@@ -27,16 +29,16 @@ class MuscleAnalyses:
         text_dof.setPalette(self.main_window.palette_active)
         selector_layout.addWidget(text_dof)
 
-        combobox_dof = QComboBox()
-        combobox_dof.setPalette(self.main_window.palette_active)
+        self.combobox_dof = QComboBox()
+        self.combobox_dof.setPalette(self.main_window.palette_active)
         self.dof_mapping = dict()
         for cmp_dof, name in enumerate(self.model.nameDof()):
-            combobox_dof.addItem(name)
+            self.combobox_dof.addItem(name)
             self.dof_mapping[name] = cmp_dof
-        selector_layout.addWidget(combobox_dof)
-        combobox_dof.currentIndexChanged.connect(lambda: self.__set_current_dof(combobox_dof))
+        selector_layout.addWidget(self.combobox_dof)
+        self.combobox_dof.currentIndexChanged.connect(self.__set_current_dof)
         # Set default value
-        self.current_dof = combobox_dof.currentText()
+        self.current_dof = self.combobox_dof.currentText()
 
         # Add plots
         analyses_layout = QGridLayout()
@@ -113,6 +115,12 @@ class MuscleAnalyses:
                 self.ax_active_forces.plot(np.nan, np.nan, 'w')
                 cmp_mus += 1
 
+        # Add vertical bar for position of current dof
+        self.ax_muscle_length.plot(np.nan, np.nan, 'k')
+        self.ax_moment_arm.plot(np.nan, np.nan, 'k')
+        self.ax_passive_forces.plot(np.nan, np.nan, 'k')
+        self.ax_active_forces.plot(np.nan, np.nan, 'k')
+
         radio_muscle_group.setLayout(muscle_layout)
         muscles_scroll = QScrollArea()
         muscles_scroll.setFrameShape(0)
@@ -121,8 +129,8 @@ class MuscleAnalyses:
         selector_layout.addWidget(muscles_scroll)
         selector_layout.addStretch()
 
-    def __set_current_dof(self, combobox_dof):
-        self.current_dof = combobox_dof.currentText()
+    def __set_current_dof(self):
+        self.current_dof = self.combobox_dof.currentText()
         self.__select_muscles_on_plot(False)
 
     def update_all_graphs(self):
@@ -159,8 +167,23 @@ class MuscleAnalyses:
                 self.ax_moment_arm.get_lines()[ax_idx].set_data(np.nan, np.nan)
                 self.ax_passive_forces.get_lines()[ax_idx].set_data(np.nan, np.nan)
                 self.ax_active_forces.get_lines()[ax_idx].set_data(np.nan, np.nan)
+
+        # Empty the vertical bar (otherwise relim takes it in account
+        if not from_active_forces_slider:
+            self.ax_muscle_length.get_lines()[-1].set_data(np.nan, np.nan)
+            self.ax_moment_arm.get_lines()[-1].set_data(np.nan, np.nan)
+            self.ax_passive_forces.get_lines()[-1].set_data(np.nan, np.nan)
+        self.ax_active_forces.get_lines()[-1].set_data(np.nan, np.nan)
+
+        # If there is no data to show
         if number_of_active == 0:
+            # Redraw empty
+            self.canvas_muscle_length.figure.canvas.draw()
+            self.canvas_moment_arm.figure.canvas.draw()
+            self.canvas_passive_forces.figure.canvas.draw()
+            self.canvas_active_forces.figure.canvas.draw()
             return
+
         if not from_active_forces_slider:
             self.ax_muscle_length.relim()
             self.ax_muscle_length.autoscale(enable=True)
@@ -178,6 +201,15 @@ class MuscleAnalyses:
             self.ax_passive_forces.set_xlabel(self.model.nameDof()[q_idx] + " (rad) along full range")
         self.ax_active_forces.set_xlabel(self.model.nameDof()[q_idx] + " (rad) along full range")
 
+        # Add vertical bar to show current dof (it must be done after relim so we know the new lims
+        q_idx = self.combobox_dof.currentIndex()
+        q_val = self.__get_q_from_slider()[q_idx]
+        if not from_active_forces_slider:
+            self.ax_muscle_length.get_lines()[-1].set_data([q_val, q_val], self.ax_muscle_length.get_ylim())
+            self.ax_moment_arm.get_lines()[-1].set_data([q_val, q_val], self.ax_moment_arm.get_ylim())
+            self.ax_passive_forces.get_lines()[-1].set_data([q_val, q_val], self.ax_passive_forces.get_ylim())
+        self.ax_active_forces.get_lines()[-1].set_data([q_val, q_val], self.ax_active_forces.get_ylim())
+
         # Redraw graphs
         if not from_active_forces_slider:
             self.canvas_muscle_length.figure.canvas.draw()
@@ -186,39 +218,39 @@ class MuscleAnalyses:
         self.canvas_active_forces.figure.canvas.draw()
 
     def __get_q_from_slider(self):
-        return self.main_window.Q
+        return copy(self.main_window.Q)
 
     def __get_muscle_lengths(self, q_idx, mus_group_idx, mus_idx):
         n_points = 100
         length = np.ndarray((n_points))
         q = np.linspace(-np.pi, np.pi, n_points)
-        q_actual = self.__get_q_from_slider()
+        q_current = self.__get_q_from_slider()
         for i, q_mod in enumerate(q):
-            q_actual[q_idx] = q_mod
+            q_current[q_idx] = q_mod
             length[i] = biorbd.s2mMuscleHillType.getRef(
                 self.model.muscleGroup(mus_group_idx).muscle(mus_idx))\
-                .length(self.model, q_actual)
+                .length(self.model, q_current)
         return q, length
 
     def __get_moment_arms(self, q_idx, mus_idx):
         n_points = 100
         moment_arm = np.ndarray((n_points))
         q = np.linspace(-np.pi, np.pi, n_points)
-        q_actual = self.__get_q_from_slider()
+        q_current = self.__get_q_from_slider()
         for i, q_mod in enumerate(q):
-            q_actual[q_idx] = q_mod
-            moment_arm[i] = self.model.musclesLengthJacobian(self.model, q_actual).get_array()[mus_idx, q_idx]
+            q_current[q_idx] = q_mod
+            moment_arm[i] = self.model.musclesLengthJacobian(self.model, q_current).get_array()[mus_idx, q_idx]
         return q, moment_arm
 
     def __get_passive_forces(self, q_idx, mus_group_idx, mus_idx):
         n_points = 100
         passive_forces = np.ndarray((n_points))
         q = np.linspace(-np.pi, np.pi, n_points)
-        q_actual = self.__get_q_from_slider()
+        q_current = self.__get_q_from_slider()
         mus = biorbd.s2mMuscleHillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
         for i, q_mod in enumerate(q):
-            q_actual[q_idx] = q_mod
-            mus.updateOrientations(self.model, q_actual)
+            q_current[q_idx] = q_mod
+            mus.updateOrientations(self.model, q_current)
             passive_forces[i] = mus.FlPE()
         return q, passive_forces
 
@@ -226,11 +258,11 @@ class MuscleAnalyses:
         n_points = 100
         active_forces = np.ndarray((n_points))
         q = np.linspace(-np.pi, np.pi, n_points)
-        q_actual = self.__get_q_from_slider()
+        q_current = self.__get_q_from_slider()
         mus = biorbd.s2mMuscleHillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
         emg = biorbd.s2mMuscleStateActual(0, self.active_forces_slider.value()/100)
         for i, q_mod in enumerate(q):
-            q_actual[q_idx] = q_mod
-            mus.updateOrientations(self.model, q_actual)
+            q_current[q_idx] = q_mod
+            mus.updateOrientations(self.model, q_current)
             active_forces[i] = mus.FlCE(emg)
         return q, active_forces
