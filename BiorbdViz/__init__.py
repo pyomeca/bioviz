@@ -1,7 +1,9 @@
 import os
 import copy
+from functools import partial
 
 import numpy as np
+import scipy
 import biorbd
 from pyomeca import Markers3d
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
@@ -131,7 +133,7 @@ class BiorbdViz:
         self.set_q(self.Q)
 
         # Reset also muscle analyses graphs
-        self.__update_muscle_analyses_graphs()
+        self.__update_muscle_analyses_graphs(False, False, False, False)
 
     def set_q(self, Q, refresh_window=True):
         """
@@ -222,7 +224,7 @@ class BiorbdViz:
             slider.setPageStep(self.double_factor)
             slider.setValue(0)
             slider.valueChanged.connect(self.__move_avatar_from_sliders)
-            slider.sliderReleased.connect(self.__update_muscle_analyses_graphs)
+            slider.sliderReleased.connect(partial(self.__update_muscle_analyses_graphs, False, False, False, False))
             slider_layout.addWidget(slider)
 
             # Add the value
@@ -384,7 +386,7 @@ class BiorbdViz:
             self.active_analyses_widget.setVisible(True)
 
         # Update graphs if needed
-        self.__update_muscle_analyses_graphs()
+        self.__update_muscle_analyses_graphs(False, False, False, False)
 
     def __move_avatar_from_sliders(self):
         for i, slide in enumerate(self.sliders):
@@ -392,10 +394,12 @@ class BiorbdViz:
             slide[2].setText(f" {self.Q[i]:.2f}")
         self.set_q(self.Q)
 
-    def __update_muscle_analyses_graphs(self):
+    def __update_muscle_analyses_graphs(self, skip_muscle_length, skip_moment_arm,
+                                        skip_passive_forces, skip_active_forces):
         # Adjust muscle analyses if needed
         if self.active_analyses_widget == self.analyses_muscle_widget:
-            self.muscle_analyses.update_all_graphs()
+            self.muscle_analyses.update_all_graphs(skip_muscle_length, skip_moment_arm,
+                                                   skip_passive_forces, skip_active_forces)
 
     def __animate_from_slider(self):
         # Move the avatar
@@ -404,7 +408,7 @@ class BiorbdViz:
         self.set_q(self.Q)
 
         # Update graph of muscle analyses
-        self.__update_muscle_analyses_graphs()
+        self.__update_muscle_analyses_graphs(True, True, True, True)
 
     def __start_stop_animation(self):
         if not self.is_executing and not self.animation_warning_already_shown:
