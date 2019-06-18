@@ -100,6 +100,7 @@ class BiorbdViz:
 
         self.show_options = show_options
         if self.show_options:
+            self.muscle_analyses = []
             self.palette_active = QPalette()
             self.palette_inactive = QPalette()
             self.set_viz_palette()
@@ -218,6 +219,7 @@ class BiorbdViz:
             slider.setPageStep(self.double_factor)
             slider.setValue(0)
             slider.valueChanged.connect(self.__move_avatar_from_sliders)
+            slider.sliderReleased.connect(self.__update_muscle_analyses_graphs)
             slider_layout.addWidget(slider)
 
             # Add the value
@@ -323,7 +325,7 @@ class BiorbdViz:
         self.vtk_window.resize(self.vtk_window.size().width() * 2, self.vtk_window.size().height())
 
         # Prepare all the analyses panel
-        MuscleAnalyses(self.analyses_muscle_widget, self.model, self.palette_active, self.palette_inactive)
+        self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
         if self.model.nbMuscleTotal() == 0:
             radio_muscle.setEnabled(False)
         self.__select_analyses_panel(radio_muscle, 1)
@@ -383,6 +385,11 @@ class BiorbdViz:
             self.Q[i] = slide[1].value()/self.double_factor
             slide[2].setText(f" {self.Q[i]:.2f}")
         self.set_q(self.Q)
+
+    def __update_muscle_analyses_graphs(self):
+        # Adjust muscle analyses if needed
+        if self.active_analyses_widget == self.analyses_muscle_widget:
+            self.muscle_analyses.update_all_graphs()
 
     def __animate_from_slider(self):
         # Move the avatar

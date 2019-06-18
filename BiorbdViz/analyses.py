@@ -9,12 +9,13 @@ import biorbd
 
 
 class MuscleAnalyses:
-    def __init__(self, parent, model, active_palette, inactive_palette, background_color=(.5, .5, .5)):
+    def __init__(self, parent, main_window, background_color=(.5, .5, .5)):
         # Centralize the materials
         analyses_muscle_layout = QHBoxLayout(parent)
 
         # Get some aliases
-        self.model = model
+        self.main_window = main_window
+        self.model = self.main_window.model
         self.n_mus = self.model.nbMuscleTotal()
         self.n_q = self.model.nbQ()
 
@@ -23,13 +24,13 @@ class MuscleAnalyses:
         analyses_muscle_layout.addLayout(selector_layout)
         text_dof = QLabel()
         text_dof.setText("DoF to run")
-        text_dof.setPalette(active_palette)
+        text_dof.setPalette(self.main_window.palette_active)
         selector_layout.addWidget(text_dof)
 
         combobox_dof = QComboBox()
-        combobox_dof.setPalette(active_palette)
+        combobox_dof.setPalette(self.main_window.palette_active)
         self.dof_mapping = dict()
-        for cmp_dof, name in enumerate(model.nameDof()):
+        for cmp_dof, name in enumerate(self.model.nameDof()):
             combobox_dof.addItem(name)
             self.dof_mapping[name] = cmp_dof
         selector_layout.addWidget(combobox_dof)
@@ -76,7 +77,7 @@ class MuscleAnalyses:
         self.ax_active_forces.set_ylabel("Active forces coefficient")
         self.active_forces_slider = QSlider()
         active_forces_layout.addWidget(self.active_forces_slider)
-        self.active_forces_slider.setPalette(active_palette)
+        self.active_forces_slider.setPalette(self.main_window.palette_active)
         self.active_forces_slider.setMinimum(0)
         self.active_forces_slider.setMaximum(100)
         self.active_forces_slider.valueChanged.connect(partial(self.__select_muscles_on_plot, True))
@@ -84,7 +85,7 @@ class MuscleAnalyses:
         # Add muscle selector
         text_muscle = QLabel()
         text_muscle.setText("Muscles to show")
-        text_muscle.setPalette(active_palette)
+        text_muscle.setPalette(self.main_window.palette_active)
         selector_layout.addWidget(text_muscle)
 
         radio_muscle_group = QGroupBox()
@@ -92,15 +93,15 @@ class MuscleAnalyses:
         self.muscle_mapping = dict()
         self.checkboxes_muscle = list()
         cmp_mus = 0
-        for group in range(model.nbMuscleGroups()):
-            for mus in range(model.muscleGroup(group).nbMuscles()):
+        for group in range(self.model.nbMuscleGroups()):
+            for mus in range(self.model.muscleGroup(group).nbMuscles()):
                 # Map the name to the right numbers
-                name = biorbd.s2mMuscleHillType.getRef(model.muscleGroup(group).muscle(mus)).name()
+                name = biorbd.s2mMuscleHillType.getRef(self.model.muscleGroup(group).muscle(mus)).name()
                 self.muscle_mapping[name] = (group, mus, cmp_mus)
 
                 # Add the CheckBox
                 self.checkboxes_muscle .append(QCheckBox())
-                self.checkboxes_muscle[cmp_mus].setPalette(active_palette)
+                self.checkboxes_muscle[cmp_mus].setPalette(self.main_window.palette_active)
                 self.checkboxes_muscle[cmp_mus].setText(name)
                 self.checkboxes_muscle[cmp_mus].toggled.connect(partial(self.__select_muscles_on_plot, False))
                 muscle_layout.addWidget(self.checkboxes_muscle[cmp_mus])
@@ -122,6 +123,9 @@ class MuscleAnalyses:
 
     def __set_current_dof(self, combobox_dof):
         self.current_dof = combobox_dof.currentText()
+        self.__select_muscles_on_plot(False)
+
+    def update_all_graphs(self):
         self.__select_muscles_on_plot(False)
 
     def __select_muscles_on_plot(self, from_active_forces_slider):
@@ -181,22 +185,26 @@ class MuscleAnalyses:
             self.canvas_passive_forces.figure.canvas.draw()
         self.canvas_active_forces.figure.canvas.draw()
 
+    def __get_q_from_slider(self):
+        return self.main_window.Q
+
     def __get_muscle_lengths(self, q_idx, mus_group_idx, mus_idx):
         n_points = 100
         length = np.ndarray((n_points))
         q = np.linspace(-np.pi, np.pi, n_points)
-        q_actual = np.zeros(self.n_q)
+        q_actual = self.__get_q_from_slider()
         for i, q_mod in enumerate(q):
             q_actual[q_idx] = q_mod
             length[i] = biorbd.s2mMuscleHillType.getRef(
-                self.model.muscleGroup(mus_group_idx).muscle(mus_idx)).length(self.model, q_actual)
+                self.model.muscleGroup(mus_group_idx).muscle(mus_idx))\
+                .length(self.model, q_actual)
         return q, length
 
     def __get_moment_arms(self, q_idx, mus_idx):
         n_points = 100
         moment_arm = np.ndarray((n_points))
         q = np.linspace(-np.pi, np.pi, n_points)
-        q_actual = np.zeros(self.n_q)
+        q_actual = self.__get_q_from_slider()
         for i, q_mod in enumerate(q):
             q_actual[q_idx] = q_mod
             moment_arm[i] = self.model.musclesLengthJacobian(self.model, q_actual).get_array()[mus_idx, q_idx]
@@ -206,7 +214,7 @@ class MuscleAnalyses:
         n_points = 100
         passive_forces = np.ndarray((n_points))
         q = np.linspace(-np.pi, np.pi, n_points)
-        q_actual = np.zeros(self.n_q)
+        q_actual = self.__get_q_from_slider()
         mus = biorbd.s2mMuscleHillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
         for i, q_mod in enumerate(q):
             q_actual[q_idx] = q_mod
@@ -218,7 +226,7 @@ class MuscleAnalyses:
         n_points = 100
         active_forces = np.ndarray((n_points))
         q = np.linspace(-np.pi, np.pi, n_points)
-        q_actual = np.zeros(self.n_q)
+        q_actual = self.__get_q_from_slider()
         mus = biorbd.s2mMuscleHillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
         emg = biorbd.s2mMuscleStateActual(0, self.active_forces_slider.value()/100)
         for i, q_mod in enumerate(q):
