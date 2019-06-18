@@ -130,6 +130,9 @@ class BiorbdViz:
             slider[2].setText(f"{0:.2f}")
         self.set_q(self.Q)
 
+        # Reset also muscle analyses graphs
+        self.__update_muscle_analyses_graphs()
+
     def set_q(self, Q, refresh_window=True):
         """
         Manually update
@@ -380,6 +383,9 @@ class BiorbdViz:
             self.vtk_window.main_layout.setColumnStretch(2, 4)
             self.active_analyses_widget.setVisible(True)
 
+        # Update graphs if needed
+        self.__update_muscle_analyses_graphs()
+
     def __move_avatar_from_sliders(self):
         for i, slide in enumerate(self.sliders):
             self.Q[i] = slide[1].value()/self.double_factor
@@ -396,6 +402,9 @@ class BiorbdViz:
         self.movement_slider[1].setText(f"{self.movement_slider[0].value()}")
         self.Q = copy.copy(self.animated_Q[self.movement_slider[0].value()-1])  # 1-based
         self.set_q(self.Q)
+
+        # Update graph of muscle analyses
+        self.__update_muscle_analyses_graphs()
 
     def __start_stop_animation(self):
         if not self.is_executing and not self.animation_warning_already_shown:
@@ -447,6 +456,9 @@ class BiorbdViz:
 
         # Put back to first frame
         self.movement_slider[0].setValue(1)
+
+        # Add the combobox in muscle analyses
+        self.muscle_analyses.add_movement_to_dof_choice()
 
     def __set_markers_from_q(self):
         markers = self.model.Tags(self.model, self.Q)
