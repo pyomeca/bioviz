@@ -148,6 +148,7 @@ class BiorbdViz:
             raise TypeError(f"Q should be a {self.nQ} column vector")
         self.Q = Q
 
+        self.model.UpdateKinematicsCustom(self.model, biorbd.s2mGenCoord(self.Q))
         if self.show_muscles:
             self.__set_muscles_from_q()
         if self.show_rt:
@@ -470,18 +471,18 @@ class BiorbdViz:
         self.muscle_analyses.add_movement_to_dof_choice()
 
     def __set_markers_from_q(self):
-        markers = self.model.Tags(self.model, self.Q)
+        markers = self.model.Tags(self.model, self.Q, True, False)
         for k, mark in enumerate(markers):
             self.markers[0:3, k, 0] = mark.get_array()
         self.vtk_model.update_markers(self.markers.get_frame(0))
 
     def __set_global_center_of_mass_from_q(self):
-        com = self.model.CoM(self.Q)
+        com = self.model.CoM(self.Q, False)
         self.global_center_of_mass[0:3, 0, 0] = com.get_array()
         self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.get_frame(0))
 
     def __set_segments_center_of_mass_from_q(self):
-        coms = self.model.CoMbySegment(self.Q)
+        coms = self.model.CoMbySegment(self.Q, False)
         for k, com in enumerate(coms):
             self.segments_center_of_mass[0:3, k, 0] = com.get_array()
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.get_frame(0))
@@ -512,6 +513,6 @@ class BiorbdViz:
         self.vtk_model.update_muscle(self.muscles)
 
     def __set_rt_from_q(self):
-        for k, rt in enumerate(self.model.globalJCS(self.Q, True)):
+        for k, rt in enumerate(self.model.globalJCS(self.Q, False)):
             self.rt[k] = RotoTrans(rt.get_array())
         self.vtk_model.update_rt(self.rt)
