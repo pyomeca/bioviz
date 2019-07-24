@@ -473,18 +473,18 @@ class BiorbdViz:
     def __set_markers_from_q(self):
         markers = self.model.Tags(self.model, self.Q, True, False)
         for k, mark in enumerate(markers):
-            self.markers[0:3, k, 0] = mark.get_array()
+            self.markers[0:3, k, 0] = mark.get_array().reshape(-1, 1)
         self.vtk_model.update_markers(self.markers.get_frame(0))
 
     def __set_global_center_of_mass_from_q(self):
         com = self.model.CoM(self.Q, False)
-        self.global_center_of_mass[0:3, 0, 0] = com.get_array()
+        self.global_center_of_mass[0:3, 0, 0] = com.get_array().reshape(-1, 1)
         self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.get_frame(0))
 
     def __set_segments_center_of_mass_from_q(self):
         coms = self.model.CoMbySegment(self.Q, False)
         for k, com in enumerate(coms):
-            self.segments_center_of_mass[0:3, k, 0] = com.get_array()
+            self.segments_center_of_mass[0:3, k, 0] = com.get_array().reshape(-1, 1)
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.get_frame(0))
 
     def __set_meshes_from_q(self):
