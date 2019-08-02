@@ -830,9 +830,9 @@ class VtkModel(QtWidgets.QWidget):
             # Update the end points of the axes and the origin
             pts = vtkPoints()
             pts.InsertNextPoint(rt.translation())
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 0] * self.rt_length)
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 1] * self.rt_length)
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 2] * self.rt_length)
+            pts.InsertNextPoint(rt.translation() + rt[0:3, 0, :] * self.rt_length)
+            pts.InsertNextPoint(rt.translation() + rt[0:3, 1, :] * self.rt_length)
+            pts.InsertNextPoint(rt.translation() + rt[0:3, 2, :] * self.rt_length)
 
             # Update polydata in mapper
             lines_poly_data = self.rt_actors[i].GetMapper().GetInput()
