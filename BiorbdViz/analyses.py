@@ -102,7 +102,7 @@ class MuscleAnalyses:
         for group in range(self.model.nbMuscleGroups()):
             for mus in range(self.model.muscleGroup(group).nbMuscles()):
                 # Map the name to the right numbers
-                name = biorbd.s2mMuscleHillType.getRef(self.model.muscleGroup(group).muscle(mus)).name()
+                name = biorbd.HillType.getRef(self.model.muscleGroup(group).muscle(mus)).name().getString()
                 self.muscle_mapping[name] = (group, mus, cmp_mus)
 
                 # Add the CheckBox
@@ -212,7 +212,7 @@ class MuscleAnalyses:
         x_axis, all_q = self.__generate_x_axis(q_idx)
         length = np.ndarray(x_axis.shape)
         for i, q_mod in enumerate(all_q):
-            length[i] = biorbd.s2mMuscleHillType.getRef(
+            length[i] = biorbd.HillType.getRef(
                 self.model.muscleGroup(mus_group_idx).muscle(mus_idx)).length(self.model, q_mod)
         return x_axis, length
 
@@ -224,7 +224,7 @@ class MuscleAnalyses:
         return x_axis, moment_arm
 
     def __get_passive_forces(self, q_idx, mus_group_idx, mus_idx, _):
-        mus = biorbd.s2mMuscleHillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
+        mus = biorbd.HillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
         x_axis, all_q = self.__generate_x_axis(q_idx)
         passive_forces = np.ndarray(x_axis.shape)
         for i, q_mod in enumerate(all_q):
@@ -233,8 +233,8 @@ class MuscleAnalyses:
         return x_axis, passive_forces
 
     def __get_active_forces(self, q_idx, mus_group_idx, mus_idx, _):
-        mus = biorbd.s2mMuscleHillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
-        emg = biorbd.s2mMuscleStateActual(0, self.active_forces_slider.value()/100)
+        mus = biorbd.HillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
+        emg = biorbd.StateDynamics(0, self.active_forces_slider.value()/100)
         x_axis, all_q = self.__generate_x_axis(q_idx)
         active_forces = np.ndarray(x_axis.shape)
         for i, q_mod in enumerate(all_q):
