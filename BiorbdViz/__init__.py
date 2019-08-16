@@ -30,11 +30,11 @@ class BiorbdViz:
 
         # Load and store the model
         if loaded_model is not None:
-            if not isinstance(loaded_model, biorbd.s2mMusculoSkeletalModel):
-                raise TypeError("loaded_model should be of a biorbd.s2mMusculoSkeletalModel type")
+            if not isinstance(loaded_model, biorbd.Model):
+                raise TypeError("loaded_model should be of a biorbd.Model type")
             self.model = loaded_model
         elif model_path is not None:
-            self.model = biorbd.s2mMusculoSkeletalModel(model_path)
+            self.model = biorbd.Model(model_path)
         else:
             raise ValueError("loaded_model or model_path must be provided")
 
@@ -82,13 +82,13 @@ class BiorbdViz:
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                 musc_tp = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                muscle_type = biorbd.s2mMusculoSkeletalModel.getMuscleType(musc_tp)
+                muscle_type = biorbd.Model.getMuscleType(musc_tp).getString()
                 if muscle_type == "Hill":
-                    musc = biorbd.s2mMuscleHillType(musc_tp)
+                    musc = biorbd.HillType(musc_tp)
                 elif muscle_type == "HillThelen":
-                    musc = biorbd.s2mMuscleHillTypeThelen(musc_tp)
+                    musc = biorbd.HillTypeThelen(musc_tp)
                 elif muscle_type == "HillSimple":
-                    musc = biorbd.s2mMuscleHillTypeSimple(musc_tp)
+                    musc = biorbd.HillTypeSimple(musc_tp)
                 tp = np.ndarray((3, len(musc.position().musclesPointsInGlobal()), 1))
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     tp[:, k, 0] = pts.get_array()
@@ -148,7 +148,7 @@ class BiorbdViz:
             raise TypeError(f"Q should be a {self.nQ} column vector")
         self.Q = Q
 
-        self.model.UpdateKinematicsCustom(self.model, biorbd.s2mGenCoord(self.Q))
+        self.model.UpdateKinematicsCustom(self.model, biorbd.GeneralizedCoordinates(self.Q))
         if self.show_muscles:
             self.__set_muscles_from_q()
         if self.show_rt:
@@ -500,13 +500,13 @@ class BiorbdViz:
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                 musc_tp = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                muscle_type = biorbd.s2mMusculoSkeletalModel.getMuscleType(musc_tp)
+                muscle_type = biorbd.Model.getMuscleType(musc_tp).getString()
                 if muscle_type == "Hill":
-                    musc = biorbd.s2mMuscleHillType(musc_tp)
+                    musc = biorbd.HillType(musc_tp)
                 elif muscle_type == "HillThelen":
-                    musc = biorbd.s2mMuscleHillTypeThelen(musc_tp)
+                    musc = biorbd.HillTypeThelen(musc_tp)
                 elif muscle_type == "HillSimple":
-                    musc = biorbd.s2mMuscleHillTypeSimple(musc_tp)
+                    musc = biorbd.HillTypeSimple(musc_tp)
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     self.muscles.get_frame(0)[idx][0:3, k] = pts.get_array()
                 idx += 1
