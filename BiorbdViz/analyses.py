@@ -102,7 +102,7 @@ class MuscleAnalyses:
         for group in range(self.model.nbMuscleGroups()):
             for mus in range(self.model.muscleGroup(group).nbMuscles()):
                 # Map the name to the right numbers
-                name = biorbd.HillType.getRef(self.model.muscleGroup(group).muscle(mus)).name().getString()
+                name = biorbd.Muscle.getRef(self.model.muscleGroup(group).muscle(mus)).name().getString()
                 self.muscle_mapping[name] = (group, mus, cmp_mus)
 
                 # Add the CheckBox
@@ -212,7 +212,7 @@ class MuscleAnalyses:
         x_axis, all_q = self.__generate_x_axis(q_idx)
         length = np.ndarray(x_axis.shape)
         for i, q_mod in enumerate(all_q):
-            length[i] = biorbd.HillType.getRef(
+            length[i] = biorbd.Muscle.getRef(
                 self.model.muscleGroup(mus_group_idx).muscle(mus_idx)).length(self.model, q_mod)
         return x_axis, length
 
@@ -220,24 +220,32 @@ class MuscleAnalyses:
         x_axis, all_q = self.__generate_x_axis(q_idx)
         moment_arm = np.ndarray(x_axis.shape)
         for i, q_mod in enumerate(all_q):
-            moment_arm[i] = self.model.musclesLengthJacobian(self.model, q_mod).get_array()[mus_idx, q_idx]
+            moment_arm[i] = self.model.musclesLengthJacobian(q_mod).get_array()[mus_idx, q_idx]
         return x_axis, moment_arm
 
     def __get_passive_forces(self, q_idx, mus_group_idx, mus_idx, _):
-        mus = biorbd.HillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
+        mus = biorbd.Muscle.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
         x_axis, all_q = self.__generate_x_axis(q_idx)
         passive_forces = np.ndarray(x_axis.shape)
-        for i, q_mod in enumerate(all_q):
-            mus.updateOrientations(self.model, q_mod)
-            passive_forces[i] = mus.FlPE()
+        if hasattr(mus, 'FlPE'):
+            for i, q_mod in enumerate(all_q):
+                mus.updateOrientations(self.model, q_mod)
+                passive_forces[i] = mus.FlPE()
+        else:
+            for i in range(len(all_q)):
+                passive_forces[i] = 0
         return x_axis, passive_forces
 
     def __get_active_forces(self, q_idx, mus_group_idx, mus_idx, _):
-        mus = biorbd.HillType.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
+        mus = biorbd.Muscle.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
         emg = biorbd.StateDynamics(0, self.active_forces_slider.value()/100)
         x_axis, all_q = self.__generate_x_axis(q_idx)
         active_forces = np.ndarray(x_axis.shape)
-        for i, q_mod in enumerate(all_q):
-            mus.updateOrientations(self.model, q_mod)
-            active_forces[i] = mus.FlCE(emg)
+        if hasattr(mus, 'FlCE'):
+            for i, q_mod in enumerate(all_q):
+                mus.updateOrientations(q_mod)
+                active_forces[i] = mus.FlCE(emg)
+        else:
+            for i in range(len(all_q)):
+                active_forces[i] = 0
         return x_axis, active_forces

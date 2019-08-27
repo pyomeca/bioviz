@@ -77,18 +77,11 @@ class BiorbdViz:
             for k, mesh in enumerate(meshes):
                 tp[:, k, 0] = mesh.get_array()
             self.mesh.append(Mesh(vertex=tp))
-        self.model.updateMuscles(self.model, self.Q, True)
+        self.model.updateMuscles(self.Q, True)
         self.muscles = MeshCollection()
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
-                musc_tp = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                muscle_type = biorbd.Model.getMuscleType(musc_tp).getString()
-                if muscle_type == "Hill":
-                    musc = biorbd.HillType(musc_tp)
-                elif muscle_type == "HillThelen":
-                    musc = biorbd.HillTypeThelen(musc_tp)
-                elif muscle_type == "HillSimple":
-                    musc = biorbd.HillTypeSimple(musc_tp)
+                musc = biorbd.Muscle.getRef(self.model.muscleGroup(group_idx).muscle(muscle_idx))
                 tp = np.ndarray((3, len(musc.position().musclesPointsInGlobal()), 1))
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     tp[:, k, 0] = pts.get_array()
@@ -148,7 +141,7 @@ class BiorbdViz:
             raise TypeError(f"Q should be a {self.nQ} column vector")
         self.Q = Q
 
-        self.model.UpdateKinematicsCustom(self.model, biorbd.GeneralizedCoordinates(self.Q))
+        self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(self.Q))
         if self.show_muscles:
             self.__set_muscles_from_q()
         if self.show_rt:
@@ -471,7 +464,7 @@ class BiorbdViz:
         self.muscle_analyses.add_movement_to_dof_choice()
 
     def __set_markers_from_q(self):
-        markers = self.model.Tags(self.model, self.Q, True, False)
+        markers = self.model.Tags(self.Q, True, False)
         for k, mark in enumerate(markers):
             self.markers[0:3, k, 0] = mark.get_array().reshape(-1, 1)
         self.vtk_model.update_markers(self.markers.get_frame(0))
@@ -494,19 +487,12 @@ class BiorbdViz:
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):
-        self.model.updateMuscles(self.model, self.Q, True)
+        self.model.updateMuscles(self.Q, True)
 
         idx = 0
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
-                musc_tp = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                muscle_type = biorbd.Model.getMuscleType(musc_tp).getString()
-                if muscle_type == "Hill":
-                    musc = biorbd.HillType(musc_tp)
-                elif muscle_type == "HillThelen":
-                    musc = biorbd.HillTypeThelen(musc_tp)
-                elif muscle_type == "HillSimple":
-                    musc = biorbd.HillTypeSimple(musc_tp)
+                musc = biorbd.Muscle.getRef(self.model.muscleGroup(group_idx).muscle(muscle_idx))
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     self.muscles.get_frame(0)[idx][0:3, k] = pts.get_array()
                 idx += 1
