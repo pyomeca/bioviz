@@ -87,7 +87,7 @@ class BiorbdViz:
                     tp[:, k, 0] = pts.get_array()
                 self.muscles.append(Mesh(vertex=tp))
         self.rt = RotoTransCollection()
-        for rt in self.model.globalJCS(self.Q):
+        for rt in self.model.allGlobalJCS(self.Q):
             self.rt.append(RotoTrans(rt.get_array()))
 
         if self.show_global_ref_frame:
@@ -499,6 +499,6 @@ class BiorbdViz:
         self.vtk_model.update_muscle(self.muscles)
 
     def __set_rt_from_q(self):
-        for k, rt in enumerate(self.model.globalJCS(self.Q, False)):
+        for k, rt in enumerate(self.model.allGlobalJCS()):
             self.rt[k] = RotoTrans(rt.get_array())
         self.vtk_model.update_rt(self.rt)
