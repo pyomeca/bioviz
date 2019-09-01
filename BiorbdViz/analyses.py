@@ -51,7 +51,7 @@ class MuscleAnalyses:
         # Add plots
         analyses_layout = QGridLayout()
         analyses_muscle_layout.addLayout(analyses_layout)
-        self.n_point_for_q = 100
+        self.n_point_for_q = 50
 
         # Add muscle length plot
         self.canvas_muscle_length = FigureCanvasQTAgg(plt.figure(facecolor=background_color))
@@ -102,7 +102,7 @@ class MuscleAnalyses:
         for group in range(self.model.nbMuscleGroups()):
             for mus in range(self.model.muscleGroup(group).nbMuscles()):
                 # Map the name to the right numbers
-                name = biorbd.Muscle.getRef(self.model.muscleGroup(group).muscle(mus)).name().getString()
+                name = self.model.muscleGroup(group).muscle(mus).name().getString()
                 self.muscle_mapping[name] = (group, mus, cmp_mus)
 
                 # Add the CheckBox
@@ -144,30 +144,59 @@ class MuscleAnalyses:
 
     def update_all_graphs(self, skip_muscle_length, skip_moment_arm, skip_passive_forces,
                           skip_active_forces):
+        x_axis, length, moment_arm, passive_forces, active_forces = self.__compute_all_values()
         self.__update_specific_plot(self.canvas_muscle_length, self.ax_muscle_length,
-                                    self.__get_muscle_lengths, skip_muscle_length)
+                                    x_axis, length, skip_muscle_length)
 
         self.__update_specific_plot(self.canvas_moment_arm, self.ax_moment_arm,
-                                    self.__get_moment_arms, skip_moment_arm)
+                                    x_axis, moment_arm, skip_moment_arm)
 
         self.__update_specific_plot(self.canvas_passive_forces, self.ax_passive_forces,
-                                    self.__get_passive_forces, skip_passive_forces)
+                                    x_axis, passive_forces, skip_passive_forces)
 
         self.__update_specific_plot(self.canvas_active_forces, self.ax_active_forces,
-                                    self.__get_active_forces, skip_active_forces)
+                                    x_axis, active_forces, skip_active_forces)
 
-    def __update_specific_plot(self, canvas, ax, func, skip=False):
+    def __compute_all_values(self):
         q_idx = self.dof_mapping[self.current_dof]
+        x_axis, all_q = self.__generate_x_axis(q_idx)
+        length = np.ndarray((self.n_point_for_q, self.model.nbMuscleTotal()))
+        moment_arm = np.ndarray((self.n_point_for_q, self.model.nbMuscleTotal()))
+        passive_forces = np.ndarray((self.n_point_for_q, self.model.nbMuscleTotal()))
+        active_forces = np.ndarray((self.n_point_for_q, self.model.nbMuscleTotal()))
+        emg = biorbd.StateDynamics(0, self.active_forces_slider.value() / 100)
+        for i, q_mod in enumerate(all_q):
+            self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(q_mod))
+            muscles_length_jacobian = self.model.musclesLengthJacobian().get_array()
+            for m in range(self.model.nbMuscleTotal()):
+                if self.checkboxes_muscle[m].isChecked():
+                    mus_group_idx, mus_idx, _ = self.muscle_mapping[self.checkboxes_muscle[m].text()]
+                    mus = self.model.muscleGroup(mus_group_idx).muscle(mus_idx)
+                    mus.updateOrientations(self.model, q_mod, 1)
+
+                    length[i, m] = mus.length(self.model, q_mod, False)
+                    moment_arm[i, m] = muscles_length_jacobian[mus_idx, q_idx]
+                    if mus.type() != biorbd.IDEALIZED_ACTUATOR:
+                        passive_forces[i, m] = mus.FlPE()
+                    else:
+                        passive_forces[i, m] = 0
+                    if mus.type() != biorbd.IDEALIZED_ACTUATOR:
+                        active_forces[i, m] = mus.FlCE(emg)
+                    else:
+                        active_forces[i, m] = 0
+
+        return x_axis, length, moment_arm, passive_forces, active_forces
+
+    def __update_specific_plot(self, canvas, ax, x, y, skip=False):
         # Plot all active muscles
         number_of_active = 0
-        for ax_idx, checkbox in enumerate(self.checkboxes_muscle):
-            if checkbox.isChecked():
+        for m in range(self.model.nbMuscleTotal()):
+            if self.checkboxes_muscle[m].isChecked():
                 if not skip:
-                    x, y = func(q_idx, *self.muscle_mapping[checkbox.text()])
-                    ax.get_lines()[ax_idx].set_data(x, y)
+                    ax.get_lines()[m].set_data(x, y[:, m])
                 number_of_active += 1
             else:
-                ax.get_lines()[ax_idx].set_data(np.nan, np.nan)
+                ax.get_lines()[m].set_data(np.nan, np.nan)
 
         # Empty the vertical bar (otherwise relim takes it in account
         ax.get_lines()[-1].set_data(np.nan, np.nan)
@@ -182,7 +211,7 @@ class MuscleAnalyses:
             if self.animation_checkbox.isChecked():
                 ax.set_xlabel("Time frame (index)")
             else:
-                ax.set_xlabel(self.model.nameDof()[q_idx] + " (rad) along full range")
+                ax.set_xlabel(self.model.nameDof()[self.dof_mapping[self.current_dof]] + " (rad) along full range")
 
             # Add vertical bar to show current dof (it must be done after relim so we know the new lims)
             q_idx = self.combobox_dof.currentIndex()
@@ -207,45 +236,3 @@ class MuscleAnalyses:
             q[:, q_idx] = np.linspace(-np.pi, np.pi, self.n_point_for_q)
             x = q[:, q_idx]
         return x, q
-
-    def __get_muscle_lengths(self, q_idx, mus_group_idx, mus_idx, _):
-        x_axis, all_q = self.__generate_x_axis(q_idx)
-        length = np.ndarray(x_axis.shape)
-        for i, q_mod in enumerate(all_q):
-            length[i] = biorbd.Muscle.getRef(
-                self.model.muscleGroup(mus_group_idx).muscle(mus_idx)).length(self.model, q_mod)
-        return x_axis, length
-
-    def __get_moment_arms(self, q_idx, _, __, mus_idx):
-        x_axis, all_q = self.__generate_x_axis(q_idx)
-        moment_arm = np.ndarray(x_axis.shape)
-        for i, q_mod in enumerate(all_q):
-            moment_arm[i] = self.model.musclesLengthJacobian(q_mod).get_array()[mus_idx, q_idx]
-        return x_axis, moment_arm
-
-    def __get_passive_forces(self, q_idx, mus_group_idx, mus_idx, _):
-        mus = biorbd.Muscle.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
-        x_axis, all_q = self.__generate_x_axis(q_idx)
-        passive_forces = np.ndarray(x_axis.shape)
-        if hasattr(mus, 'FlPE'):
-            for i, q_mod in enumerate(all_q):
-                mus.updateOrientations(self.model, q_mod)
-                passive_forces[i] = mus.FlPE()
-        else:
-            for i in range(len(all_q)):
-                passive_forces[i] = 0
-        return x_axis, passive_forces
-
-    def __get_active_forces(self, q_idx, mus_group_idx, mus_idx, _):
-        mus = biorbd.Muscle.getRef(self.model.muscleGroup(mus_group_idx).muscle(mus_idx))
-        emg = biorbd.StateDynamics(0, self.active_forces_slider.value()/100)
-        x_axis, all_q = self.__generate_x_axis(q_idx)
-        active_forces = np.ndarray(x_axis.shape)
-        if hasattr(mus, 'FlCE'):
-            for i, q_mod in enumerate(all_q):
-                mus.updateOrientations(q_mod)
-                active_forces[i] = mus.FlCE(emg)
-        else:
-            for i in range(len(all_q)):
-                active_forces[i] = 0
-        return x_axis, active_forces

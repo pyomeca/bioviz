@@ -68,7 +68,7 @@ class BiorbdViz:
         # Create all the reference to the things to plot
         self.nQ = self.model.nbQ()
         self.Q = np.zeros(self.nQ)
-        self.markers = Markers3d(np.ndarray((3, self.model.nTags(), 1)))
+        self.markers = Markers3d(np.ndarray((3, self.model.nMarkers(), 1)))
         self.global_center_of_mass = Markers3d(np.ndarray((3, 1, 1)))
         self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbBone(), 1)))
         self.mesh = MeshCollection()
@@ -81,7 +81,7 @@ class BiorbdViz:
         self.muscles = MeshCollection()
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
-                musc = biorbd.Muscle.getRef(self.model.muscleGroup(group_idx).muscle(muscle_idx))
+                musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 tp = np.ndarray((3, len(musc.position().musclesPointsInGlobal()), 1))
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     tp[:, k, 0] = pts.get_array()
@@ -464,7 +464,7 @@ class BiorbdViz:
         self.muscle_analyses.add_movement_to_dof_choice()
 
     def __set_markers_from_q(self):
-        markers = self.model.Tags(self.Q, True, False)
+        markers = self.model.markers(self.Q, True, False)
         for k, mark in enumerate(markers):
             self.markers[0:3, k, 0] = mark.get_array().reshape(-1, 1)
         self.vtk_model.update_markers(self.markers.get_frame(0))
@@ -492,7 +492,7 @@ class BiorbdViz:
         idx = 0
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
-                musc = biorbd.Muscle.getRef(self.model.muscleGroup(group_idx).muscle(muscle_idx))
+                musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     self.muscles.get_frame(0)[idx][0:3, k] = pts.get_array()
                 idx += 1
