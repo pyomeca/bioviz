@@ -17,10 +17,12 @@ from .analyses import MuscleAnalyses
 
 class BiorbdViz:
     def __init__(self, model_path=None, loaded_model=None,
-                 show_global_ref_frame=True,
-                 show_markers=True, show_global_center_of_mass=True, show_segments_center_of_mass=True,
-                 show_rt=True, show_muscles=True, show_meshes=True,
-                 show_options=True):
+                 show_meshes=True,
+                 show_global_center_of_mass=True, show_segments_center_of_mass=True,
+                 show_global_ref_frame=True, show_local_ref_frame=True, 
+                 show_markers=True, 
+                 show_muscles=True, 
+                 show_analyses_panel=True):
         """
         Class that easily shows a biorbd model
         Args:
@@ -55,7 +57,7 @@ class BiorbdViz:
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
-        self.show_rt = show_rt
+        self.show_local_ref_frame = show_local_ref_frame
         if self.model.nbMuscleTotal() > 0:
             self.show_muscles = show_muscles
         else:
@@ -93,8 +95,8 @@ class BiorbdViz:
         if self.show_global_ref_frame:
             self.vtk_model.create_global_ref_frame()
 
-        self.show_options = show_options
-        if self.show_options:
+        self.show_analyses_panel = show_analyses_panel
+        if self.show_analyses_panel:
             self.muscle_analyses = []
             self.palette_active = QPalette()
             self.palette_inactive = QPalette()
@@ -144,7 +146,7 @@ class BiorbdViz:
         self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(self.Q))
         if self.show_muscles:
             self.__set_muscles_from_q()
-        if self.show_rt:
+        if self.show_local_ref_frame:
             self.__set_rt_from_q()
         if self.show_meshes:
             self.__set_meshes_from_q()
@@ -156,7 +158,7 @@ class BiorbdViz:
             self.__set_markers_from_q()
 
         # Update the sliders
-        if self.show_options:
+        if self.show_analyses_panel:
             for i, slide in enumerate(self.sliders):
                 slide[1].blockSignals(True)
                 slide[1].setValue(self.Q[i]*self.double_factor)
@@ -177,7 +179,7 @@ class BiorbdViz:
     def exec(self):
         self.is_executing = True
         while self.vtk_window.is_active:
-            if self.show_options and self.is_animating:
+            if self.show_analyses_panel and self.is_animating:
                 self.movement_slider[0].setValue(
                     (self.movement_slider[0].value() + 1) % self.movement_slider[0].maximum()
                 )
@@ -358,7 +360,7 @@ class BiorbdViz:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
 
         # Activate the required panel
-        self.__show_analyses_panel()
+        self.__show_local_ref_frame()
 
         # Enlarge the main window
         self.vtk_window.resize(int(self.vtk_window.size().width() * enlargement_factor / reduction_factor),
@@ -372,7 +374,7 @@ class BiorbdViz:
         self.vtk_window.main_layout.removeWidget(self.active_analyses_widget)
         self.vtk_window.main_layout.setColumnStretch(2, 0)
 
-    def __show_analyses_panel(self):
+    def __show_local_ref_frame(self):
         # Give the parent as main window
         if self.active_analyses_widget is not None:
             self.vtk_window.main_layout.addWidget(self.active_analyses_widget, 0, 2)
