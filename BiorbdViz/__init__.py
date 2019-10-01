@@ -494,7 +494,7 @@ class BiorbdViz:
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                 musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
-                    self.muscles.get_frame(0)[idx][0:3, k] = pts.get_array()
+                    self.muscles.get_frame(0)[idx][0:3, k, 0] = pts.get_array()[:, np.newaxis]
                 idx += 1
         self.vtk_model.update_muscle(self.muscles)
 
