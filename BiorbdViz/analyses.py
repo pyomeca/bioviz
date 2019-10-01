@@ -177,11 +177,11 @@ class MuscleAnalyses:
                     length[i, m] = mus.length(self.model, q_mod, False)
                     moment_arm[i, m] = muscles_length_jacobian[mus_idx, q_idx]
                     if mus.type() != biorbd.IDEALIZED_ACTUATOR:
-                        passive_forces[i, m] = mus.FlPE()
+                        passive_forces[i, m] = biorbd.HillType(mus).FlPE()
                     else:
                         passive_forces[i, m] = 0
                     if mus.type() != biorbd.IDEALIZED_ACTUATOR:
-                        active_forces[i, m] = mus.FlCE(emg)
+                        active_forces[i, m] = biorbd.HillType(mus).FlCE(emg)
                     else:
                         active_forces[i, m] = 0
 
