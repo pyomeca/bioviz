@@ -17,10 +17,12 @@ from .analyses import MuscleAnalyses
 
 class BiorbdViz:
     def __init__(self, model_path=None, loaded_model=None,
-                 show_global_ref_frame=True,
-                 show_markers=True, show_global_center_of_mass=True, show_segments_center_of_mass=True,
-                 show_rt=True, show_muscles=True, show_meshes=True,
-                 show_options=True):
+                 show_meshes=True,
+                 show_global_center_of_mass=True, show_segments_center_of_mass=True,
+                 show_global_ref_frame=True, show_local_ref_frame=True, 
+                 show_markers=True, 
+                 show_muscles=True, 
+                 show_analyses_panel=True):
         """
         Class that easily shows a biorbd model
         Args:
@@ -55,7 +57,7 @@ class BiorbdViz:
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
-        self.show_rt = show_rt
+        self.show_local_ref_frame = show_local_ref_frame
         if self.model.nbMuscleTotal() > 0:
             self.show_muscles = show_muscles
         else:
@@ -68,7 +70,7 @@ class BiorbdViz:
         # Create all the reference to the things to plot
         self.nQ = self.model.nbQ()
         self.Q = np.zeros(self.nQ)
-        self.markers = Markers3d(np.ndarray((3, self.model.nTags(), 1)))
+        self.markers = Markers3d(np.ndarray((3, self.model.nMarkers(), 1)))
         self.global_center_of_mass = Markers3d(np.ndarray((3, 1, 1)))
         self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbBone(), 1)))
         self.mesh = MeshCollection()
@@ -77,31 +79,24 @@ class BiorbdViz:
             for k, mesh in enumerate(meshes):
                 tp[:, k, 0] = mesh.get_array()
             self.mesh.append(Mesh(vertex=tp))
-        self.model.updateMuscles(self.model, self.Q, True)
+        self.model.updateMuscles(self.Q, True)
         self.muscles = MeshCollection()
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
-                musc_tp = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                muscle_type = biorbd.Model.getMuscleType(musc_tp).getString()
-                if muscle_type == "Hill":
-                    musc = biorbd.HillType(musc_tp)
-                elif muscle_type == "HillThelen":
-                    musc = biorbd.HillTypeThelen(musc_tp)
-                elif muscle_type == "HillSimple":
-                    musc = biorbd.HillTypeSimple(musc_tp)
+                musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 tp = np.ndarray((3, len(musc.position().musclesPointsInGlobal()), 1))
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
                     tp[:, k, 0] = pts.get_array()
                 self.muscles.append(Mesh(vertex=tp))
         self.rt = RotoTransCollection()
-        for rt in self.model.globalJCS(self.Q):
+        for rt in self.model.allGlobalJCS(self.Q):
             self.rt.append(RotoTrans(rt.get_array()))
 
         if self.show_global_ref_frame:
             self.vtk_model.create_global_ref_frame()
 
-        self.show_options = show_options
-        if self.show_options:
+        self.show_analyses_panel = show_analyses_panel
+        if self.show_analyses_panel:
             self.muscle_analyses = []
             self.palette_active = QPalette()
             self.palette_inactive = QPalette()
@@ -148,10 +143,10 @@ class BiorbdViz:
             raise TypeError(f"Q should be a {self.nQ} column vector")
         self.Q = Q
 
-        self.model.UpdateKinematicsCustom(self.model, biorbd.GeneralizedCoordinates(self.Q))
+        self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(self.Q))
         if self.show_muscles:
             self.__set_muscles_from_q()
-        if self.show_rt:
+        if self.show_local_ref_frame:
             self.__set_rt_from_q()
         if self.show_meshes:
             self.__set_meshes_from_q()
@@ -163,7 +158,7 @@ class BiorbdViz:
             self.__set_markers_from_q()
 
         # Update the sliders
-        if self.show_options:
+        if self.show_analyses_panel:
             for i, slide in enumerate(self.sliders):
                 slide[1].blockSignals(True)
                 slide[1].setValue(self.Q[i]*self.double_factor)
@@ -184,7 +179,7 @@ class BiorbdViz:
     def exec(self):
         self.is_executing = True
         while self.vtk_window.is_active:
-            if self.show_options and self.is_animating:
+            if self.show_analyses_panel and self.is_animating:
                 self.movement_slider[0].setValue(
                     (self.movement_slider[0].value() + 1) % self.movement_slider[0].maximum()
                 )
@@ -365,7 +360,7 @@ class BiorbdViz:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
 
         # Activate the required panel
-        self.__show_analyses_panel()
+        self.__show_local_ref_frame()
 
         # Enlarge the main window
         self.vtk_window.resize(int(self.vtk_window.size().width() * enlargement_factor / reduction_factor),
@@ -379,7 +374,7 @@ class BiorbdViz:
         self.vtk_window.main_layout.removeWidget(self.active_analyses_widget)
         self.vtk_window.main_layout.setColumnStretch(2, 0)
 
-    def __show_analyses_panel(self):
+    def __show_local_ref_frame(self):
         # Give the parent as main window
         if self.active_analyses_widget is not None:
             self.vtk_window.main_layout.addWidget(self.active_analyses_widget, 0, 2)
@@ -471,7 +466,7 @@ class BiorbdViz:
         self.muscle_analyses.add_movement_to_dof_choice()
 
     def __set_markers_from_q(self):
-        markers = self.model.Tags(self.model, self.Q, True, False)
+        markers = self.model.markers(self.Q, True, False)
         for k, mark in enumerate(markers):
             self.markers[0:3, k, 0] = mark.get_array().reshape(-1, 1)
         self.vtk_model.update_markers(self.markers.get_frame(0))
@@ -490,29 +485,22 @@ class BiorbdViz:
     def __set_meshes_from_q(self):
         for l, meshes in enumerate(self.model.meshPoints(self.Q, False)):
             for k, mesh in enumerate(meshes):
-                self.mesh.get_frame(0)[l][0:3, k] = mesh.get_array()
+                self.mesh.get_frame(0)[l][0:3, k] = mesh.get_array()[:, np.newaxis]
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):
-        self.model.updateMuscles(self.model, self.Q, True)
+        self.model.updateMuscles(self.Q, True)
 
         idx = 0
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
-                musc_tp = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                muscle_type = biorbd.Model.getMuscleType(musc_tp).getString()
-                if muscle_type == "Hill":
-                    musc = biorbd.HillType(musc_tp)
-                elif muscle_type == "HillThelen":
-                    musc = biorbd.HillTypeThelen(musc_tp)
-                elif muscle_type == "HillSimple":
-                    musc = biorbd.HillTypeSimple(musc_tp)
+                musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
-                    self.muscles.get_frame(0)[idx][0:3, k] = pts.get_array()
+                    self.muscles.get_frame(0)[idx][0:3, k, 0] = pts.get_array()[:, np.newaxis]
                 idx += 1
         self.vtk_model.update_muscle(self.muscles)
 
     def __set_rt_from_q(self):
-        for k, rt in enumerate(self.model.globalJCS(self.Q, False)):
+        for k, rt in enumerate(self.model.allGlobalJCS()):
             self.rt[k] = RotoTrans(rt.get_array())
         self.vtk_model.update_rt(self.rt)
