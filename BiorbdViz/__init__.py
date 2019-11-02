@@ -74,11 +74,13 @@ class BiorbdViz:
         self.global_center_of_mass = Markers3d(np.ndarray((3, 1, 1)))
         self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbBone(), 1)))
         self.mesh = MeshCollection()
-        for l, meshes in enumerate(self.model.meshPoints(self.Q)):
-            tp = np.ndarray((3, len(meshes), 1))
-            for k, mesh in enumerate(meshes):
-                tp[:, k, 0] = mesh.get_array()
-            self.mesh.append(Mesh(vertex=tp))
+        for l, vertices in enumerate(self.model.meshPointsInMatrix(self.Q)):
+            vertex = vertices.get_array()[:, :, np.newaxis]
+            triangles = np.ndarray((len(self.model.meshPatch()[l]), 3), dtype="int32")
+            for k, patch in enumerate(self.model.meshPatch()[l]):
+                triangles[k, :] = patch.patchAsDouble().get_array()
+
+            self.mesh.append(Mesh(vertex=vertex, triangles=triangles.T))
         self.model.updateMuscles(self.Q, True)
         self.muscles = MeshCollection()
         for group_idx in range(self.model.nbMuscleGroups()):
@@ -483,9 +485,8 @@ class BiorbdViz:
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.get_frame(0))
 
     def __set_meshes_from_q(self):
-        for l, meshes in enumerate(self.model.meshPoints(self.Q, False)):
-            for k, mesh in enumerate(meshes):
-                self.mesh.get_frame(0)[l][0:3, k] = mesh.get_array()[:, np.newaxis]
+        for l, meshes in enumerate(self.model.meshPointsInMatrix(self.Q, False)):
+            self.mesh.get_frame(0)[l][0:3, :, 0] = meshes.get_array()
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):

@@ -4,7 +4,7 @@ from pyomeca import FrameDependentNpArrayCollection, Markers3d
 
 class Mesh(Markers3d):
     def __new__(
-        cls, vertex=np.ndarray((3, 0, 0)), triangles=np.ndarray((0, 3)), *args, **kwargs
+        cls, vertex=np.ndarray((3, 0, 0)), triangles=np.ndarray((3, 0)), *args, **kwargs
     ):
         """
         Parameters
@@ -21,14 +21,14 @@ class Mesh(Markers3d):
             triangles = np.array(triangles)
 
         s = triangles.shape
-        if s[1] != 3:
+        if s[0] != 3:
             raise NotImplementedError("Mesh only implements triangle connections")
 
         # If triangle is empty, join lines in order
-        if s[0] == 0 and vertex.shape[1] > 0:
-            triangles = np.ndarray((vertex.shape[1]-1, 3), dtype='int')
+        if s[1] == 0 and vertex.shape[1] > 0:
+            triangles = np.ndarray((3, vertex.shape[1]-1), dtype='int')
             for i in range(vertex.shape[1]-1):
-                triangles[i, :] = [i, i+1, i]
+                triangles[:, i] = [i, i+1, i]
 
         obj = super(Mesh, cls).__new__(cls, data=vertex, *args, **kwargs)
         obj.triangles = triangles
@@ -44,7 +44,7 @@ class Mesh(Markers3d):
     # --- Get metadata methods
 
     def get_num_triangles(self):
-        return self.triangles.shape[0]
+        return self.triangles.shape[1]
 
     def get_num_vertex(self):
         """

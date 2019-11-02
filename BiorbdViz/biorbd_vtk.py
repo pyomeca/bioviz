@@ -528,9 +528,9 @@ class VtkModel(QtWidgets.QWidget):
             for j in range(mesh.get_num_triangles()):  # For each triangle
                 line = vtkPolyLine()
                 line.GetPointIds().SetNumberOfIds(4)
-                for k in range(len(mesh.triangles[j])):  # For each index
-                    line.GetPointIds().SetId(k, mesh.triangles[j, k])
-                line.GetPointIds().SetId(3, mesh.triangles[j, 0])  # Close the triangle
+                for k in range(len(mesh.triangles[:, j])):  # For each index
+                    line.GetPointIds().SetId(k, mesh.triangles[k, j])
+                line.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
                 cell.InsertNextCell(line)
             poly_line = vtkPolyData()
             poly_line.SetPoints(points)
@@ -570,10 +570,7 @@ class VtkModel(QtWidgets.QWidget):
             raise IndexError("Mesh should be from one frame only")
 
         for i in range(len(all_meshes)):
-            if (
-                all_meshes.get_mesh(i).get_num_vertex()
-                is not self.all_meshes.get_mesh(i).get_num_vertex()
-            ):
+            if (all_meshes.get_mesh(i).get_num_vertex() != self.all_meshes.get_mesh(i).get_num_vertex()):
                 self.new_mesh_set(all_meshes)
                 return  # Prevent calling update_markers recursively
 
@@ -652,9 +649,9 @@ class VtkModel(QtWidgets.QWidget):
             for j in range(mesh.get_num_triangles()):  # For each triangle
                 line = vtkPolyLine()
                 line.GetPointIds().SetNumberOfIds(4)
-                for k in range(len(mesh.triangles[j])):  # For each index
-                    line.GetPointIds().SetId(k, mesh.triangles[j, k])
-                line.GetPointIds().SetId(3, mesh.triangles[j, 0])  # Close the triangle
+                for k in range(len(mesh.triangles[:, j])):  # For each index
+                    line.GetPointIds().SetId(k, mesh.triangles[k, j])
+                line.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
                 cell.InsertNextCell(line)
             poly_line = vtkPolyData()
             poly_line.SetPoints(points)
