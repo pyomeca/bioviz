@@ -4,6 +4,8 @@ Visualization toolkit in pyomeca
 
 import time
 import sys
+
+import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QPalette, QColor
 
@@ -261,6 +263,7 @@ class VtkModel(QtWidgets.QWidget):
             self.new_marker_set(markers)
             return  # Prevent calling update_markers recursively
         self.markers = markers
+        markers = np.array(markers)
 
         for i, actor in enumerate(self.markers_actors):
             # mapper = actors.GetNextActor().GetMapper()
@@ -528,9 +531,9 @@ class VtkModel(QtWidgets.QWidget):
             for j in range(mesh.get_num_triangles()):  # For each triangle
                 line = vtkPolyLine()
                 line.GetPointIds().SetNumberOfIds(4)
-                for k in range(len(mesh.triangles[j])):  # For each index
-                    line.GetPointIds().SetId(k, mesh.triangles[j, k])
-                line.GetPointIds().SetId(3, mesh.triangles[j, 0])  # Close the triangle
+                for k in range(len(mesh.triangles[:, j])):  # For each index
+                    line.GetPointIds().SetId(k, mesh.triangles[k, j])
+                line.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
                 cell.InsertNextCell(line)
             poly_line = vtkPolyData()
             poly_line.SetPoints(points)
@@ -570,10 +573,7 @@ class VtkModel(QtWidgets.QWidget):
             raise IndexError("Mesh should be from one frame only")
 
         for i in range(len(all_meshes)):
-            if (
-                all_meshes.get_mesh(i).get_num_vertex()
-                is not self.all_meshes.get_mesh(i).get_num_vertex()
-            ):
+            if (all_meshes.get_mesh(i).get_num_vertex() != self.all_meshes.get_mesh(i).get_num_vertex()):
                 self.new_mesh_set(all_meshes)
                 return  # Prevent calling update_markers recursively
 
@@ -584,7 +584,9 @@ class VtkModel(QtWidgets.QWidget):
 
         for (i, mesh) in enumerate(self.all_meshes):
             points = vtkPoints()
-            for j in range(mesh.get_num_vertex()):
+            n_vertex = mesh.get_num_vertex()
+            mesh = np.array(mesh)
+            for j in range(n_vertex):
                 points.InsertNextPoint(mesh[0:3, j])
 
             poly_line = self.mesh_actors[i].GetMapper().GetInput()
@@ -652,9 +654,9 @@ class VtkModel(QtWidgets.QWidget):
             for j in range(mesh.get_num_triangles()):  # For each triangle
                 line = vtkPolyLine()
                 line.GetPointIds().SetNumberOfIds(4)
-                for k in range(len(mesh.triangles[j])):  # For each index
-                    line.GetPointIds().SetId(k, mesh.triangles[j, k])
-                line.GetPointIds().SetId(3, mesh.triangles[j, 0])  # Close the triangle
+                for k in range(len(mesh.triangles[:, j])):  # For each index
+                    line.GetPointIds().SetId(k, mesh.triangles[k, j])
+                line.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
                 cell.InsertNextCell(line)
             poly_line = vtkPolyData()
             poly_line.SetPoints(points)
@@ -709,7 +711,9 @@ class VtkModel(QtWidgets.QWidget):
 
         for (i, mesh) in enumerate(self.all_muscles):
             points = vtkPoints()
-            for j in range(mesh.get_num_vertex()):
+            n_vertex = mesh.get_num_vertex()
+            mesh = np.array(mesh)
+            for j in range(n_vertex):
                 points.InsertNextPoint(mesh[0:3, j])
 
             poly_line = self.muscle_actors[i].GetMapper().GetInput()
