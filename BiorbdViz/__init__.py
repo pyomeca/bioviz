@@ -486,7 +486,7 @@ class BiorbdViz:
 
     def __set_meshes_from_q(self):
         for l, meshes in enumerate(self.model.meshPointsInMatrix(self.Q, False)):
-            self.mesh.get_frame(0)[l][0:3, :, 0] = meshes.get_array()
+            self.mesh[l][0:3, :, 0] = meshes.get_array()
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):

@@ -4,6 +4,8 @@ Visualization toolkit in pyomeca
 
 import time
 import sys
+
+import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QPalette, QColor
 
@@ -261,6 +263,7 @@ class VtkModel(QtWidgets.QWidget):
             self.new_marker_set(markers)
             return  # Prevent calling update_markers recursively
         self.markers = markers
+        markers = np.array(markers)
 
         for i, actor in enumerate(self.markers_actors):
             # mapper = actors.GetNextActor().GetMapper()
@@ -581,7 +584,9 @@ class VtkModel(QtWidgets.QWidget):
 
         for (i, mesh) in enumerate(self.all_meshes):
             points = vtkPoints()
-            for j in range(mesh.get_num_vertex()):
+            n_vertex = mesh.get_num_vertex()
+            mesh = np.array(mesh)
+            for j in range(n_vertex):
                 points.InsertNextPoint(mesh[0:3, j])
 
             poly_line = self.mesh_actors[i].GetMapper().GetInput()
@@ -706,7 +711,9 @@ class VtkModel(QtWidgets.QWidget):
 
         for (i, mesh) in enumerate(self.all_muscles):
             points = vtkPoints()
-            for j in range(mesh.get_num_vertex()):
+            n_vertex = mesh.get_num_vertex()
+            mesh = np.array(mesh)
+            for j in range(n_vertex):
                 points.InsertNextPoint(mesh[0:3, j])
 
             poly_line = self.muscle_actors[i].GetMapper().GetInput()
