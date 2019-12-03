@@ -70,14 +70,14 @@ class BiorbdViz:
         # Create all the reference to the things to plot
         self.nQ = self.model.nbQ()
         self.Q = np.zeros(self.nQ)
-        self.markers = Markers3d(np.ndarray((3, self.model.nMarkers(), 1)))
+        self.markers = Markers3d(np.ndarray((3, self.model.nbMarkers(), 1)))
         self.global_center_of_mass = Markers3d(np.ndarray((3, 1, 1)))
-        self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbBone(), 1)))
+        self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbSegment(), 1)))
         self.mesh = MeshCollection()
         for l, vertices in enumerate(self.model.meshPointsInMatrix(self.Q)):
             vertex = vertices.get_array()[:, :, np.newaxis]
-            triangles = np.ndarray((len(self.model.meshPatch()[l]), 3), dtype="int32")
-            for k, patch in enumerate(self.model.meshPatch()[l]):
+            triangles = np.ndarray((len(self.model.meshFaces()[l]), 3), dtype="int32")
+            for k, patch in enumerate(self.model.meshFaces()[l]):
                 triangles[k, :] = patch.patchAsDouble().get_array()
 
             self.mesh.append(Mesh(vertex=vertex, triangles=triangles.T))
@@ -207,7 +207,7 @@ class BiorbdViz:
 
             # Add a name
             name_label = QLabel()
-            name = f"{self.model.nameDof()[i]}"
+            name = f"{self.model.nameDof()[i].get_string()}"
             name_label.setText(name)
             name_label.setPalette(self.palette_active)
             label_width = name_label.fontMetrics().boundingRect(name_label.text()).width()

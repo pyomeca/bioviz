@@ -34,8 +34,8 @@ class MuscleAnalyses:
         self.combobox_dof.setPalette(self.main_window.palette_active)
         self.dof_mapping = dict()
         for cmp_dof, name in enumerate(self.model.nameDof()):
-            self.combobox_dof.addItem(name)
-            self.dof_mapping[name] = cmp_dof
+            self.combobox_dof.addItem(name.get_string())
+            self.dof_mapping[name.get_string()] = cmp_dof
         self.combobox_dof.currentIndexChanged.connect(self.__set_current_dof)
         # Set default value
         self.current_dof = self.combobox_dof.currentText()
@@ -102,7 +102,7 @@ class MuscleAnalyses:
         for group in range(self.model.nbMuscleGroups()):
             for mus in range(self.model.muscleGroup(group).nbMuscles()):
                 # Map the name to the right numbers
-                name = self.model.muscleGroup(group).muscle(mus).name().getString()
+                name = self.model.muscleGroup(group).muscle(mus).name().get_string()
                 self.muscle_mapping[name] = (group, mus, cmp_mus)
 
                 # Add the CheckBox
