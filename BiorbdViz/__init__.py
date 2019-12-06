@@ -75,10 +75,10 @@ class BiorbdViz:
         self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbSegment(), 1)))
         self.mesh = MeshCollection()
         for l, vertices in enumerate(self.model.meshPointsInMatrix(self.Q)):
-            vertex = vertices.get_array()[:, :, np.newaxis]
+            vertex = vertices.to_array()[:, :, np.newaxis]
             triangles = np.ndarray((len(self.model.meshFaces()[l]), 3), dtype="int32")
             for k, patch in enumerate(self.model.meshFaces()[l]):
-                triangles[k, :] = patch.patchAsDouble().get_array()
+                triangles[k, :] = patch.patchAsDouble().to_array()
 
             self.mesh.append(Mesh(vertex=vertex, triangles=triangles.T))
         self.model.updateMuscles(self.Q, True)
@@ -88,11 +88,11 @@ class BiorbdViz:
                 musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 tp = np.ndarray((3, len(musc.position().musclesPointsInGlobal()), 1))
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
-                    tp[:, k, 0] = pts.get_array()
+                    tp[:, k, 0] = pts.to_array()
                 self.muscles.append(Mesh(vertex=tp))
         self.rt = RotoTransCollection()
         for rt in self.model.allGlobalJCS(self.Q):
-            self.rt.append(RotoTrans(rt.get_array()))
+            self.rt.append(RotoTrans(rt.to_array()))
 
         if self.show_global_ref_frame:
             self.vtk_model.create_global_ref_frame()
@@ -207,7 +207,7 @@ class BiorbdViz:
 
             # Add a name
             name_label = QLabel()
-            name = f"{self.model.nameDof()[i].get_string()}"
+            name = f"{self.model.nameDof()[i].to_string()}"
             name_label.setText(name)
             name_label.setPalette(self.palette_active)
             label_width = name_label.fontMetrics().boundingRect(name_label.text()).width()
@@ -470,23 +470,23 @@ class BiorbdViz:
     def __set_markers_from_q(self):
         markers = self.model.markers(self.Q, True, False)
         for k, mark in enumerate(markers):
-            self.markers[0:3, k, 0] = mark.get_array().reshape(-1, 1)
+            self.markers[0:3, k, 0] = mark.to_array().reshape(-1, 1)
         self.vtk_model.update_markers(self.markers.get_frame(0))
 
     def __set_global_center_of_mass_from_q(self):
         com = self.model.CoM(self.Q, False)
-        self.global_center_of_mass[0:3, 0, 0] = com.get_array().reshape(-1, 1)
+        self.global_center_of_mass[0:3, 0, 0] = com.to_array().reshape(-1, 1)
         self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.get_frame(0))
 
     def __set_segments_center_of_mass_from_q(self):
         coms = self.model.CoMbySegment(self.Q, False)
         for k, com in enumerate(coms):
-            self.segments_center_of_mass[0:3, k, 0] = com.get_array().reshape(-1, 1)
+            self.segments_center_of_mass[0:3, k, 0] = com.to_array().reshape(-1, 1)
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.get_frame(0))
 
     def __set_meshes_from_q(self):
         for l, meshes in enumerate(self.model.meshPointsInMatrix(self.Q, False)):
-            self.mesh[l][0:3, :, 0] = meshes.get_array()
+            self.mesh[l][0:3, :, 0] = meshes.to_array()
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):
@@ -497,11 +497,11 @@ class BiorbdViz:
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                 musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
-                    self.muscles.get_frame(0)[idx][0:3, k, 0] = pts.get_array()[:, np.newaxis]
+                    self.muscles.get_frame(0)[idx][0:3, k, 0] = pts.to_array()[:, np.newaxis]
                 idx += 1
         self.vtk_model.update_muscle(self.muscles)
 
     def __set_rt_from_q(self):
         for k, rt in enumerate(self.model.allGlobalJCS()):
-            self.rt[k] = RotoTrans(rt.get_array())
+            self.rt[k] = RotoTrans(rt.to_array())
         self.vtk_model.update_rt(self.rt)
