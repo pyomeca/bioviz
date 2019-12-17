@@ -51,7 +51,7 @@ one_rt = RotoTrans.define_axes(d, [3, 5], [[4, 3], [4, 5]], "zx", "z", [3, 4, 5]
 
 # Create some mesh (could be from any mesh source)
 meshes = MeshCollection()
-meshes.append(Mesh(vertex=d, triangles=[[0, 1, 5], [0, 1, 6]]))
+meshes.append(Mesh(vertex=d, triangles=[[0, 1], [5, 0], [1, 6]]))
 
 # Animate all this
 i = 0

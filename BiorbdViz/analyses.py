@@ -34,8 +34,8 @@ class MuscleAnalyses:
         self.combobox_dof.setPalette(self.main_window.palette_active)
         self.dof_mapping = dict()
         for cmp_dof, name in enumerate(self.model.nameDof()):
-            self.combobox_dof.addItem(name)
-            self.dof_mapping[name] = cmp_dof
+            self.combobox_dof.addItem(name.to_string())
+            self.dof_mapping[name.to_string()] = cmp_dof
         self.combobox_dof.currentIndexChanged.connect(self.__set_current_dof)
         # Set default value
         self.current_dof = self.combobox_dof.currentText()
@@ -102,7 +102,7 @@ class MuscleAnalyses:
         for group in range(self.model.nbMuscleGroups()):
             for mus in range(self.model.muscleGroup(group).nbMuscles()):
                 # Map the name to the right numbers
-                name = self.model.muscleGroup(group).muscle(mus).name().getString()
+                name = self.model.muscleGroup(group).muscle(mus).name().to_string()
                 self.muscle_mapping[name] = (group, mus, cmp_mus)
 
                 # Add the CheckBox
@@ -167,7 +167,7 @@ class MuscleAnalyses:
         emg = biorbd.StateDynamics(0, self.active_forces_slider.value() / 100)
         for i, q_mod in enumerate(all_q):
             self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(q_mod))
-            muscles_length_jacobian = self.model.musclesLengthJacobian().get_array()
+            muscles_length_jacobian = self.model.musclesLengthJacobian().to_array()
             for m in range(self.model.nbMuscleTotal()):
                 if self.checkboxes_muscle[m].isChecked():
                     mus_group_idx, mus_idx, _ = self.muscle_mapping[self.checkboxes_muscle[m].text()]
