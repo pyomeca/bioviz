@@ -78,7 +78,7 @@ class BiorbdViz:
             vertex = vertices.to_array()[:, :, np.newaxis]
             triangles = np.ndarray((len(self.model.meshFaces()[l]), 3), dtype="int32")
             for k, patch in enumerate(self.model.meshFaces()[l]):
-                triangles[k, :] = patch.patchAsDouble().to_array()
+                triangles[k, :] = patch.faceAsDouble().to_array()
 
             self.mesh.append(Mesh(vertex=vertex, triangles=triangles.T))
         self.model.updateMuscles(self.Q, True)
