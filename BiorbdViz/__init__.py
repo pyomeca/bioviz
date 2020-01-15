@@ -485,8 +485,8 @@ class BiorbdViz:
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.get_frame(0))
 
     def __set_meshes_from_q(self):
-        for l, meshes in enumerate(self.model.meshPointsInMatrix(self.Q, False)):
-            self.mesh[l][0:3, :, 0] = meshes.to_array()
+        for m, meshes in enumerate(self.model.meshPointsInMatrix(self.Q, False)):
+            self.mesh[m][0:3, :, 0] = meshes.to_array()
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):
