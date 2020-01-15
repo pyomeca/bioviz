@@ -59,7 +59,7 @@ class MuscleAnalyses:
         self.ax_muscle_length = self.canvas_muscle_length.figure.subplots()
         self.ax_muscle_length.set_facecolor(background_color)
         self.ax_muscle_length.set_title("Muscle length")
-        self.ax_muscle_length.set_ylabel("Muscle length (m)")
+        self.ax_muscle_length.set_ylabel("Length (m)")
 
         # Add moment arm plot
         self.canvas_moment_arm = FigureCanvasQTAgg(plt.figure(facecolor=background_color))
@@ -67,7 +67,7 @@ class MuscleAnalyses:
         self.ax_moment_arm = self.canvas_moment_arm.figure.subplots()
         self.ax_moment_arm.set_facecolor(background_color)
         self.ax_moment_arm.set_title("Moment arm")
-        self.ax_moment_arm.set_ylabel("Muscle moment arm (m)")
+        self.ax_moment_arm.set_ylabel("Moment arm (m)")
 
         # Add passive forces
         self.canvas_passive_forces = FigureCanvasQTAgg(plt.figure(facecolor=background_color))
@@ -75,7 +75,7 @@ class MuscleAnalyses:
         self.ax_passive_forces = self.canvas_passive_forces.figure.subplots()
         self.ax_passive_forces.set_facecolor(background_color)
         self.ax_passive_forces.set_title("Passive forces")
-        self.ax_passive_forces.set_ylabel("Passive forces coefficient")
+        self.ax_passive_forces.set_ylabel("Passive forces coeff")
 
         # Add active forces
         self.canvas_active_forces = FigureCanvasQTAgg(plt.figure(facecolor=background_color))
@@ -85,7 +85,7 @@ class MuscleAnalyses:
         self.ax_active_forces = self.canvas_active_forces.figure.subplots()
         self.ax_active_forces.set_facecolor(background_color)
         self.ax_active_forces.set_title("Active forces")
-        self.ax_active_forces.set_ylabel("Active forces coefficient")
+        self.ax_active_forces.set_ylabel("Active forces coeff")
         self.active_forces_slider = QSlider()
         active_forces_layout.addWidget(self.active_forces_slider)
         self.active_forces_slider.setPalette(self.main_window.palette_active)
@@ -156,6 +156,19 @@ class MuscleAnalyses:
 
         self.__update_specific_plot(self.canvas_active_forces, self.ax_active_forces,
                                     x_axis, active_forces, skip_active_forces)
+        
+        self.__update_graph_size()
+
+    def __update_graph_size(self):
+        self.ax_muscle_length.figure.tight_layout()
+        self.ax_moment_arm.figure.tight_layout()
+        self.ax_passive_forces.figure.tight_layout()
+        self.ax_active_forces.figure.tight_layout()
+
+        self.canvas_muscle_length.draw()
+        self.canvas_moment_arm.draw()
+        self.canvas_passive_forces.draw()
+        self.canvas_active_forces.draw()
 
     def __compute_all_values(self):
         q_idx = self.dof_mapping[self.current_dof]
@@ -209,9 +222,9 @@ class MuscleAnalyses:
 
             # Adjust axis label (give a generic name)
             if self.animation_checkbox.isChecked():
-                ax.set_xlabel("Time frame (index)")
+                ax.set_xlabel("Time frame")
             else:
-                ax.set_xlabel(self.model.nameDof()[self.dof_mapping[self.current_dof]] + " (rad) along full range")
+                ax.set_xlabel("Along range")
 
             # Add vertical bar to show current dof (it must be done after relim so we know the new lims)
             q_idx = self.combobox_dof.currentIndex()
