@@ -156,7 +156,7 @@ class MuscleAnalyses:
 
         self.__update_specific_plot(self.canvas_active_forces, self.ax_active_forces,
                                     x_axis, active_forces, skip_active_forces)
-        
+
         self.__update_graph_size()
 
     def __update_graph_size(self):
@@ -246,6 +246,9 @@ class MuscleAnalyses:
             x = np.arange(q.shape[0])
         else:
             q = np.tile(self.__get_q_from_slider(), (self.n_point_for_q, 1))
-            q[:, q_idx] = np.linspace(-np.pi, np.pi, self.n_point_for_q)
+            slider = self.main_window.sliders[self.combobox_dof.currentIndex()][1]
+            q[:, q_idx] = np.linspace(slider.minimum() / self.main_window.double_factor,
+                                      slider.maximum() / self.main_window.double_factor,
+                                      self.n_point_for_q)
             x = q[:, q_idx]
         return x, q
