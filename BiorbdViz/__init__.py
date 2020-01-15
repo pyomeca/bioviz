@@ -201,6 +201,14 @@ class BiorbdViz:
         options_layout.addStretch()  # Centralize the sliders
         sliders_layout = QVBoxLayout()
         max_label_width = -1
+
+        # Get min and max for all dof
+        ranges = []
+        for i in range(self.model.nbSegment()):
+            seg = self.model.segment(i)
+            for r in seg.ranges():
+                ranges.append([r.min(), r.max()])
+
         for i in range(self.model.nbDof()):
             slider_layout = QHBoxLayout()
             sliders_layout.addLayout(slider_layout)
@@ -217,8 +225,8 @@ class BiorbdViz:
 
             # Add the slider
             slider = QSlider(Qt.Horizontal)
-            slider.setMinimum(-np.pi*self.double_factor)
-            slider.setMaximum(np.pi*self.double_factor)
+            slider.setMinimum(ranges[i][0]*self.double_factor)
+            slider.setMaximum(ranges[i][1]*self.double_factor)
             slider.setPageStep(self.double_factor)
             slider.setValue(0)
             slider.valueChanged.connect(self.__move_avatar_from_sliders)
