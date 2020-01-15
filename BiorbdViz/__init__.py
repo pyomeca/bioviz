@@ -225,6 +225,7 @@ class BiorbdViz:
 
             # Add the slider
             slider = QSlider(Qt.Horizontal)
+            slider.setMinimumSize(100, 0)
             slider.setMinimum(ranges[i][0]*self.double_factor)
             slider.setMaximum(ranges[i][1]*self.double_factor)
             slider.setPageStep(self.double_factor)
