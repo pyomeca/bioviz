@@ -20,9 +20,10 @@ class BiorbdViz:
                  show_meshes=True,
                  show_global_center_of_mass=True, show_segments_center_of_mass=True,
                  show_global_ref_frame=True, show_local_ref_frame=True, 
-                 show_markers=True, 
+                 show_markers=True, markers_size=0.010,
                  show_muscles=True, 
-                 show_analyses_panel=True):
+                 show_analyses_panel=True,
+                 **kwargs):
         """
         Class that easily shows a biorbd model
         Args:
@@ -42,7 +43,8 @@ class BiorbdViz:
 
         # Create the plot
         self.vtk_window = VtkWindow(background_color=(.5, .5, .5))
-        self.vtk_model = VtkModel(self.vtk_window, markers_color=(0, 0, 1))
+        self.vtk_model = VtkModel(self.vtk_window,
+                                  markers_color=(0, 0, 1), markers_size=markers_size)
         self.is_executing = False
         self.animation_warning_already_shown = False
 
