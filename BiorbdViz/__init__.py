@@ -402,7 +402,7 @@ class BiorbdViz:
         ranges = []
         for i in range(self.model.nbSegment()):
             seg = self.model.segment(i)
-            for r in seg.ranges():
+            for r in seg.QRanges():
                 ranges.append([r.min(), r.max()])
 
         for i in range(self.model.nbDof()):
