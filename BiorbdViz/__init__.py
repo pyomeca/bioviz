@@ -264,19 +264,22 @@ class BiorbdViz:
         self.nQ = self.model.nbQ()
         self.Q = np.zeros(self.nQ)
         self.markers = Markers3d(np.ndarray((3, self.model.nbMarkers(), 1)))
-        self.Markers = InterfacesCollections.Markers(self.model)
-        self.global_center_of_mass = Markers3d(np.ndarray((3, 1, 1)))
-        self.CoM = InterfacesCollections.CoM(self.model)
-        self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbSegment(), 1)))
-        self.CoMbySegment = InterfacesCollections.CoMbySegment(self.model)
-        self.mesh = MeshCollection()
-        self.meshPointsInMatrix = InterfacesCollections.meshPointsInMatrix(self.model)
-        for i, vertices in enumerate(self.meshPointsInMatrix.get_data(self.Q)):
-            triangles = np.ndarray((len(self.model.meshFaces()[i]), 3), dtype="int32")
-            for k, patch in enumerate(self.model.meshFaces()[i]):
-                triangles[k, :] = patch.faceAsDouble().to_array()
-
-            self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
+        if self.show_markers:
+            self.Markers = InterfacesCollections.Markers(self.model)
+            self.global_center_of_mass = Markers3d(np.ndarray((3, 1, 1)))
+        if self.show_global_center_of_mass:
+            self.CoM = InterfacesCollections.CoM(self.model)
+            self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbSegment(), 1)))
+        if self.show_segments_center_of_mass:
+            self.CoMbySegment = InterfacesCollections.CoMbySegment(self.model)
+        if self.show_meshes:
+            self.mesh = MeshCollection()
+            self.meshPointsInMatrix = InterfacesCollections.meshPointsInMatrix(self.model)
+            for i, vertices in enumerate(self.meshPointsInMatrix.get_data(self.Q)):
+                triangles = np.ndarray((len(self.model.meshFaces()[i]), 3), dtype="int32")
+                for k, patch in enumerate(self.model.meshFaces()[i]):
+                    triangles[k, :] = patch.faceAsDouble().to_array()
+                self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
         self.model.updateMuscles(self.Q, True)
         self.muscles = MeshCollection()
         for group_idx in range(self.model.nbMuscleGroups()):
@@ -713,3 +716,4 @@ class BiorbdViz:
         for k, rt in enumerate(self.allGlobalJCS.get_data(self.Q, False)):
             self.rt[k] = RotoTrans(rt)
         self.vtk_model.update_rt(self.rt)
+
