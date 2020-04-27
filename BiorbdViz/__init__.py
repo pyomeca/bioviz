@@ -83,7 +83,7 @@ class InterfacesCollections:
             else:
                 CoM = self.m.CoM(Q, False)
             for i in range(self.m.nbSegment()):
-                self.data[:, :, 0] = CoM.to_array()
+                self.data[:, 0, 0] = CoM.to_array()
 
         def _get_data_from_casadi(self, Q=None, compute_kin=True):
             self.data[:, :, 0] = self.CoM(Q)
