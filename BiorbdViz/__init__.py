@@ -19,191 +19,188 @@ from .analyses import MuscleAnalyses
 
 
 class InterfacesCollections:
-    class Markers:
+    class BiorbdFunc:
         def __init__(self, model):
             self.m = model
+            self.data = None
             if biorbd.currentLinearAlgebraBackend() == 0:
-                pass
+                self._prepare_function_for_eigen()
+                self.get_data_func = self._get_data_from_eigen
             elif biorbd.currentLinearAlgebraBackend() == 1:
-                Qsym = casadi.MX.sym("Q", model.nbQ(), 1)
-                self.markers = casadi.Function("meshPointsInMatrix", [Qsym], [self.m.markers(Qsym)])
+                self._prepare_function_for_casadi()
+                self.get_data_func = self._get_data_from_casadi
             else:
                 raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
 
-        def get_data(self, Q, compute_kin=True):
-            out = np.ndarray((3, self.m.nbMarkers(), 1))
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                if compute_kin:
-                    markers = self.m.markers(Q, True, True)
-                else:
-                    markers = self.m.markers(Q, True, False)
-                for i in range(self.m.nbMarkers()):
-                    out[:, i, 0] = markers[i].to_array()
-            else:
-                out[:, :, 0] = np.array(self.markers(Q))
-            return out
+        def _prepare_function_for_eigen(self):
+            pass
 
-    class CoM:
+        def _prepare_function_for_casadi(self):
+            pass
+
+        def _get_data_from_eigen(self, **kwargs):
+            raise RuntimeError("BiorbdFunc is an abstract class and _get_data_from_eigen can't be directly called")
+
+        def _get_data_from_casadi(self, **kwargs):
+            raise RuntimeError("BiorbdFunc is an abstract class and _get_data_from_casadi can't be directly called")
+
+        def get_data(self, **kwargs):
+            self.get_data_func(**kwargs)
+            return self.data
+
+    class Markers(BiorbdFunc):
         def __init__(self, model):
-            self.m = model
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                pass
-            elif biorbd.currentLinearAlgebraBackend() == 1:
-                Qsym = casadi.MX.sym("Q", model.nbQ(), 1)
-                self.CoM = casadi.Function("meshPointsInMatrix", [Qsym], [self.m.CoM(Qsym).to_mx()])
-            else:
-                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
+            super().__init__(model)
+            self.data = np.ndarray((3, self.m.nbMarkers(), 1))
 
-        def get_data(self, Q, compute_kin=True):
-            out = []
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                if compute_kin:
-                    CoM = self.m.CoM(Q)
-                else:
-                    CoM = self.m.CoM(Q, False)
-                for i in range(self.m.nbSegment()):
-                    out = CoM.to_array()
-            else:
-                out = np.ndarray((3, 1, 1))
-                out[:, :, 0] = self.CoM(Q)
-            return out
+        def _prepare_function_for_casadi(self):
+            q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.markers = casadi.Function("Markers", [q_sym], [self.m.markers(q_sym)])
 
-    class CoMbySegment:
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            if compute_kin:
+                markers = self.m.markers(Q, True, True)
+            else:
+                markers = self.m.markers(Q, True, False)
+            for i in range(self.m.nbMarkers()):
+                self.data[:, i, 0] = markers[i].to_array()
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            self.data[:, :, 0] = np.array(self.markers(Q))
+
+    class CoM(BiorbdFunc):
         def __init__(self, model):
-            self.m = model
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                pass
-            elif biorbd.currentLinearAlgebraBackend() == 1:
-                Qsym = casadi.MX.sym("Q", model.nbQ(), 1)
-                self.coms = []
-                for i in range(model.nbSegment()):
-                    self.coms.append(
-                        casadi.Function(
-                            "meshPointsInMatrix", [Qsym], [self.m.CoMbySegment(Qsym)[i].to_mx()])
-                    )
-            else:
-                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
+            super().__init__(model)
+            self.data = np.ndarray((3, 1, 1))
 
-        def get_data(self, Q, compute_kin=True):
-            out = []
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                if compute_kin:
-                    allCoM = self.m.CoMbySegment(Q)
-                else:
-                    allCoM = self.m.CoMbySegment(Q, False)
-                for com in allCoM:
-                    out.append(com.to_array())
-            else:
-                for i in range(self.m.nbSegment()):
-                    out.append(np.array(self.coms[i](Q)))
-            return out
+        def _prepare_function_for_casadi(self):
+            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.CoM = casadi.Function("CoM", [Qsym], [self.m.CoM(Qsym).to_mx()])
 
-    class musclesPointsInGlobal:
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            if compute_kin:
+                CoM = self.m.CoM(Q)
+            else:
+                CoM = self.m.CoM(Q, False)
+            for i in range(self.m.nbSegment()):
+                self.data[:, 0, 0] = CoM.to_array()
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            self.data[:, :, 0] = self.CoM(Q)
+
+    class CoMbySegment(BiorbdFunc):
         def __init__(self, model):
-            self.m = model
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                pass
-            elif biorbd.currentLinearAlgebraBackend() == 1:
-                Qsym = casadi.MX.sym("Q", model.nbQ(), 1)
-                self.groups = []
-                for group_idx in range(self.m.nbMuscleGroups()):
-                    muscles = []
-                    for muscle_idx in range(self.m.muscleGroup(group_idx).nbMuscles()):
-                        musc = self.m.muscleGroup(group_idx).muscle(muscle_idx)
-                        for via in range(len(musc.musclesPointsInGlobal())):
-                            muscles.append(
-                                casadi.Function(
-                                    "meshPointsInMatrix", [Qsym],
-                                    [musc.musclesPointsInGlobal(self.m, Qsym)[via].to_mx()])
-                            )
-                    self.groups.append(muscles)
+            super().__init__(model)
+            self.data = np.ndarray((3, 1, 1))
+
+        def _prepare_function_for_casadi(self):
+            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.CoMs = casadi.Function("CoMbySegment", [Qsym], [self.m.CoMbySegmentInMatrix(Qsym).to_mx()])
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            self.data = []
+            if compute_kin:
+                allCoM = self.m.CoMbySegment(Q)
             else:
-                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
+                allCoM = self.m.CoMbySegment(Q, False)
+            for com in allCoM:
+                self.data.append(com.to_array())
 
-        def get_data(self, Q):
-            out = []
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                self.m.updateMuscles(Q, True)
-                idx = 0
-                for group_idx in range(self.m.nbMuscleGroups()):
-                    for muscle_idx in range(self.m.muscleGroup(group_idx).nbMuscles()):
-                        musc = self.m.muscleGroup(group_idx).muscle(muscle_idx)
-                        for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
-                            out.append(pts.to_array()[:, np.newaxis])
-                        idx += 1
-            else:
-                for g in self.groups:
-                    for m in g:
-                        out.append(np.array(m(Q)))
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            self.data = []
+            for i in range(self.m.nbSegment()):
+                self.data.append(np.array(self.CoMs(Q)[:, i]))
 
-            return out
-
-    class meshPointsInMatrix:
+    class MusclesPointsInGlobal(BiorbdFunc):
         def __init__(self, model):
-            self.m = model
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                pass
-            elif biorbd.currentLinearAlgebraBackend() == 1:
-                Qsym = casadi.MX.sym("Q", model.nbQ(), 1)
-                self.segments = []
-                for i in range(model.nbSegment()):
-                    vertices = []
-                    for j in range(model.segment(i).characteristics().mesh().nbVertex()):
-                        vertices.append(
+            super().__init__(model)
+
+        def _prepare_function_for_casadi(self):
+            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.groups = []
+            for group_idx in range(self.m.nbMuscleGroups()):
+                muscles = []
+                for muscle_idx in range(self.m.muscleGroup(group_idx).nbMuscles()):
+                    musc = self.m.muscleGroup(group_idx).muscle(muscle_idx)
+                    for via in range(len(musc.musclesPointsInGlobal())):
+                        muscles.append(
                             casadi.Function(
-                                "meshPointsInMatrix", [Qsym], [self.m.meshPoints(Qsym)[i][j].to_mx()])
+                                "MusclesPointsInGlobal", [Qsym],
+                                [musc.musclesPointsInGlobal(self.m, Qsym)[via].to_mx()])
                         )
-                    self.segments.append(vertices)
-            else:
-                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
+                self.groups.append(muscles)
 
-        def get_data(self, Q, compute_kin=True):
-            out = []
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                if compute_kin:
-                    meshPointsInMatrix = self.m.meshPointsInMatrix(Q)
-                else:
-                    meshPointsInMatrix = self.m.meshPointsInMatrix(Q, False)
-                for i in range(self.m.nbSegment()):
-                    out.append(meshPointsInMatrix[i].to_array()[:, :, np.newaxis])
-            else:
-                for i in range(self.m.nbSegment()):
-                    nb_vertex = self.m.segment(i).characteristics().mesh().nbVertex()
-                    vertices = np.ndarray((3, nb_vertex, 1))
-                    for j in range(nb_vertex):
-                        vertices[:, j, :] = self.segments[i][j](Q)
-                    out.append(vertices)
-            return out
+        def _get_data_from_eigen(self, Q=None):
+            self.data = []
+            self.m.updateMuscles(Q, True)
+            idx = 0
+            for group_idx in range(self.m.nbMuscleGroups()):
+                for muscle_idx in range(self.m.muscleGroup(group_idx).nbMuscles()):
+                    musc = self.m.muscleGroup(group_idx).muscle(muscle_idx)
+                    for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
+                        self.data.append(pts.to_array()[:, np.newaxis])
+                    idx += 1
 
-    class allGlobalJCS:
+        def _get_data_from_casadi(self, Q=None):
+            self.data = []
+            for g in self.groups:
+                for m in g:
+                    self.data.append(np.array(m(Q)))
+
+    class MeshPointsInMatrix(BiorbdFunc):
         def __init__(self, model):
-            self.m = model
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                pass
-            elif biorbd.currentLinearAlgebraBackend() == 1:
-                Qsym = casadi.MX.sym("Q", model.nbQ(), 1)
-                self.jcs = []
-                for i in range(model.nbSegment()):
-                    self.jcs.append(
-                        casadi.Function(
-                            "meshPointsInMatrix", [Qsym], [self.m.allGlobalJCS(Qsym)[i].to_mx()])
-                    )
-            else:
-                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
+            super().__init__(model)
 
-        def get_data(self, Q, compute_kin=True):
-            out = []
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                if compute_kin:
-                    allJCS = self.m.allGlobalJCS(Q)
-                else:
-                    allJCS = self.m.allGlobalJCS()
-                for jcs in allJCS:
-                    out.append(jcs.to_array())
+        def _prepare_function_for_casadi(self):
+            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.segments = []
+            for i in range(self.m.nbSegment()):
+                self.segments.append(casadi.Function(
+                            "MeshPointsInMatrix", [Qsym], [self.m.meshPointsInMatrix(Qsym)[i].to_mx()]))
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            self.data = []
+            if compute_kin:
+                meshPointsInMatrix = self.m.meshPointsInMatrix(Q)
             else:
-                for i in range(self.m.nbSegment()):
-                    out.append(np.array(self.jcs[i](Q)))
-            return out
+                meshPointsInMatrix = self.m.meshPointsInMatrix(Q, False)
+            for i in range(self.m.nbSegment()):
+                self.data.append(meshPointsInMatrix[i].to_array()[:, :, np.newaxis])
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            self.data = []
+            for i in range(self.m.nbSegment()):
+                nb_vertex = self.m.segment(i).characteristics().mesh().nbVertex()
+                vertices = np.ndarray((3, nb_vertex, 1))
+                vertices[:, :, 0] = self.segments[i](Q)
+                self.data.append(vertices)
+
+    class AllGlobalJCS(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+
+        def _prepare_function_for_casadi(self):
+            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.jcs = []
+            for i in range(self.m.nbSegment()):
+                self.jcs.append(
+                    casadi.Function(
+                        "allGlobalJCS", [Qsym], [self.m.allGlobalJCS(Qsym)[i].to_mx()])
+                )
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            self.data = []
+            if compute_kin:
+                allJCS = self.m.allGlobalJCS(Q)
+            else:
+                allJCS = self.m.allGlobalJCS()
+            for jcs in allJCS:
+                self.data.append(jcs.to_array())
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            self.data = []
+            for i in range(self.m.nbSegment()):
+                self.data.append(np.array(self.jcs[i](Q)))
 
 
 class BiorbdViz:
@@ -274,11 +271,11 @@ class BiorbdViz:
             self.CoMbySegment = InterfacesCollections.CoMbySegment(self.model)
         if self.show_meshes:
             self.mesh = MeshCollection()
-            self.meshPointsInMatrix = InterfacesCollections.meshPointsInMatrix(self.model)
-            for i, vertices in enumerate(self.meshPointsInMatrix.get_data(self.Q)):
+            self.meshPointsInMatrix = InterfacesCollections.MeshPointsInMatrix(self.model)
+            for i, vertices in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
                 triangles = np.ndarray((len(self.model.meshFaces()[i]), 3), dtype="int32")
                 for k, patch in enumerate(self.model.meshFaces()[i]):
-                    triangles[k, :] = patch.faceAsDouble().to_array()
+                    triangles[k, :] = patch.face()
                 self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
         self.model.updateMuscles(self.Q, True)
         self.muscles = MeshCollection()
@@ -287,10 +284,10 @@ class BiorbdViz:
                 musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 tp = np.zeros((3, len(musc.position().musclesPointsInGlobal()), 1))
                 self.muscles.append(Mesh(vertex=tp))
-        self.musclesPointsInGlobal = InterfacesCollections.musclesPointsInGlobal(self.model)
+        self.musclesPointsInGlobal = InterfacesCollections.MusclesPointsInGlobal(self.model)
         self.rt = RotoTransCollection()
-        self.allGlobalJCS = InterfacesCollections.allGlobalJCS(self.model)
-        for rt in self.allGlobalJCS.get_data(self.Q):
+        self.allGlobalJCS = InterfacesCollections.AllGlobalJCS(self.model)
+        for rt in self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False):
             self.rt.append(RotoTrans(rt))
 
         if self.show_global_ref_frame:
@@ -679,27 +676,27 @@ class BiorbdViz:
         self.muscle_analyses.add_movement_to_dof_choice()
 
     def __set_markers_from_q(self):
-        self.markers[0:3, :, :] = self.Markers.get_data(self.Q, False)
+        self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_markers(self.markers.get_frame(0))
 
     def __set_global_center_of_mass_from_q(self):
-        com = self.CoM.get_data(self.Q, False)
+        com = self.CoM.get_data(Q=self.Q, compute_kin=False)
         self.global_center_of_mass[0:3, 0, 0] = com.reshape(-1, 1)
         self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.get_frame(0))
 
     def __set_segments_center_of_mass_from_q(self):
-        coms = self.CoMbySegment.get_data(self.Q, False)
+        coms = self.CoMbySegment.get_data(Q=self.Q, compute_kin=False)
         for k, com in enumerate(coms):
             self.segments_center_of_mass[0:3, k, 0] = com.reshape(-1, 1)
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.get_frame(0))
 
     def __set_meshes_from_q(self):
-        for m, meshes in enumerate(self.meshPointsInMatrix.get_data(self.Q, False)):
+        for m, meshes in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
             self.mesh[m][0:3, :, :] = meshes
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):
-        muscles = self.musclesPointsInGlobal.get_data(self.Q)
+        muscles = self.musclesPointsInGlobal.get_data(Q=self.Q)
 
         idx = 0
         cmp = 0
@@ -713,7 +710,7 @@ class BiorbdViz:
         self.vtk_model.update_muscle(self.muscles)
 
     def __set_rt_from_q(self):
-        for k, rt in enumerate(self.allGlobalJCS.get_data(self.Q, False)):
+        for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
             self.rt[k] = RotoTrans(rt)
         self.vtk_model.update_rt(self.rt)
 
