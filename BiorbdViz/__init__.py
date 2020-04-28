@@ -303,8 +303,12 @@ class BiorbdViz:
 
             self.play_stop_push_button = []
             self.is_animating = False
+            self.is_recording = False
             self.start_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/start.png"))
-            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/pause.png"))
+            self.pause_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/pause.png"))
+            self.record_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/record.png"))
+            self.add_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/add.png"))
+            self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/stop.png"))
 
             self.double_factor = 10000
             self.sliders = list()
@@ -379,8 +383,14 @@ class BiorbdViz:
         while self.vtk_window.is_active:
             if self.show_analyses_panel and self.is_animating:
                 self.movement_slider[0].setValue(
-                    (self.movement_slider[0].value() + 1) % self.movement_slider[0].maximum()
+                    (self.movement_slider[0].value() + 1) % (self.movement_slider[0].maximum() + 1)
                 )
+
+                if self.is_recording:
+                    self.__record()
+                    if self.movement_slider[0].value() + 1 == (self.movement_slider[0].maximum() + 1):
+                        self.__start_stop_animation()
+
             self.refresh_window()
         self.is_executing = False
 
@@ -515,6 +525,20 @@ class BiorbdViz:
         slider.valueChanged.connect(self.__animate_from_slider)
         animation_slider_layout.addWidget(slider)
 
+        self.record_push_button = QPushButton()
+        self.record_push_button.setIcon(self.record_icon)
+        self.record_push_button.setPalette(self.palette_active)
+        self.record_push_button.setEnabled(True)
+        self.record_push_button.released.connect(self.__record)
+        animation_slider_layout.addWidget(self.record_push_button)
+
+        self.stop_record_push_button = QPushButton()
+        self.stop_record_push_button.setIcon(self.stop_icon)
+        self.stop_record_push_button.setPalette(self.palette_active)
+        self.stop_record_push_button.setEnabled(False)
+        self.stop_record_push_button.released.connect(self.__stop_record, True)
+        animation_slider_layout.addWidget(self.stop_record_push_button)
+
         # Add the frame count
         frame_label = QLabel()
         frame_label.setText(f"{0}")
@@ -627,9 +651,40 @@ class BiorbdViz:
         if self.is_animating:
             self.is_animating = False
             self.play_stop_push_button.setIcon(self.start_icon)
+            self.record_push_button.setEnabled(True)
+            self.stop_record_push_button.setEnabled(self.is_recording)
         else:
             self.is_animating = True
-            self.play_stop_push_button.setIcon(self.stop_icon)
+            self.play_stop_push_button.setIcon(self.pause_icon)
+            self.record_push_button.setEnabled(False)
+            self.stop_record_push_button.setEnabled(False)
+
+    def __stop_record(self):
+        self.__record(finish=True)
+
+    def __record(self, finish=False):
+        file_name = None
+        if not self.is_recording:
+            options = QFileDialog.Options()
+            options |= QFileDialog.DontUseNativeDialog
+            file_name = QFileDialog.getSaveFileName(self.vtk_window,
+                                                    "Save the video", "", "OGV files (*.ogv)", options=options)
+            file_name, file_extension = os.path.splitext(file_name[0])
+            file_name += ".ogv"
+            if file_name == "":
+                return
+
+            self.record_push_button.setIcon(self.add_icon)
+            self.stop_record_push_button.setEnabled(True)
+            self.is_recording = True
+
+        self.vtk_window.record(button_to_block=[self.record_push_button, self.stop_record_push_button],
+                               finish=finish, file_name=file_name)
+
+        if finish:
+            self.is_recording = False
+            self.record_push_button.setIcon(self.record_icon)
+            self.stop_record_push_button.setEnabled(False)
 
     def __load_movement_from_button(self):
         # Load the actual movement

@@ -21,6 +21,8 @@ from vtk import (
     vtkRenderer,
     vtkSphereSource,
     vtkUnsignedCharArray,
+    vtkOggTheoraWriter,
+    vtkWindowToImageFilter,
 )
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
@@ -63,6 +65,7 @@ class VtkWindow(QtWidgets.QMainWindow):
         self.main_layout = QtWidgets.QGridLayout()
         self.main_layout.addWidget(self.avatar_widget)
         self.frame.setLayout(self.main_layout)
+        self.video_recorder = vtkOggTheoraWriter()
 
         self.show()
         app._in_event_loop = True
@@ -102,6 +105,30 @@ class VtkWindow(QtWidgets.QMainWindow):
         self.setPalette(
             QPalette(QColor(color[0] * 255, color[1] * 255, color[2] * 255))
         )
+
+    def record(self, finish=False, button_to_block=(), file_name=None):
+        windowToImageFilter = vtkWindowToImageFilter()
+        self.video_recorder.SetInputConnection(windowToImageFilter.GetOutputPort())
+
+        if file_name:
+            self.video_recorder.SetFileName(file_name)
+            self.video_recorder.Start()
+
+        windowToImageFilter.SetInput(self.avatar_widget.GetRenderWindow())
+        windowToImageFilter.ReadFrontBufferOff()
+        windowToImageFilter.Update()
+
+        was_true = []
+        for b in button_to_block:
+            was_true.append(b.isEnabled())
+            b.setEnabled(False)
+        self.video_recorder.Write()
+        for i, b in enumerate(button_to_block):
+            if was_true[i]:
+                b.setEnabled(True)
+
+        if finish:
+            self.video_recorder.End()
 
 
 class VtkModel(QtWidgets.QWidget):
