@@ -66,6 +66,9 @@ class VtkWindow(QtWidgets.QMainWindow):
         self.main_layout.addWidget(self.avatar_widget)
         self.frame.setLayout(self.main_layout)
         self.video_recorder = vtkOggTheoraWriter()
+        self.is_fixed_sized = False
+        self.minimum_size = self.minimumSize()
+        self.maximum_size = self.maximumSize()
 
         self.show()
         app._in_event_loop = True
@@ -113,6 +116,8 @@ class VtkWindow(QtWidgets.QMainWindow):
         if file_name:
             self.video_recorder.SetFileName(file_name)
             self.video_recorder.Start()
+            if not self.is_fixed_sized:
+                self.setFixedSize(self.size())
 
         windowToImageFilter.SetInput(self.avatar_widget.GetRenderWindow())
         windowToImageFilter.ReadFrontBufferOff()
@@ -129,6 +134,9 @@ class VtkWindow(QtWidgets.QMainWindow):
 
         if finish:
             self.video_recorder.End()
+            if not self.is_fixed_sized:
+                self.setMinimumSize(self.minimum_size)
+                self.setMaximumSize(self.maximum_size)
 
 
 class VtkModel(QtWidgets.QWidget):
