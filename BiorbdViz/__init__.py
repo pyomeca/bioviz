@@ -248,7 +248,7 @@ class BiorbdViz:
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
         self.show_local_ref_frame = show_local_ref_frame
-        if self.model.nbMuscleTotal() > 0:
+        if self.model.nbMuscles() > 0:
             self.show_muscles = show_muscles
         else:
             self.show_muscles = False
@@ -561,7 +561,7 @@ class BiorbdViz:
         if biorbd.currentLinearAlgebraBackend() == 1:
             radio_muscle.setEnabled(False)
         else:
-            if self.model.nbMuscleTotal() == 0:
+            if self.model.nbMuscles() == 0:
                 radio_muscle.setEnabled(False)
         self.__select_analyses_panel(radio_muscle, 1)
 

@@ -18,7 +18,7 @@ class MuscleAnalyses:
         # Get some aliases
         self.main_window = main_window
         self.model = self.main_window.model
-        self.n_mus = self.model.nbMuscleTotal()
+        self.n_mus = self.model.nbMuscles()
         self.n_q = self.model.nbQ()
 
         # Add dof selector
@@ -173,15 +173,15 @@ class MuscleAnalyses:
     def __compute_all_values(self):
         q_idx = self.dof_mapping[self.current_dof]
         x_axis, all_q = self.__generate_x_axis(q_idx)
-        length = np.ndarray((self.n_point_for_q, self.model.nbMuscleTotal()))
-        moment_arm = np.ndarray((self.n_point_for_q, self.model.nbMuscleTotal()))
-        passive_forces = np.ndarray((self.n_point_for_q, self.model.nbMuscleTotal()))
-        active_forces = np.ndarray((self.n_point_for_q, self.model.nbMuscleTotal()))
+        length = np.ndarray((self.n_point_for_q, self.n_mus))
+        moment_arm = np.ndarray((self.n_point_for_q, self.n_mus))
+        passive_forces = np.ndarray((self.n_point_for_q, self.n_mus))
+        active_forces = np.ndarray((self.n_point_for_q, self.n_mus))
         emg = biorbd.StateDynamics(0, self.active_forces_slider.value() / 100)
         for i, q_mod in enumerate(all_q):
             self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(q_mod))
             muscles_length_jacobian = self.model.musclesLengthJacobian().to_array()
-            for m in range(self.model.nbMuscleTotal()):
+            for m in range(self.n_mus):
                 if self.checkboxes_muscle[m].isChecked():
                     mus_group_idx, mus_idx, _ = self.muscle_mapping[self.checkboxes_muscle[m].text()]
                     mus = self.model.muscleGroup(mus_group_idx).muscle(mus_idx)
@@ -203,7 +203,7 @@ class MuscleAnalyses:
     def __update_specific_plot(self, canvas, ax, x, y, skip=False):
         # Plot all active muscles
         number_of_active = 0
-        for m in range(self.model.nbMuscleTotal()):
+        for m in range(self.n_mus):
             if self.checkboxes_muscle[m].isChecked():
                 if not skip:
                     ax.get_lines()[m].set_data(x, y[:, m])
