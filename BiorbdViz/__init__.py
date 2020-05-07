@@ -55,7 +55,7 @@ class InterfacesCollections:
 
         def _prepare_function_for_casadi(self):
             q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.markers = casadi.Function("Markers", [q_sym], [self.m.markers(q_sym)])
+            self.markers = casadi.Function("Markers", [q_sym], [self.m.markers(q_sym)]).expand()
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             if compute_kin:
@@ -75,7 +75,7 @@ class InterfacesCollections:
 
         def _prepare_function_for_casadi(self):
             Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.CoM = casadi.Function("CoM", [Qsym], [self.m.CoM(Qsym).to_mx()])
+            self.CoM = casadi.Function("CoM", [Qsym], [self.m.CoM(Qsym).to_mx()]).expand()
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             if compute_kin:
@@ -95,7 +95,7 @@ class InterfacesCollections:
 
         def _prepare_function_for_casadi(self):
             Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.CoMs = casadi.Function("CoMbySegment", [Qsym], [self.m.CoMbySegmentInMatrix(Qsym).to_mx()])
+            self.CoMs = casadi.Function("CoMbySegment", [Qsym], [self.m.CoMbySegmentInMatrix(Qsym).to_mx()]).expand()
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             self.data = []
@@ -126,7 +126,7 @@ class InterfacesCollections:
                         muscles.append(
                             casadi.Function(
                                 "MusclesPointsInGlobal", [Qsym],
-                                [musc.musclesPointsInGlobal(self.m, Qsym)[via].to_mx()])
+                                [musc.musclesPointsInGlobal(self.m, Qsym)[via].to_mx()]).expand()
                         )
                 self.groups.append(muscles)
 
@@ -156,7 +156,7 @@ class InterfacesCollections:
             self.segments = []
             for i in range(self.m.nbSegment()):
                 self.segments.append(casadi.Function(
-                            "MeshPointsInMatrix", [Qsym], [self.m.meshPointsInMatrix(Qsym)[i].to_mx()]))
+                            "MeshPointsInMatrix", [Qsym], [self.m.meshPointsInMatrix(Qsym)[i].to_mx()]).expand())
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             self.data = []
