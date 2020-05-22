@@ -105,9 +105,7 @@ class VtkWindow(QtWidgets.QMainWindow):
         color : tuple(int)
         """
         self.ren.SetBackground(color)
-        self.setPalette(
-            QPalette(QColor(color[0] * 255, color[1] * 255, color[2] * 255))
-        )
+        self.setPalette(QPalette(QColor(color[0] * 255, color[1] * 255, color[2] * 255)))
 
     def record(self, finish=False, button_to_block=(), file_name=None):
         windowToImageFilter = vtkWindowToImageFilter()
@@ -143,13 +141,23 @@ class VtkModel(QtWidgets.QWidget):
     def __init__(
         self,
         parent,
-        markers_size=0.010, markers_color=(1, 1, 1), markers_opacity=1.0,
-        global_ref_frame_length=0.15, global_ref_frame_width=5,
-        global_center_of_mass_size=0.0075, global_center_of_mass_color=(0, 0, 0), global_center_of_mass_opacity=1.0,
-        segments_center_of_mass_size=0.005, segments_center_of_mass_color=(0, 0, 0), segments_center_of_mass_opacity=1.0,
-        mesh_color=(0, 0, 0), mesh_opacity=1.0,
-        muscle_color=(150/255, 15/255, 15/255), muscle_opacity=1.0,
-        rt_length=0.1, rt_width=2
+        markers_size=0.010,
+        markers_color=(1, 1, 1),
+        markers_opacity=1.0,
+        global_ref_frame_length=0.15,
+        global_ref_frame_width=5,
+        global_center_of_mass_size=0.0075,
+        global_center_of_mass_color=(0, 0, 0),
+        global_center_of_mass_opacity=1.0,
+        segments_center_of_mass_size=0.005,
+        segments_center_of_mass_color=(0, 0, 0),
+        segments_center_of_mass_opacity=1.0,
+        mesh_color=(0, 0, 0),
+        mesh_opacity=1.0,
+        muscle_color=(150 / 255, 15 / 255, 15 / 255),
+        muscle_opacity=1.0,
+        rt_length=0.1,
+        rt_width=2,
     ):
         """
         Creates a model that will holds things to plot
@@ -608,7 +616,7 @@ class VtkModel(QtWidgets.QWidget):
             raise IndexError("Mesh should be from one frame only")
 
         for i in range(len(all_meshes)):
-            if (all_meshes.get_mesh(i).get_num_vertex() != self.all_meshes.get_mesh(i).get_num_vertex()):
+            if all_meshes.get_mesh(i).get_num_vertex() != self.all_meshes.get_mesh(i).get_num_vertex():
                 self.new_mesh_set(all_meshes)
                 return  # Prevent calling update_markers recursively
 
@@ -732,10 +740,7 @@ class VtkModel(QtWidgets.QWidget):
             raise IndexError("Muscle should be from one frame only")
 
         for i in range(len(all_muscles)):
-            if (
-                all_muscles.get_mesh(i).get_num_vertex()
-                != self.all_muscles.get_mesh(i).get_num_vertex()
-            ):
+            if all_muscles.get_mesh(i).get_num_vertex() != self.all_muscles.get_mesh(i).get_num_vertex():
                 self.new_muscle_set(all_muscles)
                 return  # Prevent calling update_markers recursively
 

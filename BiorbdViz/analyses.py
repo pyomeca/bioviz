@@ -2,8 +2,17 @@ from functools import partial
 from copy import copy
 
 import numpy as np
-from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QVBoxLayout, QGroupBox, QCheckBox, QComboBox, QScrollArea, \
-    QLabel, QSlider
+from PyQt5.QtWidgets import (
+    QGridLayout,
+    QHBoxLayout,
+    QVBoxLayout,
+    QGroupBox,
+    QCheckBox,
+    QComboBox,
+    QScrollArea,
+    QLabel,
+    QSlider,
+)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib import pyplot as plt
 
@@ -11,7 +20,7 @@ import biorbd
 
 
 class MuscleAnalyses:
-    def __init__(self, parent, main_window, background_color=(.5, .5, .5)):
+    def __init__(self, parent, main_window, background_color=(0.5, 0.5, 0.5)):
         # Centralize the materials
         analyses_muscle_layout = QHBoxLayout(parent)
 
@@ -106,25 +115,26 @@ class MuscleAnalyses:
                 self.muscle_mapping[name] = (group, mus, cmp_mus)
 
                 # Add the CheckBox
-                self.checkboxes_muscle .append(QCheckBox())
+                self.checkboxes_muscle.append(QCheckBox())
                 self.checkboxes_muscle[cmp_mus].setPalette(self.main_window.palette_active)
                 self.checkboxes_muscle[cmp_mus].setText(name)
                 self.checkboxes_muscle[cmp_mus].toggled.connect(
-                    partial(self.update_all_graphs, False, False, False, False))
+                    partial(self.update_all_graphs, False, False, False, False)
+                )
                 muscle_layout.addWidget(self.checkboxes_muscle[cmp_mus])
 
                 # Add the plot to the axes
-                self.ax_muscle_length.plot(np.nan, np.nan, 'w')
-                self.ax_moment_arm.plot(np.nan, np.nan, 'w')
-                self.ax_passive_forces.plot(np.nan, np.nan, 'w')
-                self.ax_active_forces.plot(np.nan, np.nan, 'w')
+                self.ax_muscle_length.plot(np.nan, np.nan, "w")
+                self.ax_moment_arm.plot(np.nan, np.nan, "w")
+                self.ax_passive_forces.plot(np.nan, np.nan, "w")
+                self.ax_active_forces.plot(np.nan, np.nan, "w")
                 cmp_mus += 1
 
         # Add vertical bar for position of current dof
-        self.ax_muscle_length.plot(np.nan, np.nan, 'k')
-        self.ax_moment_arm.plot(np.nan, np.nan, 'k')
-        self.ax_passive_forces.plot(np.nan, np.nan, 'k')
-        self.ax_active_forces.plot(np.nan, np.nan, 'k')
+        self.ax_muscle_length.plot(np.nan, np.nan, "k")
+        self.ax_moment_arm.plot(np.nan, np.nan, "k")
+        self.ax_passive_forces.plot(np.nan, np.nan, "k")
+        self.ax_active_forces.plot(np.nan, np.nan, "k")
 
         radio_muscle_group.setLayout(muscle_layout)
         muscles_scroll = QScrollArea()
@@ -142,20 +152,21 @@ class MuscleAnalyses:
         self.current_dof = self.combobox_dof.currentText()
         self.update_all_graphs(False, False, False, False)
 
-    def update_all_graphs(self, skip_muscle_length, skip_moment_arm, skip_passive_forces,
-                          skip_active_forces):
+    def update_all_graphs(self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces):
         x_axis, length, moment_arm, passive_forces, active_forces = self.__compute_all_values()
-        self.__update_specific_plot(self.canvas_muscle_length, self.ax_muscle_length,
-                                    x_axis, length, skip_muscle_length)
+        self.__update_specific_plot(
+            self.canvas_muscle_length, self.ax_muscle_length, x_axis, length, skip_muscle_length
+        )
 
-        self.__update_specific_plot(self.canvas_moment_arm, self.ax_moment_arm,
-                                    x_axis, moment_arm, skip_moment_arm)
+        self.__update_specific_plot(self.canvas_moment_arm, self.ax_moment_arm, x_axis, moment_arm, skip_moment_arm)
 
-        self.__update_specific_plot(self.canvas_passive_forces, self.ax_passive_forces,
-                                    x_axis, passive_forces, skip_passive_forces)
+        self.__update_specific_plot(
+            self.canvas_passive_forces, self.ax_passive_forces, x_axis, passive_forces, skip_passive_forces
+        )
 
-        self.__update_specific_plot(self.canvas_active_forces, self.ax_active_forces,
-                                    x_axis, active_forces, skip_active_forces)
+        self.__update_specific_plot(
+            self.canvas_active_forces, self.ax_active_forces, x_axis, active_forces, skip_active_forces
+        )
 
         self.__update_graph_size()
 
@@ -247,8 +258,10 @@ class MuscleAnalyses:
         else:
             q = np.tile(self.__get_q_from_slider(), (self.n_point_for_q, 1))
             slider = self.main_window.sliders[self.combobox_dof.currentIndex()][1]
-            q[:, q_idx] = np.linspace(slider.minimum() / self.main_window.double_factor,
-                                      slider.maximum() / self.main_window.double_factor,
-                                      self.n_point_for_q)
+            q[:, q_idx] = np.linspace(
+                slider.minimum() / self.main_window.double_factor,
+                slider.maximum() / self.main_window.double_factor,
+                self.n_point_for_q,
+            )
             x = q[:, q_idx]
         return x, q
