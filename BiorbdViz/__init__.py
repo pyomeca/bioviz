@@ -345,7 +345,7 @@ class BiorbdViz:
             raise TypeError(f"Q should be a {self.nQ} column vector")
         self.Q = Q
 
-        self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(self.Q))
+        self.model.UpdateKinematicsCustom(self.Q)
         if self.show_muscles:
             self.__set_muscles_from_q()
         if self.show_local_ref_frame:
