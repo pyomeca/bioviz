@@ -10,41 +10,41 @@ from pyomeca import FrameDependentNpArray, Markers3d, RotoTrans, RotoTransCollec
 from BiorbdViz.biorbd_vtk import VtkModel, VtkWindow, Mesh, MeshCollection
 
 # Path to data
-DATA_FOLDER = Path('/home/pariterre/Programmation/biorbd-viz') / 'tests' / 'data'
-MARKERS_CSV = DATA_FOLDER / 'markers.csv'
-MARKERS_ANALOGS_C3D = DATA_FOLDER / 'markers_analogs.c3d'
+DATA_FOLDER = Path("/home/pariterre/Programmation/biorbd-viz") / "tests" / "data"
+MARKERS_CSV = DATA_FOLDER / "markers.csv"
+MARKERS_ANALOGS_C3D = DATA_FOLDER / "markers_analogs.c3d"
 
 # Load data
 # all markers
-d = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, idx=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], prefix=':')
+d = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, idx=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], prefix=":")
 # mean of 1st and 4th
-d2 = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, idx=[[0, 1, 2], [0, 4, 2]], prefix=':')
+d2 = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, idx=[[0, 1, 2], [0, 4, 2]], prefix=":")
 # mean of first 3 markers
-d3 = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, idx=[[0], [1], [2]], prefix=':')
+d3 = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, idx=[[0], [1], [2]], prefix=":")
 
-d4 = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, names=['CLAV_post', 'PSISl', 'STERr', 'CLAV_post'], prefix=':')
+d4 = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, names=["CLAV_post", "PSISl", "STERr", "CLAV_post"], prefix=":")
 
 # mean of first 3 markers in c3d file
-d5 = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, idx=[[0], [1], [2]], prefix=':')
+d5 = Markers3d.from_c3d(MARKERS_ANALOGS_C3D, idx=[[0], [1], [2]], prefix=":")
 
 # Create a windows with a nice gray background
-vtkWindow = VtkWindow(background_color=(.5, .5, .5))
+vtkWindow = VtkWindow(background_color=(0.5, 0.5, 0.5))
 
 # Add marker holders to the window
 vtkModelReal = VtkModel(vtkWindow, markers_color=(1, 0, 0), markers_size=10.0, markers_opacity=1)
-vtkModelPred = VtkModel(vtkWindow, markers_color=(0, 0, 0), markers_size=10.0, markers_opacity=.5)
-vtkModelMid = VtkModel(vtkWindow, markers_color=(0, 0, 1), markers_size=10.0, markers_opacity=.5)
-vtkModelByNames = VtkModel(vtkWindow, markers_color=(0, 1, 1), markers_size=10.0, markers_opacity=.5)
-vtkModelFromC3d = VtkModel(vtkWindow, markers_color=(0, 1, 0), markers_size=10.0, markers_opacity=.5)
+vtkModelPred = VtkModel(vtkWindow, markers_color=(0, 0, 0), markers_size=10.0, markers_opacity=0.5)
+vtkModelMid = VtkModel(vtkWindow, markers_color=(0, 0, 1), markers_size=10.0, markers_opacity=0.5)
+vtkModelByNames = VtkModel(vtkWindow, markers_color=(0, 1, 1), markers_size=10.0, markers_opacity=0.5)
+vtkModelFromC3d = VtkModel(vtkWindow, markers_color=(0, 1, 0), markers_size=10.0, markers_opacity=0.5)
 
 # Create some RotoTrans attached to the first model
 all_rt_real = RotoTransCollection()
-all_rt_real.append(RotoTrans(angles=FrameDependentNpArray(np.zeros((3, 1, 1))),
-                             angle_sequence="yxz",
-                             translations=d[:, 0, 0:1]))
-all_rt_real.append(RotoTrans(angles=FrameDependentNpArray(np.zeros((3, 1, 1))),
-                             angle_sequence="yxz",
-                             translations=d[:, 0, 0:1]))
+all_rt_real.append(
+    RotoTrans(angles=FrameDependentNpArray(np.zeros((3, 1, 1))), angle_sequence="yxz", translations=d[:, 0, 0:1])
+)
+all_rt_real.append(
+    RotoTrans(angles=FrameDependentNpArray(np.zeros((3, 1, 1))), angle_sequence="yxz", translations=d[:, 0, 0:1])
+)
 
 # Create some RotoTrans attached to the second model
 one_rt = RotoTrans.define_axes(d, [3, 5], [[4, 3], [4, 5]], "zx", "z", [3, 4, 5])
@@ -73,14 +73,16 @@ while vtkWindow.is_active:
 
     # Funky online update of markers characteristics
     if i > 150:
-        vtkModelReal.set_markers_color(((i % 255.) / 255., (i % 255.) / 255., (i % 255.) / 255.))
+        vtkModelReal.set_markers_color(((i % 255.0) / 255.0, (i % 255.0) / 255.0, (i % 255.0) / 255.0))
         vtkModelPred.set_markers_size((i % 150) / 50 + 3)
         vtkModelMid.set_markers_opacity((i % 75) / 75 + 25)
 
     # Rotate one system of axes
-    all_rt_real[0] = RotoTrans(angles=FrameDependentNpArray(np.array([i / d.get_num_frames() * np.pi * 2, 0, 0])),
-                               angle_sequence="yxz",
-                               translations=d[:, 0:1, 0:1])
+    all_rt_real[0] = RotoTrans(
+        angles=FrameDependentNpArray(np.array([i / d.get_num_frames() * np.pi * 2, 0, 0])),
+        angle_sequence="yxz",
+        translations=d[:, 0:1, 0:1],
+    )
     vtkModelReal.update_rt(all_rt_real)
 
     # Update another system of axes
@@ -92,4 +94,3 @@ while vtkWindow.is_active:
     # Update window
     vtkWindow.update_frame()
     i = (i + 1) % d.get_num_frames()
-
