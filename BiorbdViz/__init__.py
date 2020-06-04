@@ -5,13 +5,25 @@ from functools import partial
 import numpy as np
 import scipy
 import biorbd
+
 if biorbd.currentLinearAlgebraBackend() == 1:
     import casadi
 
 from pyomeca import Markers3d
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
-from PyQt5.QtWidgets import QSlider, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, \
-    QFileDialog, QScrollArea, QWidget, QMessageBox, QRadioButton, QGroupBox
+from PyQt5.QtWidgets import (
+    QSlider,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFileDialog,
+    QScrollArea,
+    QWidget,
+    QMessageBox,
+    QRadioButton,
+    QGroupBox,
+)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
@@ -125,8 +137,8 @@ class InterfacesCollections:
                     for via in range(len(musc.musclesPointsInGlobal())):
                         muscles.append(
                             casadi.Function(
-                                "MusclesPointsInGlobal", [Qsym],
-                                [musc.musclesPointsInGlobal(self.m, Qsym)[via].to_mx()]).expand()
+                                "MusclesPointsInGlobal", [Qsym], [musc.musclesPointsInGlobal(self.m, Qsym)[via].to_mx()]
+                            ).expand()
                         )
                 self.groups.append(muscles)
 
@@ -155,8 +167,9 @@ class InterfacesCollections:
             Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
             self.segments = []
             for i in range(self.m.nbSegment()):
-                self.segments.append(casadi.Function(
-                            "MeshPointsInMatrix", [Qsym], [self.m.meshPointsInMatrix(Qsym)[i].to_mx()]).expand())
+                self.segments.append(
+                    casadi.Function("MeshPointsInMatrix", [Qsym], [self.m.meshPointsInMatrix(Qsym)[i].to_mx()]).expand()
+                )
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             self.data = []
@@ -183,10 +196,7 @@ class InterfacesCollections:
             Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
             self.jcs = []
             for i in range(self.m.nbSegment()):
-                self.jcs.append(
-                    casadi.Function(
-                        "allGlobalJCS", [Qsym], [self.m.allGlobalJCS(Qsym)[i].to_mx()])
-                )
+                self.jcs.append(casadi.Function("allGlobalJCS", [Qsym], [self.m.allGlobalJCS(Qsym)[i].to_mx()]))
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             self.data = []
@@ -204,14 +214,21 @@ class InterfacesCollections:
 
 
 class BiorbdViz:
-    def __init__(self, model_path=None, loaded_model=None,
-                 show_meshes=True,
-                 show_global_center_of_mass=True, show_segments_center_of_mass=True,
-                 show_global_ref_frame=True, show_local_ref_frame=True, 
-                 show_markers=True, markers_size=0.010,
-                 show_muscles=True, 
-                 show_analyses_panel=True,
-                 **kwargs):
+    def __init__(
+        self,
+        model_path=None,
+        loaded_model=None,
+        show_meshes=True,
+        show_global_center_of_mass=True,
+        show_segments_center_of_mass=True,
+        show_global_ref_frame=True,
+        show_local_ref_frame=True,
+        show_markers=True,
+        markers_size=0.010,
+        show_muscles=True,
+        show_analyses_panel=True,
+        **kwargs,
+    ):
         """
         Class that easily shows a biorbd model
         Args:
@@ -230,9 +247,8 @@ class BiorbdViz:
             raise ValueError("loaded_model or model_path must be provided")
 
         # Create the plot
-        self.vtk_window = VtkWindow(background_color=(.5, .5, .5))
-        self.vtk_model = VtkModel(self.vtk_window,
-                                  markers_color=(0, 0, 1), markers_size=markers_size)
+        self.vtk_window = VtkWindow(background_color=(0.5, 0.5, 0.5))
+        self.vtk_model = VtkModel(self.vtk_window, markers_color=(0, 0, 1), markers_size=markers_size)
         self.is_executing = False
         self.animation_warning_already_shown = False
 
@@ -345,7 +361,7 @@ class BiorbdViz:
             raise TypeError(f"Q should be a {self.nQ} column vector")
         self.Q = Q
 
-        self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(self.Q))
+        self.model.UpdateKinematicsCustom(self.Q)
         if self.show_muscles:
             self.__set_muscles_from_q()
         if self.show_local_ref_frame:
@@ -363,7 +379,7 @@ class BiorbdViz:
         if self.show_analyses_panel:
             for i, slide in enumerate(self.sliders):
                 slide[1].blockSignals(True)
-                slide[1].setValue(self.Q[i]*self.double_factor)
+                slide[1].setValue(self.Q[i] * self.double_factor)
                 slide[1].blockSignals(False)
                 slide[2].setText(f"{self.Q[i]:.2f}")
 
@@ -432,8 +448,8 @@ class BiorbdViz:
             # Add the slider
             slider = QSlider(Qt.Horizontal)
             slider.setMinimumSize(100, 0)
-            slider.setMinimum(ranges[i][0]*self.double_factor)
-            slider.setMaximum(ranges[i][1]*self.double_factor)
+            slider.setMinimum(ranges[i][0] * self.double_factor)
+            slider.setMaximum(ranges[i][1] * self.double_factor)
             slider.setPageStep(self.double_factor)
             slider.setValue(0)
             slider.valueChanged.connect(self.__move_avatar_from_sliders)
@@ -597,8 +613,9 @@ class BiorbdViz:
         self.__show_local_ref_frame()
 
         # Enlarge the main window
-        self.vtk_window.resize(int(self.vtk_window.size().width() * enlargement_factor / reduction_factor),
-                               self.vtk_window.size().height())
+        self.vtk_window.resize(
+            int(self.vtk_window.size().width() * enlargement_factor / reduction_factor), self.vtk_window.size().height()
+        )
 
     def __hide_analyses_panel(self):
         if self.active_analyses_widget is None:
@@ -620,21 +637,23 @@ class BiorbdViz:
 
     def __move_avatar_from_sliders(self):
         for i, slide in enumerate(self.sliders):
-            self.Q[i] = slide[1].value()/self.double_factor
+            self.Q[i] = slide[1].value() / self.double_factor
             slide[2].setText(f" {self.Q[i]:.2f}")
         self.set_q(self.Q)
 
-    def __update_muscle_analyses_graphs(self, skip_muscle_length, skip_moment_arm,
-                                        skip_passive_forces, skip_active_forces):
+    def __update_muscle_analyses_graphs(
+        self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
+    ):
         # Adjust muscle analyses if needed
         if self.active_analyses_widget == self.analyses_muscle_widget:
-            self.muscle_analyses.update_all_graphs(skip_muscle_length, skip_moment_arm,
-                                                   skip_passive_forces, skip_active_forces)
+            self.muscle_analyses.update_all_graphs(
+                skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
+            )
 
     def __animate_from_slider(self):
         # Move the avatar
         self.movement_slider[1].setText(f"{self.movement_slider[0].value()}")
-        self.Q = copy.copy(self.animated_Q[self.movement_slider[0].value()-1])  # 1-based
+        self.Q = copy.copy(self.animated_Q[self.movement_slider[0].value() - 1])  # 1-based
         self.set_q(self.Q)
 
         # Update graph of muscle analyses
@@ -642,11 +661,14 @@ class BiorbdViz:
 
     def __start_stop_animation(self):
         if not self.is_executing and not self.animation_warning_already_shown:
-            QMessageBox.warning(self.vtk_window, 'Not executing',
-                                "BiorbdViz has detected that it is not actually executing.\n\n"
-                                "Unless you know what you are doing, the automatic play of the animation will "
-                                "therefore not work. Please call the BiorbdViz.exec() method to be able to play "
-                                "the animation.\n\nPlease note that the animation slider will work in any case.")
+            QMessageBox.warning(
+                self.vtk_window,
+                "Not executing",
+                "BiorbdViz has detected that it is not actually executing.\n\n"
+                "Unless you know what you are doing, the automatic play of the animation will "
+                "therefore not work. Please call the BiorbdViz.exec() method to be able to play "
+                "the animation.\n\nPlease note that the animation slider will work in any case.",
+            )
             self.animation_warning_already_shown = True
         if self.is_animating:
             self.is_animating = False
@@ -667,8 +689,9 @@ class BiorbdViz:
         if not self.is_recording:
             options = QFileDialog.Options()
             options |= QFileDialog.DontUseNativeDialog
-            file_name = QFileDialog.getSaveFileName(self.vtk_window,
-                                                    "Save the video", "", "OGV files (*.ogv)", options=options)
+            file_name = QFileDialog.getSaveFileName(
+                self.vtk_window, "Save the video", "", "OGV files (*.ogv)", options=options
+            )
             file_name, file_extension = os.path.splitext(file_name[0])
             file_name += ".ogv"
             if file_name == "":
@@ -678,8 +701,9 @@ class BiorbdViz:
             self.stop_record_push_button.setEnabled(True)
             self.is_recording = True
 
-        self.vtk_window.record(button_to_block=[self.record_push_button, self.stop_record_push_button],
-                               finish=finish, file_name=file_name)
+        self.vtk_window.record(
+            button_to_block=[self.record_push_button, self.stop_record_push_button], finish=finish, file_name=file_name
+        )
 
         if finish:
             self.is_recording = False
@@ -690,20 +714,21 @@ class BiorbdViz:
         # Load the actual movement
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        file_name = QFileDialog.getOpenFileName(self.vtk_window,
-                                                "Movement to load", "", "All Files (*)", options=options)
+        file_name = QFileDialog.getOpenFileName(
+            self.vtk_window, "Movement to load", "", "All Files (*)", options=options
+        )
         if not file_name[0]:
             return
         if os.path.splitext(file_name[0])[1] == ".Q1":  # If it is from a Matlab reconstruction QLD
-            self.animated_Q = scipy.io.loadmat(file_name[0])['Q1'].transpose()
+            self.animated_Q = scipy.io.loadmat(file_name[0])["Q1"].transpose()
         elif os.path.splitext(file_name[0])[1] == ".Q2":  # If it is from a Matlab reconstruction Kalman
-            self.animated_Q = scipy.io.loadmat(file_name[0])['Q2'].transpose()
+            self.animated_Q = scipy.io.loadmat(file_name[0])["Q2"].transpose()
         else:  # Otherwise assume this is a numpy array
             self.animated_Q = np.load(file_name[0])
         self.__load_movement()
 
     def load_movement(self, all_q, auto_start=True, ignore_animation_warning=True):
-        self.animated_Q = all_q
+        self.animated_Q = all_q.T
         self.__load_movement()
         if ignore_animation_warning:
             self.animation_warning_already_shown = True
@@ -768,4 +793,3 @@ class BiorbdViz:
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
             self.rt[k] = RotoTrans(rt)
         self.vtk_model.update_rt(self.rt)
-

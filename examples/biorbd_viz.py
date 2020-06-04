@@ -18,10 +18,10 @@ if animate_by_hand == 0:
 elif animate_by_hand == 1:
     n_frames = 200
     Q = np.zeros((n_frames, b.nQ))
-    Q[:, 4] = np.linspace(0, np.pi/2, n_frames)
+    Q[:, 4] = np.linspace(0, np.pi / 2, n_frames)
     i = 0
     while b.vtk_window.is_active:
         b.set_q(Q[i, :])
-        i = (i+1) % n_frames
+        i = (i + 1) % n_frames
 else:
     b.exec()

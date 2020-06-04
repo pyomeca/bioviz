@@ -3,9 +3,7 @@ from pyomeca import FrameDependentNpArrayCollection, Markers3d
 
 
 class Mesh(Markers3d):
-    def __new__(
-        cls, vertex=np.ndarray((3, 0, 0)), triangles=np.ndarray((3, 0)), *args, **kwargs
-    ):
+    def __new__(cls, vertex=np.ndarray((3, 0, 0)), triangles=np.ndarray((3, 0)), *args, **kwargs):
         """
         Parameters
         ----------
@@ -26,9 +24,9 @@ class Mesh(Markers3d):
 
         # If triangle is empty, join lines in order
         if s[1] == 0 and vertex.shape[1] > 0:
-            triangles = np.ndarray((3, vertex.shape[1]-1), dtype='int')
-            for i in range(vertex.shape[1]-1):
-                triangles[:, i] = [i, i+1, i]
+            triangles = np.ndarray((3, vertex.shape[1] - 1), dtype="int")
+            for i in range(vertex.shape[1] - 1):
+                triangles[:, i] = [i, i + 1, i]
 
         obj = super(Mesh, cls).__new__(cls, data=vertex, *args, **kwargs)
         obj.triangles = triangles
