@@ -728,7 +728,7 @@ class BiorbdViz:
         self.__load_movement()
 
     def load_movement(self, all_q, auto_start=True, ignore_animation_warning=True):
-        self.animated_Q = all_q
+        self.animated_Q = all_q.T
         self.__load_movement()
         if ignore_animation_warning:
             self.animation_warning_already_shown = True
