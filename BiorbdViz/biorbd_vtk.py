@@ -26,8 +26,8 @@ from vtk import (
 )
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from pyomeca import Markers3d, RotoTrans, RotoTransCollection
-from .mesh import Mesh, MeshCollection
+from pyomeca import Markers, Rototrans
+from .mesh import Mesh
 
 first = True
 if first:
@@ -204,19 +204,19 @@ class VtkModel(QtWidgets.QWidget):
         self.segments_center_of_mass_opacity = segments_center_of_mass_opacity
         self.segments_center_of_mass_actors = list()
 
-        self.all_rt = RotoTransCollection()
+        self.all_rt = []
         self.n_rt = 0
         self.rt_length = rt_length
         self.rt_width = rt_width
         self.rt_actors = list()
         self.parent_window.should_reset_camera = True
 
-        self.all_meshes = MeshCollection()
+        self.all_meshes = []
         self.mesh_color = mesh_color
         self.mesh_opacity = mesh_opacity
         self.mesh_actors = list()
 
-        self.all_muscles = MeshCollection()
+        self.all_muscles = []
         self.muscle_color = muscle_color
         self.muscle_opacity = muscle_opacity
         self.muscle_actors = list()
@@ -547,14 +547,11 @@ class VtkModel(QtWidgets.QWidget):
 
         """
         if isinstance(all_meshes, Mesh):
-            mesh_tp = MeshCollection()
+            mesh_tp = []
             mesh_tp.append(all_meshes)
             all_meshes = mesh_tp
 
-        if all_meshes.get_num_frames() != 1:
-            raise IndexError("Mesh should be from one frame only")
-
-        if not isinstance(all_meshes, MeshCollection):
+        if not isinstance(all_meshes, list):
             raise TypeError("Please send a list of mesh to update_mesh")
         self.all_meshes = all_meshes
 
@@ -565,13 +562,16 @@ class VtkModel(QtWidgets.QWidget):
 
         # Create the geometry of a point (the coordinate) points = vtkPoints()
         for (i, mesh) in enumerate(self.all_meshes):
+            if mesh.time.size != 1:
+                raise IndexError("Mesh should be from one frame only")
+
             points = vtkPoints()
-            for j in range(mesh.get_num_vertex()):
+            for j in range(mesh.channel.size):
                 points.InsertNextPoint([0, 0, 0])
 
             # Create an array for each triangle
             cell = vtkCellArray()
-            for j in range(mesh.get_num_triangles()):  # For each triangle
+            for j in range(mesh.triangles.shape[1]):  # For each triangle
                 line = vtkPolyLine()
                 line.GetPointIds().SetNumberOfIds(4)
                 for k in range(len(mesh.triangles[:, j])):  # For each index
@@ -608,26 +608,26 @@ class VtkModel(QtWidgets.QWidget):
 
         """
         if isinstance(all_meshes, Mesh):
-            mesh_tp = MeshCollection()
+            mesh_tp = []
             mesh_tp.append(all_meshes)
             all_meshes = mesh_tp
 
-        if all_meshes.get_num_frames() != 1:
-            raise IndexError("Mesh should be from one frame only")
+        for i, mesh in enumerate(all_meshes):
+            if mesh.time.size != 1:
+                raise IndexError("Mesh should be from one frame only")
 
-        for i in range(len(all_meshes)):
-            if all_meshes.get_mesh(i).get_num_vertex() != self.all_meshes.get_mesh(i).get_num_vertex():
+            if len(self.all_meshes) <= i or mesh.channel.size != self.all_meshes[i].channel.size:
                 self.new_mesh_set(all_meshes)
                 return  # Prevent calling update_markers recursively
 
-        if not isinstance(all_meshes, MeshCollection):
+        if not isinstance(all_meshes, list):
             raise TypeError("Please send a list of mesh to update_mesh")
 
         self.all_meshes = all_meshes
 
         for (i, mesh) in enumerate(self.all_meshes):
             points = vtkPoints()
-            n_vertex = mesh.get_num_vertex()
+            n_vertex = mesh.channel.size
             mesh = np.array(mesh)
             for j in range(n_vertex):
                 points.InsertNextPoint(mesh[0:3, j])
@@ -670,14 +670,11 @@ class VtkModel(QtWidgets.QWidget):
 
         """
         if isinstance(all_muscles, Mesh):
-            musc_tp = MeshCollection()
+            musc_tp = []
             musc_tp.append(all_muscles)
             all_muscles = musc_tp
 
-        if all_muscles.get_num_frames() != 1:
-            raise IndexError("Muscles should be from one frame only")
-
-        if not isinstance(all_muscles, MeshCollection):
+        if not isinstance(all_muscles, list):
             raise TypeError("Please send a list of muscle to update_muscle")
         self.all_muscles = all_muscles
 
@@ -688,13 +685,16 @@ class VtkModel(QtWidgets.QWidget):
 
         # Create the geometry of a point (the coordinate) points = vtkPoints()
         for (i, mesh) in enumerate(self.all_muscles):
+            if mesh.time.size != 1:
+                raise IndexError("Muscles should be from one frame only")
+
             points = vtkPoints()
-            for j in range(mesh.get_num_vertex()):
+            for j in range(mesh.channel.size):
                 points.InsertNextPoint([0, 0, 0])
 
             # Create an array for each triangle
             cell = vtkCellArray()
-            for j in range(mesh.get_num_triangles()):  # For each triangle
+            for j in range(mesh.triangles.shape[1]):  # For each triangle
                 line = vtkPolyLine()
                 line.GetPointIds().SetNumberOfIds(4)
                 for k in range(len(mesh.triangles[:, j])):  # For each index
@@ -732,26 +732,26 @@ class VtkModel(QtWidgets.QWidget):
 
         """
         if isinstance(all_muscles, Mesh):
-            musc_tp = MeshCollection()
+            musc_tp = []
             musc_tp.append(all_muscles)
             all_muscles = musc_tp
 
-        if all_muscles.get_num_frames() != 1:
-            raise IndexError("Muscle should be from one frame only")
+        for i, muscle in enumerate(all_muscles):
+            if muscle.time.size != 1:
+                raise IndexError("Muscle should be from one frame only")
 
-        for i in range(len(all_muscles)):
-            if all_muscles.get_mesh(i).get_num_vertex() != self.all_muscles.get_mesh(i).get_num_vertex():
+            if len(self.all_muscles) <= i or muscle.channel.size != self.all_muscles[i].channel.size:
                 self.new_muscle_set(all_muscles)
                 return  # Prevent calling update_markers recursively
 
-        if not isinstance(all_muscles, MeshCollection):
+        if not isinstance(all_muscles, list):
             raise TypeError("Please send a list of muscles to update_muscle")
 
         self.all_muscles = all_muscles
 
         for (i, mesh) in enumerate(self.all_muscles):
             points = vtkPoints()
-            n_vertex = mesh.get_num_vertex()
+            n_vertex = mesh.channel.size
             mesh = np.array(mesh)
             for j in range(n_vertex):
                 points.InsertNextPoint(mesh[0:3, j])
@@ -764,16 +764,16 @@ class VtkModel(QtWidgets.QWidget):
         Define a new rt set. This function must be called each time the number of rt change
         Parameters
         ----------
-        all_rt : RotoTransCollection
-            One frame of all RotoTrans to draw
+        all_rt : Rototrans
+            One frame of all Rototrans to draw
 
         """
-        if isinstance(all_rt, RotoTrans):
-            rt_tp = RotoTransCollection()
+        if isinstance(all_rt, Rototrans):
+            rt_tp = []
             rt_tp.append(all_rt[:, :])
             all_rt = rt_tp
 
-        if not isinstance(all_rt, RotoTransCollection):
+        if not isinstance(all_rt, list):
             raise TypeError("Please send a list of rt to new_rt_set")
 
         # Remove previous actors from the scene
@@ -782,7 +782,7 @@ class VtkModel(QtWidgets.QWidget):
         self.rt_actors = list()
 
         for i, rt in enumerate(all_rt):
-            if rt.get_num_frames() != 1:
+            if rt.time.size != 1:
                 raise IndexError("RT should be from one frame only")
 
             # Create the polyline which will hold the actors
@@ -841,42 +841,42 @@ class VtkModel(QtWidgets.QWidget):
             self.parent_window.ren.ResetCamera()
 
         # Set rt orientations
-        self.n_rt = all_rt.get_num_rt()
+        self.n_rt = len(all_rt)
         self.update_rt(all_rt)
 
     def update_rt(self, all_rt):
         """
-        Update position of the RotoTrans on the screen (but do not repaint)
+        Update position of the Rototrans on the screen (but do not repaint)
         Parameters
         ----------
-        all_rt : RotoTransCollection
-            One frame of all RotoTrans to draw
+        all_rt : RototransCollection
+            One frame of all Rototrans to draw
 
         """
-        if isinstance(all_rt, RotoTrans):
-            rt_tp = RotoTransCollection()
+        if isinstance(all_rt, Rototrans):
+            rt_tp = []
             rt_tp.append(all_rt[:, :])
             all_rt = rt_tp
 
-        if all_rt.get_num_rt() != self.n_rt:
+        if len(all_rt) != self.n_rt:
             self.new_rt_set(all_rt)
             return  # Prevent calling update_rt recursively
 
-        if not isinstance(all_rt, RotoTransCollection):
+        if not isinstance(all_rt, list):
             raise TypeError("Please send a list of rt to new_rt_set")
 
         self.all_rt = all_rt
 
         for i, rt in enumerate(self.all_rt):
-            if rt.get_num_frames() != 1:
+            if rt.time.size != 1:
                 raise IndexError("RT should be from one frame only")
 
             # Update the end points of the axes and the origin
             pts = vtkPoints()
-            pts.InsertNextPoint(rt.translation())
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 0, :] * self.rt_length)
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 1, :] * self.rt_length)
-            pts.InsertNextPoint(rt.translation() + rt[0:3, 2, :] * self.rt_length)
+            pts.InsertNextPoint(rt.meca.translation)
+            pts.InsertNextPoint(rt.meca.translation + rt.isel(col=0)[0:3] * self.rt_length)
+            pts.InsertNextPoint(rt.meca.translation + rt.isel(col=1)[0:3] * self.rt_length)
+            pts.InsertNextPoint(rt.meca.translation + rt.isel(col=2)[0:3] * self.rt_length)
 
             # Update polydata in mapper
             lines_poly_data = self.rt_actors[i].GetMapper().GetInput()
@@ -887,8 +887,8 @@ class VtkModel(QtWidgets.QWidget):
         Define a new global reference frame set. This function must be called once
         Parameters
         ----------
-        global_ref_frame : RotoTrans
-            One frame of all RotoTrans to draw
+        global_ref_frame : Rototrans
+            One frame of all Rototrans to draw
 
         """
 

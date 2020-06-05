@@ -10,7 +10,7 @@ if biorbd.currentLinearAlgebraBackend() == 1:
     import casadi
 
 from pyomeca import Markers
-from .biorbd_vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
+from .biorbd_vtk import VtkModel, VtkWindow, Mesh, Rototrans
 from PyQt5.QtWidgets import (
     QSlider,
     QVBoxLayout,
@@ -286,7 +286,7 @@ class BiorbdViz:
         if self.show_segments_center_of_mass:
             self.CoMbySegment = InterfacesCollections.CoMbySegment(self.model)
         if self.show_meshes:
-            self.mesh = MeshCollection()
+            self.mesh = []
             self.meshPointsInMatrix = InterfacesCollections.MeshPointsInMatrix(self.model)
             for i, vertices in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
                 triangles = np.ndarray((len(self.model.meshFaces()[i]), 3), dtype="int32")
@@ -294,17 +294,17 @@ class BiorbdViz:
                     triangles[k, :] = patch.face()
                 self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
         self.model.updateMuscles(self.Q, True)
-        self.muscles = MeshCollection()
+        self.muscles = []
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                 musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 tp = np.zeros((3, len(musc.position().musclesPointsInGlobal()), 1))
                 self.muscles.append(Mesh(vertex=tp))
         self.musclesPointsInGlobal = InterfacesCollections.MusclesPointsInGlobal(self.model)
-        self.rt = RotoTransCollection()
+        self.rt = []
         self.allGlobalJCS = InterfacesCollections.AllGlobalJCS(self.model)
         for rt in self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False):
-            self.rt.append(RotoTrans(rt))
+            self.rt.append(Rototrans(rt))
 
         if self.show_global_ref_frame:
             self.vtk_model.create_global_ref_frame()
@@ -761,13 +761,13 @@ class BiorbdViz:
 
     def __set_global_center_of_mass_from_q(self):
         com = self.CoM.get_data(Q=self.Q, compute_kin=False)
-        self.global_center_of_mass.loc[:, 0, 0] = com.squeeze()
+        self.global_center_of_mass.loc[{"channel": 0, "time": 0}] = com.squeeze()
         self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.isel(time=[0]))
 
     def __set_segments_center_of_mass_from_q(self):
         coms = self.CoMbySegment.get_data(Q=self.Q, compute_kin=False)
         for k, com in enumerate(coms):
-            self.segments_center_of_mass.loc[:, k, 0] = com.squeeze()
+            self.segments_center_of_mass.loc[{"channel": k, "time": 0}] = com.squeeze()
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.isel(time=[0]))
 
     def __set_meshes_from_q(self):
@@ -784,12 +784,12 @@ class BiorbdViz:
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                 musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
                 for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
-                    self.muscles.get_frame(0)[idx][0:3, k, 0] = muscles[cmp]
+                    self.muscles[idx].loc[{"channel": k, "time": 0}] = np.append(muscles[cmp], 1)
                     cmp += 1
                 idx += 1
         self.vtk_model.update_muscle(self.muscles)
 
     def __set_rt_from_q(self):
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
-            self.rt[k] = RotoTrans(rt)
+            self.rt[k] = Rototrans(rt)
         self.vtk_model.update_rt(self.rt)
