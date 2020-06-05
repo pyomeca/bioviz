@@ -9,7 +9,7 @@ import biorbd
 if biorbd.currentLinearAlgebraBackend() == 1:
     import casadi
 
-from pyomeca import Markers3d
+from pyomeca import Markers
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, MeshCollection, RotoTrans, RotoTransCollection
 from PyQt5.QtWidgets import (
     QSlider,
@@ -83,7 +83,7 @@ class InterfacesCollections:
     class CoM(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
-            self.data = np.ndarray((3, 1, 1))
+            self.data = np.ones((4, 1, 1))
 
         def _prepare_function_for_casadi(self):
             Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
@@ -95,10 +95,10 @@ class InterfacesCollections:
             else:
                 CoM = self.m.CoM(Q, False)
             for i in range(self.m.nbSegment()):
-                self.data[:, 0, 0] = CoM.to_array()
+                self.data[:3, 0, 0] = CoM.to_array()
 
         def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            self.data[:, :, 0] = self.CoM(Q)
+            self.data[:3, :, 0] = self.CoM(Q)
 
     class CoMbySegment(BiorbdFunc):
         def __init__(self, model):
@@ -116,12 +116,12 @@ class InterfacesCollections:
             else:
                 allCoM = self.m.CoMbySegment(Q, False)
             for com in allCoM:
-                self.data.append(com.to_array())
+                self.data.append(np.append(com.to_array(), 1))
 
         def _get_data_from_casadi(self, Q=None, compute_kin=True):
             self.data = []
             for i in range(self.m.nbSegment()):
-                self.data.append(np.array(self.CoMs(Q)[:, i]))
+                self.data.append(np.append(self.CoMs(Q)[:, i], 1))
 
     class MusclesPointsInGlobal(BiorbdFunc):
         def __init__(self, model):
@@ -276,13 +276,13 @@ class BiorbdViz:
         # Create all the reference to the things to plot
         self.nQ = self.model.nbQ()
         self.Q = np.zeros(self.nQ)
-        self.markers = Markers3d(np.ndarray((3, self.model.nbMarkers(), 1)))
+        self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
-            self.global_center_of_mass = Markers3d(np.ndarray((3, 1, 1)))
+            self.global_center_of_mass = Markers(np.ndarray((3, 1, 1)))
         if self.show_global_center_of_mass:
             self.CoM = InterfacesCollections.CoM(self.model)
-            self.segments_center_of_mass = Markers3d(np.ndarray((3, self.model.nbSegment(), 1)))
+            self.segments_center_of_mass = Markers(np.ndarray((3, self.model.nbSegment(), 1)))
         if self.show_segments_center_of_mass:
             self.CoMbySegment = InterfacesCollections.CoMbySegment(self.model)
         if self.show_meshes:
@@ -757,18 +757,18 @@ class BiorbdViz:
 
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
-        self.vtk_model.update_markers(self.markers.get_frame(0))
+        self.vtk_model.update_markers(self.markers.isel(time=[0]))
 
     def __set_global_center_of_mass_from_q(self):
         com = self.CoM.get_data(Q=self.Q, compute_kin=False)
-        self.global_center_of_mass[0:3, 0, 0] = com.reshape(-1, 1)
-        self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.get_frame(0))
+        self.global_center_of_mass.loc[:, 0, 0] = com.squeeze()
+        self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.isel(time=[0]))
 
     def __set_segments_center_of_mass_from_q(self):
         coms = self.CoMbySegment.get_data(Q=self.Q, compute_kin=False)
         for k, com in enumerate(coms):
-            self.segments_center_of_mass[0:3, k, 0] = com.reshape(-1, 1)
-        self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.get_frame(0))
+            self.segments_center_of_mass.loc[:, k, 0] = com.squeeze()
+        self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.isel(time=[0]))
 
     def __set_meshes_from_q(self):
         for m, meshes in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):

@@ -182,7 +182,7 @@ class VtkModel(QtWidgets.QWidget):
         self.setAutoFillBackground(True)
         self.setPalette(palette)
 
-        self.markers = Markers3d()
+        self.markers = Markers()
         self.markers_size = markers_size
         self.markers_color = markers_color
         self.markers_opacity = markers_opacity
@@ -192,13 +192,13 @@ class VtkModel(QtWidgets.QWidget):
         self.global_ref_frame_length = global_ref_frame_length
         self.global_ref_frame_width = global_ref_frame_width
 
-        self.global_center_of_mass = Markers3d()
+        self.global_center_of_mass = Markers()
         self.global_center_of_mass_size = global_center_of_mass_size
         self.global_center_of_mass_color = global_center_of_mass_color
         self.global_center_of_mass_opacity = global_center_of_mass_opacity
         self.global_center_of_mass_actors = list()
 
-        self.segments_center_of_mass = Markers3d()
+        self.segments_center_of_mass = Markers()
         self.segments_center_of_mass_size = segments_center_of_mass_size
         self.segments_center_of_mass_color = segments_center_of_mass_color
         self.segments_center_of_mass_opacity = segments_center_of_mass_opacity
@@ -266,7 +266,7 @@ class VtkModel(QtWidgets.QWidget):
             One frame of markers
 
         """
-        if markers.get_num_frames() != 1:
+        if markers.time.size != 1:
             raise IndexError("Markers should be from one frame only")
         self.markers = markers
 
@@ -276,7 +276,7 @@ class VtkModel(QtWidgets.QWidget):
         self.markers_actors = list()
 
         # Create the geometry of a point (the coordinate) points = vtk.vtkPoints()
-        for i in range(markers.get_num_markers()):
+        for i in range(markers.channel.size):
             # Create a mapper
             mapper = vtkPolyDataMapper()
 
@@ -300,9 +300,9 @@ class VtkModel(QtWidgets.QWidget):
 
         """
 
-        if markers.get_num_frames() != 1:
+        if markers.time.size != 1:
             raise IndexError("Markers should be from one frame only")
-        if markers.get_num_markers() != self.markers.get_num_markers():
+        if markers.channel.size != self.markers.channel.size:
             self.new_marker_set(markers)
             return  # Prevent calling update_markers recursively
         self.markers = markers
@@ -364,7 +364,7 @@ class VtkModel(QtWidgets.QWidget):
             One frame of segment center of mas
 
         """
-        if global_center_of_mass.get_num_frames() != 1:
+        if global_center_of_mass.channel.size != 1:
             raise IndexError("Global center of mass should be from one frame only")
         self.global_center_of_mass = global_center_of_mass
 
@@ -374,7 +374,7 @@ class VtkModel(QtWidgets.QWidget):
         self.global_center_of_mass_actors = list()
 
         # Create the geometry of a point (the coordinate) points = vtk.vtkPoints()
-        for i in range(global_center_of_mass.get_num_markers()):
+        for i in range(global_center_of_mass.channel.size):
             # Create a mapper
             mapper = vtkPolyDataMapper()
 
@@ -398,9 +398,9 @@ class VtkModel(QtWidgets.QWidget):
 
         """
 
-        if global_center_of_mass.get_num_frames() != 1:
+        if global_center_of_mass.time.size != 1:
             raise IndexError("Segment center of mass should be from one frame only")
-        if global_center_of_mass.get_num_markers() != self.global_center_of_mass.get_num_markers():
+        if global_center_of_mass.channel.size != self.global_center_of_mass.channel.size:
             self.new_global_center_of_mass_set(global_center_of_mass)
             return  # Prevent calling update_center_of_mass recursively
         self.global_center_of_mass = global_center_of_mass
@@ -461,7 +461,7 @@ class VtkModel(QtWidgets.QWidget):
             One frame of segment center of mas
 
         """
-        if segments_center_of_mass.get_num_frames() != 1:
+        if segments_center_of_mass.time.size != 1:
             raise IndexError("Segments center of mass should be from one frame only")
         self.segments_center_of_mass = segments_center_of_mass
 
@@ -471,7 +471,7 @@ class VtkModel(QtWidgets.QWidget):
         self.segments_center_of_mass_actors = list()
 
         # Create the geometry of a point (the coordinate) points = vtk.vtkPoints()
-        for i in range(segments_center_of_mass.get_num_markers()):
+        for i in range(segments_center_of_mass.channel.size):
             # Create a mapper
             mapper = vtkPolyDataMapper()
 
@@ -495,9 +495,9 @@ class VtkModel(QtWidgets.QWidget):
 
         """
 
-        if segments_center_of_mass.get_num_frames() != 1:
+        if segments_center_of_mass.time.size != 1:
             raise IndexError("Segment center of mass should be from one frame only")
-        if segments_center_of_mass.get_num_markers() != self.segments_center_of_mass.get_num_markers():
+        if segments_center_of_mass.channel.size != self.segments_center_of_mass.channel.size:
             self.new_segments_center_of_mass_set(segments_center_of_mass)
             return  # Prevent calling update_center_of_mass recursively
         self.segments_center_of_mass = segments_center_of_mass
