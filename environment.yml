@@ -3,7 +3,10 @@ name: pyoviz
 channels:
   - conda-forge
 dependencies:
+  - python
   - pyomeca
   - vtk
   - pyqt
-  - biorbd
+  - casadi
+  - rbdl=*=*casadi*
+  - biorbd=*=*casadi*
