@@ -135,11 +135,11 @@ The second way is to open issues to report bugs or to ask for new features. I am
 If you use BIORBD (or its GUI BiorbdViz), we would be grateful if you could cite it as follows:
 
 ```
-@misc{Michaud2018ezc3d,
+@misc{Michaud2018biorbdViz,
     author = {Michaud, Benjamin and Begon, Mickael},
-    title = {BIORBD: Toolbox for biomechanical analyses},
+    title = {biorbd-viz: A vizualization python toolbox for biorbd},
     howpublished={Web page},
-    url = {https://github.com/pyomeca/biorbd},
+    url = {https://github.com/pyomeca/biorbd-viz},
     year = {2018}
 }
 ```
