@@ -188,7 +188,7 @@ class MuscleAnalyses:
         moment_arm = np.ndarray((self.n_point_for_q, self.n_mus))
         passive_forces = np.ndarray((self.n_point_for_q, self.n_mus))
         active_forces = np.ndarray((self.n_point_for_q, self.n_mus))
-        emg = biorbd.StateDynamics(0, self.active_forces_slider.value() / 100)
+        emg = biorbd.State(0, self.active_forces_slider.value() / 100)
         for i, q_mod in enumerate(all_q):
             self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(q_mod))
             muscles_length_jacobian = self.model.musclesLengthJacobian().to_array()
