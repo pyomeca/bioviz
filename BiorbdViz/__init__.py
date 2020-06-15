@@ -1,8 +1,8 @@
 import os
 import copy
 from functools import partial
-from packaging.version import parse as parse_version
 
+from packaging.version import parse as parse_version
 import numpy as np
 import scipy
 import biorbd
@@ -10,7 +10,7 @@ import biorbd
 if biorbd.currentLinearAlgebraBackend() == 1:
     import casadi
 
-from pyomeca import Markers
+import pyomeca
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, Rototrans
 from PyQt5.QtWidgets import (
     QSlider,
@@ -29,6 +29,26 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
 from .analyses import MuscleAnalyses
+from ._version import __version__
+
+
+def check_version(tool_to_compare, min_version, max_version):
+    name = tool_to_compare.__name__
+    try:
+        ver = parse_version(tool_to_compare.__version__)
+    except AttributeError:
+        print(f"Version for {name} could not be compared...")
+        return
+
+    if ver < parse_version(min_version):
+        raise ImportError(f"{name} should be at least version {min_version}")
+    elif ver > parse_version(max_version):
+        raise ImportError(f"{name} should be lesser than version {max_version}")
+
+
+check_version(biorbd, "1.3.1", "2.0.0")
+check_version(pyomeca, "2020.0.1", "3000.0.0")
+from pyomeca import Markers
 
 
 class InterfacesCollections:
@@ -236,7 +256,6 @@ class BiorbdViz:
             loaded_model: reference to a biorbd loaded model (if both loaded_model and model_path, load_model is selected
             model_path: path of the model to load
         """
-        self.__check_biorbd_version("1.3.1", "2.0.0")
 
         # Load and store the model
         if loaded_model is not None:
@@ -795,11 +814,3 @@ class BiorbdViz:
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
             self.rt[k] = Rototrans(rt)
         self.vtk_model.update_rt(self.rt)
-
-    @staticmethod
-    def __check_biorbd_version(min_version, max_version):
-        biorbd_ver = parse_version(biorbd.__version__)
-        if biorbd_ver < parse_version(min_version):
-            raise ImportError(f"biorbd should be at least version {min_version}")
-        elif biorbd_ver > parse_version(max_version):
-            raise ImportError(f"biorbd should be lesser than version {max_version}")
