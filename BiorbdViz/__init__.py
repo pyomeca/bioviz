@@ -2,6 +2,7 @@ import os
 import copy
 from functools import partial
 
+from packaging.version import parse as parse_version
 import numpy as np
 import scipy
 import biorbd
@@ -9,7 +10,7 @@ import biorbd
 if biorbd.currentLinearAlgebraBackend() == 1:
     import casadi
 
-from pyomeca import Markers
+import pyomeca
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, Rototrans
 from PyQt5.QtWidgets import (
     QSlider,
@@ -28,6 +29,26 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
 from .analyses import MuscleAnalyses
+from ._version import __version__
+
+
+def check_version(tool_to_compare, min_version, max_version):
+    name = tool_to_compare.__name__
+    try:
+        ver = parse_version(tool_to_compare.__version__)
+    except AttributeError:
+        print(f"Version for {name} could not be compared...")
+        return
+
+    if ver < parse_version(min_version):
+        raise ImportError(f"{name} should be at least version {min_version}")
+    elif ver > parse_version(max_version):
+        raise ImportError(f"{name} should be lesser than version {max_version}")
+
+
+check_version(biorbd, "1.3.1", "2.0.0")
+check_version(pyomeca, "2020.0.1", "3000.0.0")
+from pyomeca import Markers
 
 
 class InterfacesCollections:
