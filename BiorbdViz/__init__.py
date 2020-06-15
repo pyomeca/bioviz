@@ -1,6 +1,7 @@
 import os
 import copy
 from functools import partial
+from packaging.version import parse as parse_version
 
 import numpy as np
 import scipy
@@ -235,6 +236,7 @@ class BiorbdViz:
             loaded_model: reference to a biorbd loaded model (if both loaded_model and model_path, load_model is selected
             model_path: path of the model to load
         """
+        self.__check_biorbd_version("1.3.1", "2.0.0")
 
         # Load and store the model
         if loaded_model is not None:
@@ -793,3 +795,11 @@ class BiorbdViz:
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
             self.rt[k] = Rototrans(rt)
         self.vtk_model.update_rt(self.rt)
+
+    @staticmethod
+    def __check_biorbd_version(min_version, max_version):
+        biorbd_ver = parse_version(biorbd.__version__)
+        if biorbd_ver < parse_version(min_version):
+            raise ImportError(f"biorbd should be at least version {min_version}")
+        elif biorbd_ver > parse_version(max_version):
+            raise ImportError(f"biorbd should be lesser than version {max_version}")

@@ -10,3 +10,4 @@ dependencies:
   - casadi
   - rbdl=*=*casadi*
   - biorbd=*=*casadi*
+  - packaging
