@@ -47,7 +47,7 @@ def check_version(tool_to_compare, min_version, max_version):
 
 
 check_version(biorbd, "1.3.1", "2.0.0")
-check_version(pyomeca, "2020.0.1", "3000.0.0")
+check_version(pyomeca, "2020.0.1", "2020.1.0")
 from pyomeca import Markers
 
 
@@ -415,20 +415,22 @@ class BiorbdViz:
         """
         self.vtk_window.update_frame()
 
+    def update(self):
+        if self.show_analyses_panel and self.is_animating:
+            self.movement_slider[0].setValue(
+                (self.movement_slider[0].value() + 1) % (self.movement_slider[0].maximum() + 1)
+            )
+
+            if self.is_recording:
+                self.__record()
+                if self.movement_slider[0].value() + 1 == (self.movement_slider[0].maximum() + 1):
+                    self.__start_stop_animation()
+        self.refresh_window()
+
     def exec(self):
         self.is_executing = True
         while self.vtk_window.is_active:
-            if self.show_analyses_panel and self.is_animating:
-                self.movement_slider[0].setValue(
-                    (self.movement_slider[0].value() + 1) % (self.movement_slider[0].maximum() + 1)
-                )
-
-                if self.is_recording:
-                    self.__record()
-                    if self.movement_slider[0].value() + 1 == (self.movement_slider[0].maximum() + 1):
-                        self.__start_stop_animation()
-
-            self.refresh_window()
+            self.update()
         self.is_executing = False
 
     def set_viz_palette(self):
