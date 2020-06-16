@@ -454,7 +454,7 @@ class BiorbdViz:
             for r in seg.QRanges():
                 ranges.append([r.min(), r.max()])
 
-        for i in range(self.model.nbDof()):
+        for i in range(self.model.nbQ()):
             slider_layout = QHBoxLayout()
             sliders_layout.addLayout(slider_layout)
 
