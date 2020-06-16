@@ -454,7 +454,7 @@ class BiorbdViz:
             for r in seg.QRanges():
                 ranges.append([r.min(), r.max()])
 
-        for i in range(self.model.nbDof()):
+        for i in range(self.model.nbQ()):
             slider_layout = QHBoxLayout()
             sliders_layout.addLayout(slider_layout)
 
@@ -716,9 +716,9 @@ class BiorbdViz:
                 self.vtk_window, "Save the video", "", "OGV files (*.ogv)", options=options
             )
             file_name, file_extension = os.path.splitext(file_name[0])
-            file_name += ".ogv"
             if file_name == "":
                 return
+            file_name += ".ogv"
 
             self.record_push_button.setIcon(self.add_icon)
             self.stop_record_push_button.setEnabled(True)
