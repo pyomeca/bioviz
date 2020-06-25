@@ -747,7 +747,7 @@ class BiorbdViz:
         elif os.path.splitext(file_name[0])[1] == ".Q2":  # If it is from a Matlab reconstruction Kalman
             self.animated_Q = scipy.io.loadmat(file_name[0])["Q2"].transpose()
         else:  # Otherwise assume this is a numpy array
-            self.animated_Q = np.load(file_name[0])
+            self.animated_Q = np.load(file_name[0]).T
         self.__load_movement()
 
     def load_movement(self, all_q, auto_start=True, ignore_animation_warning=True):
