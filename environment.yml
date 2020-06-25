@@ -1,5 +1,5 @@
 # create a dev conda environment with: `make create_env` or `conda env create -f environment.yml`
-name: pyoviz
+name: biorbd-viz
 channels:
   - conda-forge
 dependencies:
@@ -7,7 +7,7 @@ dependencies:
   - pyomeca
   - vtk
   - pyqt
-  - casadi
-  - rbdl=*=*casadi*
-  - biorbd=*=*casadi*
+  - eigen
+  - rbdl
+  - biorbd
   - packaging
