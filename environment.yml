@@ -7,7 +7,7 @@ dependencies:
   - pyomeca
   - vtk
   - pyqt
-  - casadi
-  - rbdl=*=*casadi*
-  - biorbd=*=*casadi*
+  - eigen
+  - rbdl
+  - biorbd
   - packaging
