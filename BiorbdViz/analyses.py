@@ -147,6 +147,7 @@ class MuscleAnalyses:
     def add_movement_to_dof_choice(self):
         self.animation_checkbox.setPalette(self.main_window.palette_active)
         self.animation_checkbox.setEnabled(True)
+        self.n_point_for_q = self.main_window.animated_Q.shape[0]
 
     def __set_current_dof(self):
         self.current_dof = self.combobox_dof.currentText()
