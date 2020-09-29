@@ -1,4 +1,4 @@
-from BiorbdViz import BiorbdViz
+from bioviz import Viz
 
 
 def test_model_load():

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from pyomeca import Markers, Rototrans, Angles
-from BiorbdViz.biorbd_vtk import VtkModel, VtkWindow, Mesh
+from bioviz.biorbd_vtk import VtkModel, VtkWindow, Mesh
 
 # Path to data
 DATA_FOLDER = Path("/home/pariterre/Programmation/biorbd-viz") / "tests" / "data"

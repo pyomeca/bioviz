@@ -234,7 +234,7 @@ class InterfacesCollections:
                 self.data.append(np.array(self.jcs[i](Q)))
 
 
-class BiorbdViz:
+class Viz:
     def __init__(
         self,
         model_path=None,
@@ -687,9 +687,9 @@ class BiorbdViz:
             QMessageBox.warning(
                 self.vtk_window,
                 "Not executing",
-                "BiorbdViz has detected that it is not actually executing.\n\n"
+                "bioviz has detected that it is not actually executing.\n\n"
                 "Unless you know what you are doing, the automatic play of the animation will "
-                "therefore not work. Please call the BiorbdViz.exec() method to be able to play "
+                "therefore not work. Please call the bioviz.exec() method to be able to play "
                 "the animation.\n\nPlease note that the animation slider will work in any case.",
             )
             self.animation_warning_already_shown = True
