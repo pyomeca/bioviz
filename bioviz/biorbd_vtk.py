@@ -38,7 +38,7 @@ if first:
 class VtkWindow(QtWidgets.QMainWindow):
     def __init__(self, background_color=(0, 0, 0)):
         """
-        Main window of a BiorbdViz object. If one is interested in placing the main window inside another widget, they
+        Main window of a bioviz object. If one is interested in placing the main window inside another widget, they
         should call VktWindow first, add whatever widgets/layouts they want in the 'VtkWindow.main_layout',
         including, of course, the actual avatar from 'VtkWindow.vtkWidget'.
         Parameters
