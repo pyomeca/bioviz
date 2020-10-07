@@ -6,6 +6,7 @@ from packaging.version import parse as parse_version
 import numpy as np
 import scipy
 import biorbd
+import pandas
 
 if biorbd.currentLinearAlgebraBackend() == 1:
     import casadi
@@ -369,6 +370,9 @@ class Viz:
         # Reset also muscle analyses graphs
         self.__update_muscle_analyses_graphs(False, False, False, False)
 
+    def copy_q_to_clipboard(self):
+        pandas.DataFrame(self.Q[np.newaxis, :]).to_clipboard(sep=',', index=False, header=False)
+
     def set_q(self, Q, refresh_window=True):
         """
         Manually update
@@ -507,6 +511,10 @@ class Viz:
         reset_push_button.setPalette(self.palette_active)
         reset_push_button.released.connect(self.reset_q)
         button_layout.addWidget(reset_push_button)
+        copyq_push_button = QPushButton("Copy Q to clipboard")
+        copyq_push_button.setPalette(self.palette_active)
+        copyq_push_button.released.connect(self.copy_q_to_clipboard)
+        button_layout.addWidget(copyq_push_button)
 
         # Add the radio button for analyses
         option_analyses_group = QGroupBox()
