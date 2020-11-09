@@ -47,7 +47,7 @@ def check_version(tool_to_compare, min_version, max_version):
         raise ImportError(f"{name} should be lesser than version {max_version}")
 
 
-check_version(biorbd, "1.3.1", "2.0.0")
+check_version(biorbd, "1.4.0", "2.0.0")
 check_version(pyomeca, "2020.0.1", "2020.1.0")
 from pyomeca import Markers
 
