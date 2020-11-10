@@ -47,7 +47,7 @@ def check_version(tool_to_compare, min_version, max_version):
         raise ImportError(f"{name} should be lesser than version {max_version}")
 
 
-check_version(biorbd, "1.3.1", "2.0.0")
+check_version(biorbd, "1.4.0", "2.0.0")
 check_version(pyomeca, "2020.0.1", "2020.1.0")
 from pyomeca import Markers
 
@@ -89,7 +89,7 @@ class InterfacesCollections:
 
         def _prepare_function_for_casadi(self):
             q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.markers = casadi.Function("Markers", [q_sym], [self.m.markers(q_sym)]).expand()
+            self.markers = biorbd.to_casadi_func("Markers", self.m.markers, q_sym)
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             if compute_kin:
@@ -109,7 +109,7 @@ class InterfacesCollections:
 
         def _prepare_function_for_casadi(self):
             Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.CoM = casadi.Function("CoM", [Qsym], [self.m.CoM(Qsym).to_mx()]).expand()
+            self.CoM = biorbd.to_casadi_func("CoM", self.m.CoM, Qsym)
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             if compute_kin:
@@ -129,7 +129,7 @@ class InterfacesCollections:
 
         def _prepare_function_for_casadi(self):
             Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.CoMs = casadi.Function("CoMbySegment", [Qsym], [self.m.CoMbySegmentInMatrix(Qsym).to_mx()]).expand()
+            self.CoMs = biorbd.to_casadi_func("CoMbySegment", self.m.CoMbySegmentInMatrix, Qsym)
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             self.data = []
