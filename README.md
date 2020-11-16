@@ -1,4 +1,6 @@
 # `bioviz`
+ <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-success" alt="License"/></a>
+
 `bioviz` is the Python visualizer of the `biorbd` biomechanical library (https://github.com/pyomeca/biorbd). 
 This library provides filters and analyses for biomechanical data in C++, Python and MATLAB languages.
 
