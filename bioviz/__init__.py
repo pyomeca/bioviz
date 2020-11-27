@@ -100,7 +100,8 @@ class InterfacesCollections:
                 self.data[:, i, 0] = markers[i].to_array()
 
         def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            self.data[:, :, 0] = np.array(self.markers(Q))
+            if self.m.nbMarkers():
+                self.data[:, :, 0] = np.array(self.markers(Q))
 
     class CoM(BiorbdFunc):
         def __init__(self, model):
