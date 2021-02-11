@@ -250,6 +250,7 @@ class Viz:
         markers_size=0.010,
         show_muscles=True,
         show_analyses_panel=True,
+        background_color=None,
         **kwargs,
     ):
         """
@@ -270,7 +271,10 @@ class Viz:
             raise ValueError("loaded_model or model_path must be provided")
 
         # Create the plot
-        self.vtk_window = VtkWindow(background_color=(0.5, 0.5, 0.5))
+        if background_color:
+            self.vtk_window = VtkWindow(background_color=background_color)
+        else:
+            self.vtk_window = VtkWindow(background_color=(0.5, 0.5, 0.5))
         self.vtk_model = VtkModel(self.vtk_window, markers_color=(0, 0, 1), markers_size=markers_size)
         self.is_executing = False
         self.animation_warning_already_shown = False
