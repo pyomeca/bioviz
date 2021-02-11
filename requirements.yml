@@ -1,0 +1,10 @@
+numpy
+casadi
+pytest
+matplotlib
+scipy
+packaging
+setuptools
+rbdl=*=*casadi*
+biorbd=*=*casadi*
+biorviz=*=*casadi*
