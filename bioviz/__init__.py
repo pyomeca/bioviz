@@ -206,8 +206,8 @@ class InterfacesCollections:
         def _get_data_from_casadi(self, Q=None, compute_kin=True):
             self.data = []
             for i in range(self.m.nbSegment()):
-                nb_vertex = self.m.segment(i).characteristics().mesh().nbVertex()
-                vertices = np.ndarray((3, nb_vertex, 1))
+                n_vertex = self.m.segment(i).characteristics().mesh().nbVertex()
+                vertices = np.ndarray((3, n_vertex, 1))
                 vertices[:, :, 0] = self.segments[i](Q)
                 self.data.append(vertices)
 
@@ -299,15 +299,15 @@ class Viz:
         # Create all the reference to the things to plot
         self.nQ = self.model.nbQ()
         self.Q = np.zeros(self.nQ)
-        self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
-            self.global_center_of_mass = Markers(np.ndarray((3, 1, 1)))
+            self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
         if self.show_global_center_of_mass:
             self.CoM = InterfacesCollections.CoM(self.model)
-            self.segments_center_of_mass = Markers(np.ndarray((3, self.model.nbSegment(), 1)))
+            self.global_center_of_mass = Markers(np.ndarray((3, 1, 1)))
         if self.show_segments_center_of_mass:
             self.CoMbySegment = InterfacesCollections.CoMbySegment(self.model)
+            self.segments_center_of_mass = Markers(np.ndarray((3, self.model.nbSegment(), 1)))
         if self.show_meshes:
             self.mesh = []
             self.meshPointsInMatrix = InterfacesCollections.MeshPointsInMatrix(self.model)
@@ -825,3 +825,4 @@ class Viz:
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
             self.rt[k] = Rototrans(rt)
         self.vtk_model.update_rt(self.rt)
+
