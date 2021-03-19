@@ -249,6 +249,7 @@ class Viz:
         show_markers=True,
         markers_size=0.010,
         show_muscles=True,
+        show_wrappings=True,
         show_analyses_panel=True,
         background_color=(0.5, 0.5, 0.5),
         **kwargs,
@@ -292,6 +293,9 @@ class Viz:
             self.show_muscles = show_muscles
         else:
             self.show_muscles = False
+            show_wrappings = False
+        self.show_wrappings = show_wrappings
+
         if sum([len(i) for i in self.model.meshPoints(np.zeros(self.model.nbQ()))]) > 0:
             self.show_meshes = show_meshes
         else:
@@ -313,25 +317,61 @@ class Viz:
             self.mesh = []
             self.meshPointsInMatrix = InterfacesCollections.MeshPointsInMatrix(self.model)
             for i, vertices in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
-                triangles = np.ndarray((len(self.model.meshFaces()[i]), 3), dtype="int32")
-                for k, patch in enumerate(self.model.meshFaces()[i]):
-                    triangles[k, :] = patch.face()
+                triangles = np.array([p.face() for p in self.model.meshFaces()[i]], dtype="int32") \
+                    if len(self.model.meshFaces()[i]) else np.ndarray((0, 3), dtype="int32")
                 self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
-        self.model.updateMuscles(self.Q, True)
-        self.muscles = []
-        for group_idx in range(self.model.nbMuscleGroups()):
-            for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
-                musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                tp = np.zeros((3, len(musc.position().musclesPointsInGlobal()), 1))
-                self.muscles.append(Mesh(vertex=tp))
-        self.musclesPointsInGlobal = InterfacesCollections.MusclesPointsInGlobal(self.model)
-        self.rt = []
-        self.allGlobalJCS = InterfacesCollections.AllGlobalJCS(self.model)
-        for rt in self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False):
-            self.rt.append(Rototrans(rt))
+        if self.show_muscles:
+            self.model.updateMuscles(self.Q, True)
+            self.muscles = []
+            for group_idx in range(self.model.nbMuscleGroups()):
+                for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
+                    musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
+                    tp = np.zeros((3, len(musc.position().musclesPointsInGlobal()), 1))
+                    self.muscles.append(Mesh(vertex=tp))
+            self.musclesPointsInGlobal = InterfacesCollections.MusclesPointsInGlobal(self.model)
+        if self.show_local_ref_frame or self.show_global_ref_frame:
+            self.rt = []
+            self.allGlobalJCS = InterfacesCollections.AllGlobalJCS(self.model)
+            for rt in self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False):
+                self.rt.append(Rototrans(rt))
 
-        if self.show_global_ref_frame:
-            self.vtk_model.create_global_ref_frame()
+            if self.show_global_ref_frame:
+                self.vtk_model.create_global_ref_frame()
+        if self.show_wrappings:
+            self.wraps_base = []
+            self.wraps_current = []
+            for m in range(self.model.nbMuscles()):
+                path_modifier = self.model.muscle(m).pathModifier()
+                wraps = []
+                wraps_current = []
+                for w in range(path_modifier.nbWraps()):
+                    wrap = path_modifier.object(w)
+                    if wrap.typeOfNode() == biorbd.VIA_POINT:
+                        continue  # Do not show via points
+                    elif wrap.typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
+                        wrap_cylinder = biorbd.WrappingHalfCylinder(wrap)
+                        res = 11  # resolution
+                        x = np.sin(np.linspace(0, np.pi, res)) * wrap_cylinder.radius()
+                        y = np.cos(np.linspace(0, np.pi, res)) * wrap_cylinder.radius()
+                        z = np.ones((res, )) * wrap_cylinder.length()
+                        vertices = np.concatenate([np.array([0, 0, z[0]])[:, np.newaxis], [x, y, z],
+                                                   np.array([0, 0, -z[0]])[:, np.newaxis], [x, y, -z]], axis=1)
+
+                        tri_0_0 = np.zeros((res-1, 1))
+                        tri_1_0 = np.arange(1, res)[:, np.newaxis]
+                        tri_2_0 = np.arange(2, res+1)[:, np.newaxis]
+                        tri_0 = np.concatenate([tri_0_0, tri_1_0, tri_2_0], axis=1)
+                        tri_1 = tri_0 + res + 1
+                        tri_2 = np.concatenate([tri_1_0, tri_2_0, tri_1_0 + res + 1], axis=1)
+                        tri_3 = np.concatenate([tri_1_0 + res + 1, tri_1_0 + res + 2, tri_2_0], axis=1)
+                        tri_4 = np.array([[1, res, res + 2], [res, res + 2, res + res + 1]])
+                        triangles = np.array(np.concatenate((tri_0, tri_1, tri_2, tri_3, tri_4)), dtype="int32").T
+                    else:
+                        raise NotImplementedError("The wrapping object is not implemented in bioviz")
+                    wraps.append(Mesh(vertex=vertices[:, :, np.newaxis], triangles=triangles))
+                    wraps_current.append(Mesh(vertex=vertices[:, :, np.newaxis], triangles=triangles))
+                self.wraps_base.append(wraps)
+                self.wraps_current.append(wraps_current)
 
         self.show_analyses_panel = show_analyses_panel
         if self.show_analyses_panel:
@@ -401,6 +441,8 @@ class Viz:
             self.__set_segments_center_of_mass_from_q()
         if self.show_markers:
             self.__set_markers_from_q()
+        if self.show_wrappings:
+            self.__set_wrapping_from_q()
 
         # Update the sliders
         if self.show_analyses_panel:
@@ -821,6 +863,16 @@ class Viz:
                     cmp += 1
                 idx += 1
         self.vtk_model.update_muscle(self.muscles)
+
+    def __set_wrapping_from_q(self):
+        for i, wraps in enumerate(self.wraps_base):
+            for j, wrap in enumerate(wraps):
+                if self.model.muscle(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
+                    rt = biorbd.WrappingHalfCylinder(self.model.muscle(i).pathModifier().object(j)).RT(self.model, self.Q).to_array()
+                    self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
+                else:
+                    raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
+        self.vtk_model.update_wrapping(self.wraps_current)
 
     def __set_rt_from_q(self):
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
