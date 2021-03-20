@@ -154,6 +154,8 @@ class VtkModel(QtWidgets.QWidget):
         segments_center_of_mass_opacity=1.0,
         mesh_color=(0, 0, 0),
         mesh_opacity=1.0,
+        wrapping_color=(0, 0, 1),
+        wrapping_opacity=1.0,
         muscle_color=(150 / 255, 15 / 255, 15 / 255),
         muscle_opacity=1.0,
         rt_length=0.1,
@@ -220,6 +222,11 @@ class VtkModel(QtWidgets.QWidget):
         self.muscle_color = muscle_color
         self.muscle_opacity = muscle_opacity
         self.muscle_actors = list()
+
+        self.all_wrappings = []
+        self.wrapping_color = wrapping_color
+        self.wrapping_opacity = wrapping_opacity
+        self.wrapping_actors = list()
 
     def set_markers_color(self, markers_color):
         """
@@ -758,6 +765,129 @@ class VtkModel(QtWidgets.QWidget):
 
             poly_line = self.muscle_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
+
+    def set_wrapping_color(self, wrapping_color):
+        """
+        Dynamically change the color of the wrapping
+        Parameters
+        ----------
+        wrapping_color : tuple(int)
+            Color the wrapping should be drawn (1 is max brightness)
+        """
+        self.wrapping_color = wrapping_color
+        self.update_wrapping(self.all_wrappings)
+
+    def set_wrapping_opacity(self, wrapping_opacity):
+        """
+        Dynamically change the opacity of the wrapping
+        Parameters
+        ----------
+        wrapping_opacity : float
+            Opacity of the wrapping (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.wrapping_opacity = wrapping_opacity
+        self.update_wrapping(self.all_wrappings)
+
+    def new_wrapping_set(self, all_wrappings, seg):
+        """
+        Define a new wrapping set. This function must be called each time the number of wrappings change
+        Parameters
+        ----------
+        all_wrappings : MeshCollection
+            One frame of wrapping
+
+        """
+        if isinstance(all_wrappings, Mesh):
+            wrapping_tp = []
+            wrapping_tp.append(all_wrappings)
+            all_wrappings = wrapping_tp
+
+        if not isinstance(all_wrappings, list):
+            raise TypeError("Please send a list of wrapping to update_wrapping")
+        self.all_wrappings[seg] = all_wrappings
+
+        # Remove previous actors from the scene
+        for actor in self.wrapping_actors[seg]:
+            self.parent_window.ren.RemoveActor(actor)
+        self.wrapping_actors[seg] = list()
+
+        # Create the geometry of a point (the coordinate) points = vtkPoints()
+        for (i, wrapping) in enumerate(self.all_wrappings[seg]):
+            if wrapping.time.size != 1:
+                raise IndexError("Mesh should be from one frame only")
+
+            points = vtkPoints()
+            for j in range(wrapping.channel.size):
+                points.InsertNextPoint([0, 0, 0])
+
+            # Create an array for each triangle
+            cell = vtkCellArray()
+            for j in range(wrapping.triangles.shape[1]):  # For each triangle
+                line = vtkPolyLine()
+                line.GetPointIds().SetNumberOfIds(4)
+                for k in range(len(wrapping.triangles[:, j])):  # For each index
+                    line.GetPointIds().SetId(k, wrapping.triangles[k, j])
+                line.GetPointIds().SetId(3, wrapping.triangles[0, j])  # Close the triangle
+                cell.InsertNextCell(line)
+            poly_line = vtkPolyData()
+            poly_line.SetPoints(points)
+            poly_line.SetLines(cell)
+
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(poly_line)
+
+            # Create an actor
+            self.wrapping_actors[seg].append(vtkActor())
+            self.wrapping_actors[seg][i].SetMapper(mapper)
+            self.wrapping_actors[seg][i].GetProperty().SetColor(self.wrapping_color)
+            self.wrapping_actors[seg][i].GetProperty().SetOpacity(self.wrapping_opacity)
+
+            self.parent_window.ren.AddActor(self.wrapping_actors[seg][i])
+            self.parent_window.ren.ResetCamera()
+
+        # # Update marker position
+        # self.update_wrapping(self.all_wrappings)
+
+    def update_wrapping(self, all_wrappings):
+        """
+        Update position of the wrapping on the screen (but do not repaint)
+        Parameters
+        ----------
+        all_wrappings : MeshCollection
+            One frame of wrapping
+
+        """
+        if not self.all_wrappings:
+            self.all_wrappings = [[]] * len(all_wrappings)
+            self.wrapping_actors = [[]] * len(all_wrappings)
+
+        for seg, wrappings in enumerate(all_wrappings):
+            for i, wrapping in enumerate(wrappings):
+                if wrapping.time.size != 1:
+                    raise IndexError("Mesh should be from one frame only")
+
+                if len(self.all_wrappings[seg]) <= i or wrapping.channel.size != self.all_wrappings[seg][i].channel.size:
+                    self.new_wrapping_set(wrappings, seg)
+                    # return  # Prevent calling update_markers recursively
+
+            if not isinstance(wrappings, list):
+                raise TypeError("Please send a list of wrapping to update_wrapping")
+
+            self.all_wrappings[seg] = wrappings
+
+            for (i, wrapping) in enumerate(self.all_wrappings[seg]):
+                points = vtkPoints()
+                n_vertex = wrapping.channel.size
+                wrapping = np.array(wrapping)
+                for j in range(n_vertex):
+                    points.InsertNextPoint(wrapping[0:3, j])
+
+                poly_line = self.wrapping_actors[seg][i].GetMapper().GetInput()
+                poly_line.SetPoints(points)
 
     def new_rt_set(self, all_rt):
         """

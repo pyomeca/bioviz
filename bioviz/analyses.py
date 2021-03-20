@@ -192,15 +192,15 @@ class MuscleAnalyses:
         emg = biorbd.State(0, self.active_forces_slider.value() / 100)
         for i, q_mod in enumerate(all_q):
             self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(q_mod))
-            muscles_length_jacobian = self.model.musclesLengthJacobian().to_array()
             for m in range(self.n_mus):
                 if self.checkboxes_muscle[m].isChecked():
-                    mus_group_idx, mus_idx, _ = self.muscle_mapping[self.checkboxes_muscle[m].text()]
+                    mus_group_idx, mus_idx, cmp_mus = self.muscle_mapping[self.checkboxes_muscle[m].text()]
                     mus = self.model.muscleGroup(mus_group_idx).muscle(mus_idx)
                     mus.updateOrientations(self.model, q_mod, 1)
+                    muscles_length_jacobian = self.model.musclesLengthJacobian().to_array()
 
                     length[i, m] = mus.length(self.model, q_mod, False)
-                    moment_arm[i, m] = muscles_length_jacobian[mus_idx, q_idx]
+                    moment_arm[i, m] = -1 * muscles_length_jacobian[cmp_mus, q_idx]
                     if mus.type() != biorbd.IDEALIZED_ACTUATOR:
                         passive_forces[i, m] = biorbd.HillType(mus).FlPE()
                     else:
@@ -241,7 +241,7 @@ class MuscleAnalyses:
             # Add vertical bar to show current dof (it must be done after relim so we know the new lims)
             q_idx = self.combobox_dof.currentIndex()
             if self.animation_checkbox.isChecked():
-                x = int(self.main_window.movement_slider[1].text())  # Frame label
+                x = int(self.main_window.movement_slider[1].text()) - 1  # Frame label
             else:
                 x = self.__get_q_from_slider()[q_idx]
             ax.get_lines()[-1].set_data([x, x], ax.get_ylim())
