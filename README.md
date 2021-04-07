@@ -1,5 +1,9 @@
-# `bioviz`
- <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-success" alt="License"/></a>
+<p align="center">
+    <img
+      src="https://github.com/pyomeca/biorbd_design/blob/main/logo_png/bioviz_full.png"
+      alt="logo"
+    />
+</p>
 
 `bioviz` is the Python visualizer of the `biorbd` biomechanical library (https://github.com/pyomeca/biorbd). 
 This library provides filters and analyses for biomechanical data in C++, Python and MATLAB languages.
@@ -8,6 +12,8 @@ However, there is no built-in visualization system, therefore this Python module
 It allow for a beautiful, yet simplistic visualization of the model in static or dynamic poses. 
 
 So, without further ado, let's remove `biorbd` from the darkness!
+
+<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-success" alt="License"/></a>
 
 # How to install
 There are two main ways to install `bioviz` on your computer: installing the binaries from Anaconda (easiest) or installing from the sources (requires to download the sources)
