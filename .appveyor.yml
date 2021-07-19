@@ -28,11 +28,11 @@ install:
   # Setup the conda environment
   - conda env update -n root -f environment.yml
   - conda activate root
+  - conda install pytest
   - python setup.py install
 
 test_script:
-  - conda install pytest
-  - python -c "import bioptim"
+  - pytest -v --color=yes tests
 
 on_success:
   - sh: if [[ $CI_LINUX == true ]]; then conda install -c conda-forge codecov; fi
