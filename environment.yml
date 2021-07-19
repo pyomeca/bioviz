@@ -3,7 +3,8 @@ name: bioptim
 channels:
   - conda-forge
 dependencies:
-  - python >3.9
+  - biorbd >=1.6.1
+  - python
   - numpy
   - matplotlib
   - scipy
@@ -14,7 +15,6 @@ dependencies:
   - eigen
   - casadi
   - rbdl
-  - biorbd >1.6.1
   - packaging
   - pytest
   - setuptools
