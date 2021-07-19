@@ -28,7 +28,7 @@ install:
   # Setup the conda environment
   - conda env update -n root -f environment.yml
   - conda activate root
-  - conda install pytest
+  - sh: if [[ $CI_LINUX == true ]]; then conda install pytest; fi
   - python setup.py install
 
 test_script:  

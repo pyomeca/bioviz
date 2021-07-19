@@ -487,7 +487,7 @@ class Viz:
         if self.show_analyses_panel:
             for i, slide in enumerate(self.sliders):
                 slide[1].blockSignals(True)
-                slide[1].setValue(self.Q[i] * self.double_factor)
+                slide[1].setValue(int(self.Q[i] * self.double_factor))
                 slide[1].blockSignals(False)
                 slide[2].setText(f"{self.Q[i]:.2f}")
 
@@ -558,8 +558,8 @@ class Viz:
             # Add the slider
             slider = QSlider(Qt.Horizontal)
             slider.setMinimumSize(100, 0)
-            slider.setMinimum(ranges[i][0] * self.double_factor)
-            slider.setMaximum(ranges[i][1] * self.double_factor)
+            slider.setMinimum(int(ranges[i][0] * self.double_factor))
+            slider.setMaximum(int(ranges[i][1] * self.double_factor))
             slider.setPageStep(self.double_factor)
             slider.setValue(0)
             slider.valueChanged.connect(self.__move_avatar_from_sliders)

@@ -106,7 +106,7 @@ class VtkWindow(QtWidgets.QMainWindow):
         color : tuple(int)
         """
         self.ren.SetBackground(color)
-        self.setPalette(QPalette(QColor(color[0] * 255, color[1] * 255, color[2] * 255)))
+        self.setPalette(QPalette(QColor(int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))))
 
     def record(self, finish=False, button_to_block=(), file_name=None):
         windowToImageFilter = vtkWindowToImageFilter()
