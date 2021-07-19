@@ -32,8 +32,8 @@ install:
   - python setup.py install
 
 test_script:  
-  - sh: if [[ $CI_LINUX == true ]]; then xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes tests; else pytest -v --color=yes tests; fi
-  - cmd: pytest -v --color=yes tests
+  - sh: if [[ $CI_LINUX == true ]]; then xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes tests; else python -c "import bioviz"; fi
+  - cmd: python -c "import bioviz"
 
 on_success:
   - sh: if [[ $CI_LINUX == true ]]; then conda install -c conda-forge codecov; fi
