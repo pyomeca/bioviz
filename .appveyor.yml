@@ -1,9 +1,18 @@
-# Config file for automatic testing at travis-ci.org
-language: python
-matrix:
-  include:
-  - os: linux
-    dist: trusty
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+# Build worker image (VM template)
+image:
+  - Ubuntu2004
+  - Visual Studio 2019
+  - macos
+
+# set clone depth
+clone_depth: 5                      # clone entire repository history if not defined
+
+# There is no building process
+build: off
   
 install:
   - sh: if [[ $CI_LINUX == true ]]; then wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; bash miniconda.sh -b -p $HOME/miniconda; export PATH="$HOME/miniconda/bin:$PATH"; else curl https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -L -o miniconda.sh; bash miniconda.sh -b -p $HOME/miniconda; export PATH="$HOME/miniconda/bin:$PATH"; fi
