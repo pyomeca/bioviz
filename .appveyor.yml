@@ -31,8 +31,9 @@ install:
   - conda install pytest
   - python setup.py install
 
-test_script:
-  - pytest -v --color=yes tests
+test_script:  
+  - sh: if [[ $CI_LINUX == true ]]; then xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes tests; else pytest -v --color=yes tests; fi
+  - cmd: pytest -v --color=yes tests
 
 on_success:
   - sh: if [[ $CI_LINUX == true ]]; then conda install -c conda-forge codecov; fi
