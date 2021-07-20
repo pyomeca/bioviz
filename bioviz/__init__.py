@@ -103,6 +103,27 @@ class InterfacesCollections:
             if self.m.nbMarkers():
                 self.data[:, :, 0] = np.array(self.markers(Q))
 
+    class Contact(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+            self.data = np.ndarray((3, self.m.nbContacts(), 1))
+
+        def _prepare_function_for_casadi(self):
+            q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.contacts = biorbd.to_casadi_func("Contacts", self.m.constraintsInGlobal, q_sym, True)
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            if compute_kin:
+                contacts = self.m.constraintsInGlobal(Q, True)
+            else:
+                contacts = self.m.constraintsInGlobal(Q, False)
+            for i in range(self.m.nbContacts()):
+                self.data[:, i, 0] = contacts[i].to_array()
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            if self.m.nbContacts():
+                self.data[:, :, 0] = np.array(self.contacts(Q))
+
     class CoM(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
@@ -244,10 +265,13 @@ class Viz:
         show_meshes=True,
         show_global_center_of_mass=True,
         show_segments_center_of_mass=True,
+        segments_center_of_mass_size=0.005,
         show_global_ref_frame=True,
         show_local_ref_frame=True,
         show_markers=True,
         markers_size=0.010,
+        show_contacts=True,
+        contacts_size=0.010,
         show_muscles=True,
         show_wrappings=True,
         show_analyses_panel=True,
@@ -273,7 +297,13 @@ class Viz:
 
         # Create the plot
         self.vtk_window = VtkWindow(background_color=background_color)
-        self.vtk_model = VtkModel(self.vtk_window, markers_color=(0, 0, 1), markers_size=markers_size)
+        self.vtk_model = VtkModel(
+            self.vtk_window,
+            markers_color=(0, 0, 1),
+            markers_size=markers_size,
+            contacts_size=contacts_size,
+            segments_center_of_mass_size=segments_center_of_mass_size
+        )
         self.is_executing = False
         self.animation_warning_already_shown = False
 
@@ -285,6 +315,7 @@ class Viz:
 
         # Get the options
         self.show_markers = show_markers
+        self.show_contacts = show_contacts
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
@@ -307,6 +338,9 @@ class Viz:
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
             self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
+        if self.show_contacts:
+            self.Contacts = InterfacesCollections.Contact(self.model)
+            self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
         if self.show_global_center_of_mass:
             self.CoM = InterfacesCollections.CoM(self.model)
             self.global_center_of_mass = Markers(np.ndarray((3, 1, 1)))
@@ -424,6 +458,9 @@ class Viz:
             refresh_window: bool
                 If the window should be refreshed now or not
         """
+        if isinstance(Q, (tuple, list)):
+            Q = np.array(Q)
+
         if not isinstance(Q, np.ndarray) and len(Q.shape) > 1 and Q.shape[0] != self.nQ:
             raise TypeError(f"Q should be a {self.nQ} column vector")
         self.Q = Q
@@ -441,6 +478,8 @@ class Viz:
             self.__set_segments_center_of_mass_from_q()
         if self.show_markers:
             self.__set_markers_from_q()
+        if self.show_contacts:
+            self.__set_contacts_from_q()
         if self.show_wrappings:
             self.__set_wrapping_from_q()
 
@@ -448,7 +487,7 @@ class Viz:
         if self.show_analyses_panel:
             for i, slide in enumerate(self.sliders):
                 slide[1].blockSignals(True)
-                slide[1].setValue(self.Q[i] * self.double_factor)
+                slide[1].setValue(int(self.Q[i] * self.double_factor))
                 slide[1].blockSignals(False)
                 slide[2].setText(f"{self.Q[i]:.2f}")
 
@@ -519,8 +558,8 @@ class Viz:
             # Add the slider
             slider = QSlider(Qt.Horizontal)
             slider.setMinimumSize(100, 0)
-            slider.setMinimum(ranges[i][0] * self.double_factor)
-            slider.setMaximum(ranges[i][1] * self.double_factor)
+            slider.setMinimum(int(ranges[i][0] * self.double_factor))
+            slider.setMaximum(int(ranges[i][1] * self.double_factor))
             slider.setPageStep(self.double_factor)
             slider.setValue(0)
             slider.valueChanged.connect(self.__move_avatar_from_sliders)
@@ -833,6 +872,10 @@ class Viz:
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
+
+    def __set_contacts_from_q(self):
+        self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
+        self.vtk_model.update_contacts(self.contacts.isel(time=[0]))
 
     def __set_global_center_of_mass_from_q(self):
         com = self.CoM.get_data(Q=self.Q, compute_kin=False)

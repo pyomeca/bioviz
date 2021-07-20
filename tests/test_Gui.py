@@ -1,14 +1,13 @@
 import biorbd
-
 from bioviz import Viz
 
 
 def test_model_load():
-    model_path = "examples/pyomecaman.s2mMod"
+    model_path = "examples/pyomecaman.bioMod"
 
     # From path
-    b1 = Viz(model_path=model_path, show_muscles=False, show_meshes=False)
+    b1 = Viz(model_path=model_path)
 
     # From a loaded model
-    m = biorbd.s2mMusculoSkeletalModel(model_path)
-    b1 = Viz(loaded_model=m, show_muscles=False, show_meshes=False)
+    m = biorbd.Model(model_path)
+    b2 = Viz(loaded_model=m)

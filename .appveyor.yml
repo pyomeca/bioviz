@@ -1,0 +1,41 @@
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+# Build worker image (VM template)
+image:
+  - Ubuntu2004
+  - Visual Studio 2019
+  - macos
+
+# set clone depth
+clone_depth: 5                      # clone entire repository history if not defined
+
+# There is no building process
+build: off
+  
+install:
+  - sh: if [[ $CI_LINUX == true ]]; then wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; bash miniconda.sh -b -p $HOME/miniconda; export PATH="$HOME/miniconda/bin:$PATH"; else curl https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -L -o miniconda.sh; bash miniconda.sh -b -p $HOME/miniconda; export PATH="$HOME/miniconda/bin:$PATH"; fi
+  - sh: hash -r
+  - sh: source activate
+  - cmd: SET MINICONDA_PATH="C:\\Miniconda38-x64"
+  - cmd: SET PATH=%MINICONDA_PATH%;%MINICONDA_PATH%"\\Scripts";%PATH%
+  - cmd: conda init cmd.exe
+  - conda config --set always_yes yes --set changeps1 no
+  - conda config --set auto_update_conda no
+  - conda update -q conda
+
+  # Setup the conda environment
+  - conda env update -n root -f environment.yml
+  - conda activate root
+  - sh: if [[ $CI_LINUX == true ]]; then conda install pytest; fi
+  - python setup.py install
+
+test_script:  
+  - sh: if [[ $CI_LINUX == true ]]; then xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes tests; else python -c "import bioviz"; fi
+  - cmd: python -c "import bioviz"
+
+on_success:
+  - sh: if [[ $CI_LINUX == true ]]; then conda install -c conda-forge codecov; fi
+  - sh: if [[ $CI_LINUX == true ]]; then codecov; fi
+

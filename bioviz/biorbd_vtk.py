@@ -52,6 +52,7 @@ class VtkWindow(QtWidgets.QMainWindow):
 
         self.ren = vtkRenderer()
         self.ren.SetBackground(background_color)
+        self.ren.GetActiveCamera().ParallelProjectionOn()
 
         self.avatar_widget = QVTKRenderWindowInteractor(self.frame)
         self.avatar_widget.GetRenderWindow().SetSize(1000, 100)
@@ -105,7 +106,7 @@ class VtkWindow(QtWidgets.QMainWindow):
         color : tuple(int)
         """
         self.ren.SetBackground(color)
-        self.setPalette(QPalette(QColor(color[0] * 255, color[1] * 255, color[2] * 255)))
+        self.setPalette(QPalette(QColor(int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))))
 
     def record(self, finish=False, button_to_block=(), file_name=None):
         windowToImageFilter = vtkWindowToImageFilter()
@@ -144,6 +145,9 @@ class VtkModel(QtWidgets.QWidget):
         markers_size=0.010,
         markers_color=(1, 1, 1),
         markers_opacity=1.0,
+        contacts_color=(0, 1, 0),
+        contacts_size=0.01,
+        contacts_opacity=1.0,
         global_ref_frame_length=0.15,
         global_ref_frame_width=5,
         global_center_of_mass_size=0.0075,
@@ -189,6 +193,12 @@ class VtkModel(QtWidgets.QWidget):
         self.markers_color = markers_color
         self.markers_opacity = markers_opacity
         self.markers_actors = list()
+
+        self.contacts = Markers()
+        self.contacts_size = contacts_size
+        self.contacts_color = contacts_color
+        self.contacts_opacity = contacts_opacity
+        self.contacts_actors = list()
 
         self.has_global_ref_frame = False
         self.global_ref_frame_length = global_ref_frame_length
@@ -323,6 +333,103 @@ class VtkModel(QtWidgets.QWidget):
             source = vtkSphereSource()
             source.SetCenter(markers[0:3, i])
             source.SetRadius(self.markers_size)
+            mapper.SetInputConnection(source.GetOutputPort())
+
+    def set_contacts_color(self, contacts_color):
+        """
+        Dynamically change the color of the contacts
+        Parameters
+        ----------
+        contacts_color : tuple(int)
+            Color the contacts should be drawn (1 is max brightness)
+        """
+        self.contacts_color = contacts_color
+        self.update_contacts(self.contacts)
+
+    def set_contacts_size(self, contacts_size):
+        """
+        Dynamically change the size of the contacts
+        Parameters
+        ----------
+        contacts_size : float
+            Size the contacts should be drawn
+        """
+        self.contacts_size = contacts_size
+        self.update_contacts(self.contacts)
+
+    def set_contacts_opacity(self, contacts_opacity):
+        """
+        Dynamically change the opacity of the contacts
+        Parameters
+        ----------
+        contacts_opacity : float
+            Opacity of the contacts (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.contacts_opacity = contacts_opacity
+        self.update_contacts(self.contacts)
+
+    def new_contact_set(self, contacts):
+        """
+        Define a new marker set. This function must be called each time the number of contacts change
+        Parameters
+        ----------
+        contacts : Markers3d
+            One frame of contacts
+
+        """
+        if contacts.time.size != 1:
+            raise IndexError("Contacts should be from one frame only")
+        self.contacts = contacts
+
+        # Remove previous actors from the scene
+        for actor in self.contacts_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.contacts_actors = list()
+
+        # Create the geometry of a point (the coordinate) points = vtk.vtkPoints()
+        for i in range(contacts.channel.size):
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+
+            # Create an actor
+            self.contacts_actors.append(vtkActor())
+            self.contacts_actors[i].SetMapper(mapper)
+
+            self.parent_window.ren.AddActor(self.contacts_actors[i])
+            self.parent_window.ren.ResetCamera()
+
+        # Update marker position
+        self.update_contacts(self.contacts)
+
+    def update_contacts(self, contacts):
+        """
+        Update position of the contacts on the screen (but do not repaint)
+        Parameters
+        ----------
+        contacts : Markers3d
+            One frame of contacts
+
+        """
+
+        if contacts.time.size != 1:
+            raise IndexError("Contacts should be from one frame only")
+        if contacts.channel.size != self.contacts.channel.size:
+            self.new_contact_set(contacts)
+            return  # Prevent calling update_contacts recursively
+        self.contacts = contacts
+        contacts = np.array(contacts)
+
+        for i, actor in enumerate(self.contacts_actors):
+            # mapper = actors.GetNextActor().GetMapper()
+            mapper = actor.GetMapper()
+            self.contacts_actors[i].GetProperty().SetColor(self.contacts_color)
+            self.contacts_actors[i].GetProperty().SetOpacity(self.contacts_opacity)
+            source = vtkSphereSource()
+            source.SetCenter(contacts[0:3, i])
+            source.SetRadius(self.contacts_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
     def set_global_center_of_mass_color(self, global_center_of_mass_color):
