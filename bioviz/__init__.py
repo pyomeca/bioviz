@@ -5,7 +5,10 @@ from functools import partial
 from packaging.version import parse as parse_version
 import numpy as np
 import scipy
-import biorbd
+try:
+    import biorbd
+except ImportError:
+    import biorbd_casadi as biorbd
 import pandas
 
 if biorbd.currentLinearAlgebraBackend() == 1:
