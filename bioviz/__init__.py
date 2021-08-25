@@ -320,8 +320,14 @@ class Viz:
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
         self.show_local_ref_frame = show_local_ref_frame
-        if self.model.nbMuscles() > 0:
-            self.show_muscles = show_muscles
+
+        self.biorbd_compiled_with_muscles = hasattr(self.model, "nbMuscles")
+        if self.biorbd_compiled_with_muscles:
+            if self.model.nbMuscles() > 0:
+                self.show_muscles = show_muscles
+            else:
+                self.show_muscles = False
+                show_wrappings = False
         else:
             self.show_muscles = False
             show_wrappings = False
@@ -354,15 +360,53 @@ class Viz:
                 triangles = np.array([p.face() for p in self.model.meshFaces()[i]], dtype="int32") \
                     if len(self.model.meshFaces()[i]) else np.ndarray((0, 3), dtype="int32")
                 self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
-        if self.show_muscles:
-            self.model.updateMuscles(self.Q, True)
-            self.muscles = []
-            for group_idx in range(self.model.nbMuscleGroups()):
-                for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
-                    musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                    tp = np.zeros((3, len(musc.position().musclesPointsInGlobal()), 1))
-                    self.muscles.append(Mesh(vertex=tp))
-            self.musclesPointsInGlobal = InterfacesCollections.MusclesPointsInGlobal(self.model)
+        if self.biorbd_compiled_with_muscles:
+            if self.show_muscles:
+                self.model.updateMuscles(self.Q, True)
+                self.muscles = []
+                for group_idx in range(self.model.nbMuscleGroups()):
+                    for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
+                        musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
+                        tp = np.zeros((3, len(musc.position().musclesPointsInGlobal()), 1))
+                        self.muscles.append(Mesh(vertex=tp))
+                self.musclesPointsInGlobal = InterfacesCollections.MusclesPointsInGlobal(self.model)
+
+            if self.show_wrappings:
+                self.wraps_base = []
+                self.wraps_current = []
+                for m in range(self.model.nbMuscles()):
+                    path_modifier = self.model.muscle(m).pathModifier()
+                    wraps = []
+                    wraps_current = []
+                    for w in range(path_modifier.nbWraps()):
+                        wrap = path_modifier.object(w)
+                        if wrap.typeOfNode() == biorbd.VIA_POINT:
+                            continue  # Do not show via points
+                        elif wrap.typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
+                            wrap_cylinder = biorbd.WrappingHalfCylinder(wrap)
+                            res = 11  # resolution
+                            x = np.sin(np.linspace(0, np.pi, res)) * wrap_cylinder.radius()
+                            y = np.cos(np.linspace(0, np.pi, res)) * wrap_cylinder.radius()
+                            z = np.ones((res, )) * wrap_cylinder.length()
+                            vertices = np.concatenate([np.array([0, 0, z[0]])[:, np.newaxis], [x, y, z],
+                                                       np.array([0, 0, -z[0]])[:, np.newaxis], [x, y, -z]], axis=1)
+
+                            tri_0_0 = np.zeros((res-1, 1))
+                            tri_1_0 = np.arange(1, res)[:, np.newaxis]
+                            tri_2_0 = np.arange(2, res+1)[:, np.newaxis]
+                            tri_0 = np.concatenate([tri_0_0, tri_1_0, tri_2_0], axis=1)
+                            tri_1 = tri_0 + res + 1
+                            tri_2 = np.concatenate([tri_1_0, tri_2_0, tri_1_0 + res + 1], axis=1)
+                            tri_3 = np.concatenate([tri_1_0 + res + 1, tri_1_0 + res + 2, tri_2_0], axis=1)
+                            tri_4 = np.array([[1, res, res + 2], [res, res + 2, res + res + 1]])
+                            triangles = np.array(np.concatenate((tri_0, tri_1, tri_2, tri_3, tri_4)), dtype="int32").T
+                        else:
+                            raise NotImplementedError("The wrapping object is not implemented in bioviz")
+                        wraps.append(Mesh(vertex=vertices[:, :, np.newaxis], triangles=triangles))
+                        wraps_current.append(Mesh(vertex=vertices[:, :, np.newaxis], triangles=triangles))
+                    self.wraps_base.append(wraps)
+                    self.wraps_current.append(wraps_current)
+
         if self.show_local_ref_frame or self.show_global_ref_frame:
             self.rt = []
             self.allGlobalJCS = InterfacesCollections.AllGlobalJCS(self.model)
@@ -371,41 +415,6 @@ class Viz:
 
             if self.show_global_ref_frame:
                 self.vtk_model.create_global_ref_frame()
-        if self.show_wrappings:
-            self.wraps_base = []
-            self.wraps_current = []
-            for m in range(self.model.nbMuscles()):
-                path_modifier = self.model.muscle(m).pathModifier()
-                wraps = []
-                wraps_current = []
-                for w in range(path_modifier.nbWraps()):
-                    wrap = path_modifier.object(w)
-                    if wrap.typeOfNode() == biorbd.VIA_POINT:
-                        continue  # Do not show via points
-                    elif wrap.typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
-                        wrap_cylinder = biorbd.WrappingHalfCylinder(wrap)
-                        res = 11  # resolution
-                        x = np.sin(np.linspace(0, np.pi, res)) * wrap_cylinder.radius()
-                        y = np.cos(np.linspace(0, np.pi, res)) * wrap_cylinder.radius()
-                        z = np.ones((res, )) * wrap_cylinder.length()
-                        vertices = np.concatenate([np.array([0, 0, z[0]])[:, np.newaxis], [x, y, z],
-                                                   np.array([0, 0, -z[0]])[:, np.newaxis], [x, y, -z]], axis=1)
-
-                        tri_0_0 = np.zeros((res-1, 1))
-                        tri_1_0 = np.arange(1, res)[:, np.newaxis]
-                        tri_2_0 = np.arange(2, res+1)[:, np.newaxis]
-                        tri_0 = np.concatenate([tri_0_0, tri_1_0, tri_2_0], axis=1)
-                        tri_1 = tri_0 + res + 1
-                        tri_2 = np.concatenate([tri_1_0, tri_2_0, tri_1_0 + res + 1], axis=1)
-                        tri_3 = np.concatenate([tri_1_0 + res + 1, tri_1_0 + res + 2, tri_2_0], axis=1)
-                        tri_4 = np.array([[1, res, res + 2], [res, res + 2, res + res + 1]])
-                        triangles = np.array(np.concatenate((tri_0, tri_1, tri_2, tri_3, tri_4)), dtype="int32").T
-                    else:
-                        raise NotImplementedError("The wrapping object is not implemented in bioviz")
-                    wraps.append(Mesh(vertex=vertices[:, :, np.newaxis], triangles=triangles))
-                    wraps_current.append(Mesh(vertex=vertices[:, :, np.newaxis], triangles=triangles))
-                self.wraps_base.append(wraps)
-                self.wraps_current.append(wraps_current)
 
         self.show_analyses_panel = show_analyses_panel
         if self.show_analyses_panel:
@@ -430,7 +439,8 @@ class Viz:
 
             self.active_analyses_widget = None
             self.analyses_layout = QHBoxLayout()
-            self.analyses_muscle_widget = QWidget()
+            if self.biorbd_compiled_with_muscles:
+                self.analyses_muscle_widget = QWidget()
             self.add_options_panel()
 
         # Update everything at the position Q=0
@@ -444,7 +454,8 @@ class Viz:
         self.set_q(self.Q)
 
         # Reset also muscle analyses graphs
-        self.__update_muscle_analyses_graphs(False, False, False, False)
+        if self.biorbd_compiled_with_muscles:
+            self.__update_muscle_analyses_graphs(False, False, False, False)
 
     def copy_q_to_clipboard(self):
         pandas.DataFrame(self.Q[np.newaxis, :]).to_clipboard(sep=',', index=False, header=False)
@@ -563,7 +574,8 @@ class Viz:
             slider.setPageStep(self.double_factor)
             slider.setValue(0)
             slider.valueChanged.connect(self.__move_avatar_from_sliders)
-            slider.sliderReleased.connect(partial(self.__update_muscle_analyses_graphs, False, False, False, False))
+            if self.biorbd_compiled_with_muscles:
+                slider.sliderReleased.connect(partial(self.__update_muscle_analyses_graphs, False, False, False, False))
             slider_layout.addWidget(slider)
 
             # Add the value
@@ -614,12 +626,13 @@ class Viz:
         radio_none.toggled.connect(lambda: self.__select_analyses_panel(radio_none, 0))
         radio_none.setText("None")
         option_analyses_layout.addWidget(radio_none)
-        # Add the muscles analyses
-        radio_muscle = QRadioButton()
-        radio_muscle.setPalette(self.palette_active)
-        radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 1))
-        radio_muscle.setText("Muscles")
-        option_analyses_layout.addWidget(radio_muscle)
+        if self.biorbd_compiled_with_muscles:
+            # Add the muscles analyses
+            radio_muscle = QRadioButton()
+            radio_muscle.setPalette(self.palette_active)
+            radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 1))
+            radio_muscle.setText("Muscles")
+            option_analyses_layout.addWidget(radio_muscle)
         # Add the layout to the interface
         option_analyses_group.setLayout(option_analyses_layout)
         options_layout.addWidget(option_analyses_group)
@@ -687,13 +700,14 @@ class Viz:
         self.vtk_window.resize(self.vtk_window.size().width() * 2, self.vtk_window.size().height())
 
         # Prepare all the analyses panel
-        self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
-        if biorbd.currentLinearAlgebraBackend() == 1:
-            radio_muscle.setEnabled(False)
-        else:
-            if self.model.nbMuscles() == 0:
+        if self.biorbd_compiled_with_muscles:
+            self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
+            if biorbd.currentLinearAlgebraBackend() == 1:
                 radio_muscle.setEnabled(False)
-        self.__select_analyses_panel(radio_muscle, 1)
+            else:
+                if self.model.nbMuscles() == 0:
+                    radio_muscle.setEnabled(False)
+            self.__select_analyses_panel(radio_muscle, 1)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
         if not radio_button.isChecked():
@@ -747,7 +761,8 @@ class Viz:
             self.active_analyses_widget.setVisible(True)
 
         # Update graphs if needed
-        self.__update_muscle_analyses_graphs(False, False, False, False)
+        if self.biorbd_compiled_with_muscles:
+            self.__update_muscle_analyses_graphs(False, False, False, False)
 
     def __move_avatar_from_sliders(self):
         for i, slide in enumerate(self.sliders):
@@ -771,7 +786,8 @@ class Viz:
         self.set_q(self.Q)
 
         # Update graph of muscle analyses
-        self.__update_muscle_analyses_graphs(True, True, True, True)
+        if self.biorbd_compiled_with_muscles:
+            self.__update_muscle_analyses_graphs(True, True, True, True)
 
     def __start_stop_animation(self):
         if not self.is_executing and not self.animation_warning_already_shown:
@@ -867,7 +883,8 @@ class Viz:
         self.movement_slider[0].setValue(1)
 
         # Add the combobox in muscle analyses
-        self.muscle_analyses.add_movement_to_dof_choice()
+        if self.biorbd_compiled_with_muscles:
+            self.muscle_analyses.add_movement_to_dof_choice()
 
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
