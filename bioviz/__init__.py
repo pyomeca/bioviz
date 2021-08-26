@@ -279,6 +279,7 @@ class Viz:
         show_wrappings=True,
         show_analyses_panel=True,
         background_color=(0.5, 0.5, 0.5),
+        force_wire_frame=False,
         **kwargs,
     ):
         """
@@ -305,7 +306,8 @@ class Viz:
             markers_color=(0, 0, 1),
             markers_size=markers_size,
             contacts_size=contacts_size,
-            segments_center_of_mass_size=segments_center_of_mass_size
+            segments_center_of_mass_size=segments_center_of_mass_size,
+            force_wire_frame=force_wire_frame
         )
         self.is_executing = False
         self.animation_warning_already_shown = False

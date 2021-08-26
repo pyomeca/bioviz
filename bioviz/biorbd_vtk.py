@@ -158,8 +158,10 @@ class VtkModel(QtWidgets.QWidget):
         segments_center_of_mass_size=0.005,
         segments_center_of_mass_color=(0, 0, 0),
         segments_center_of_mass_opacity=1.0,
-        mesh_color=(0.89, 0.855, 0.788),
+        mesh_color=(0, 0, 0),
+        patch_color=(0.89, 0.855, 0.788),
         mesh_opacity=0.8,
+        force_wire_frame=False,
         wrapping_color=(0, 0, 1),
         wrapping_opacity=1.0,
         muscle_color=(150 / 255, 15 / 255, 15 / 255),
@@ -227,6 +229,8 @@ class VtkModel(QtWidgets.QWidget):
 
         self.all_meshes = []
         self.mesh_color = mesh_color
+        self.force_wire_frame = force_wire_frame
+        self.patch_color = patch_color
         self.mesh_opacity = mesh_opacity
         self.mesh_actors = list()
 
@@ -686,51 +690,42 @@ class VtkModel(QtWidgets.QWidget):
                 # points.InsertNextPoint([0, 0, 0])
                 points.InsertNextPoint(mesh.data[:3, j, 0].tolist())
 
-            if mesh.triangles.shape[1]==0 or len(np.unique(mesh.triangles[:,0])):
-                # Create an array for each triangle
-                cell = vtkCellArray()
-                for j in range(mesh.triangles.shape[1]):  # For each triangle
-                    line = vtkPolyLine()
-                    line.GetPointIds().SetNumberOfIds(4)
-                    for k in range(len(mesh.triangles[:, j])):  # For each index
-                        line.GetPointIds().SetId(k, mesh.triangles[k, j])
-                    line.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
-                    cell.InsertNextCell(line)
-                poly_line = vtkPolyData()
-                poly_line.SetPoints(points)
-                poly_line.SetLines(cell)
-
-                # Create a mapper
-                mapper = vtkPolyDataMapper()
-                mapper.SetInputData(poly_line)
-                self.mesh_color = (0, 0, 0)
-
+            # Create an array for each triangle
+            draw_patch = not mesh.automatic_triangles and not self.force_wire_frame
+            if draw_patch:
+                poly_type = vtkPolygon
+                n_ids = 3
+                color = self.patch_color
             else:
-                # Create the polygons
-                polygons = vtkCellArray()
-                for ii in range(mesh.triangles.shape[1]):
-                    polygon = vtkPolygon()
-                    polygon.GetPointIds().SetNumberOfIds(3)  # make a tri
-                    nodeId = mesh.triangles[:,ii]
-                    for jj in range(0, len(nodeId)):
-                        polygon.GetPointIds().SetId(jj, nodeId[jj])
+                poly_type = vtkPolyLine
+                n_ids = 4
+                color = self.mesh_color
+            cells = vtkCellArray()
 
-                    # Add the polygon to a list of polygons
-                    polygons.InsertNextCell(polygon)
+            # Create the polygons
+            for j in range(mesh.triangles.shape[1]):
+                poly = poly_type()
+                poly.GetPointIds().SetNumberOfIds(n_ids)  # make a tri
+                for k in range(len(mesh.triangles[:, j])):
+                    poly.GetPointIds().SetId(k, mesh.triangles[k, j])
+                if not draw_patch:
+                    poly.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
+                cells.InsertNextCell(poly)
 
-                # Create a PolyData
-                polygonPolyData = vtkPolyData()
-                polygonPolyData.SetPoints(points)
-                polygonPolyData.SetPolys(polygons)
+            poly_data = vtkPolyData()
+            poly_data.SetPoints(points)
+            if draw_patch:
+                poly_data.SetPolys(cells)
+            else:
+                poly_data.SetLines(cells)
 
-                # Create a mapper
-                mapper = vtkPolyDataMapper()
-                mapper.SetInputData(polygonPolyData)
-
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(poly_data)
+            
             # Create an actor
             self.mesh_actors.append(vtkActor())
             self.mesh_actors[i].SetMapper(mapper)
-            self.mesh_actors[i].GetProperty().SetColor(self.mesh_color)
+            self.mesh_actors[i].GetProperty().SetColor(color)
             self.mesh_actors[i].GetProperty().SetOpacity(self.mesh_opacity)
 
             self.parent_window.ren.AddActor(self.mesh_actors[i])
