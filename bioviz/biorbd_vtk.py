@@ -161,7 +161,7 @@ class VtkModel(QtWidgets.QWidget):
         mesh_color=(0, 0, 0),
         patch_color=(0.89, 0.855, 0.788),
         mesh_opacity=0.8,
-        force_wire_frame=False,
+        force_wireframe=False,
         wrapping_color=(0, 0, 1),
         wrapping_opacity=1.0,
         muscle_color=(150 / 255, 15 / 255, 15 / 255),
@@ -229,7 +229,7 @@ class VtkModel(QtWidgets.QWidget):
 
         self.all_meshes = []
         self.mesh_color = mesh_color
-        self.force_wire_frame = force_wire_frame
+        self.force_wireframe = force_wireframe
         self.patch_color = patch_color
         self.mesh_opacity = mesh_opacity
         self.mesh_actors = list()
@@ -691,7 +691,7 @@ class VtkModel(QtWidgets.QWidget):
                 points.InsertNextPoint(mesh.data[:3, j, 0].tolist())
 
             # Create an array for each triangle
-            draw_patch = not mesh.automatic_triangles and not self.force_wire_frame
+            draw_patch = not mesh.automatic_triangles and not self.force_wireframe
             if draw_patch:
                 poly_type = vtkPolygon
                 n_ids = 3
@@ -721,7 +721,7 @@ class VtkModel(QtWidgets.QWidget):
 
             mapper = vtkPolyDataMapper()
             mapper.SetInputData(poly_data)
-            
+
             # Create an actor
             self.mesh_actors.append(vtkActor())
             self.mesh_actors[i].SetMapper(mapper)
@@ -999,7 +999,10 @@ class VtkModel(QtWidgets.QWidget):
                 if wrapping.time.size != 1:
                     raise IndexError("Mesh should be from one frame only")
 
-                if len(self.all_wrappings[seg]) <= i or wrapping.channel.size != self.all_wrappings[seg][i].channel.size:
+                if (
+                    len(self.all_wrappings[seg]) <= i
+                    or wrapping.channel.size != self.all_wrappings[seg][i].channel.size
+                ):
                     self.new_wrapping_set(wrappings, seg)
                     # return  # Prevent calling update_markers recursively
 

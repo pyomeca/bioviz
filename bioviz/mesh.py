@@ -24,5 +24,5 @@ class Mesh(Markers):
             for i in range(vertex.shape[1] - 1):
                 triangles[:, i] = [i, i + 1, i]
 
-        attrs = {'triangles': triangles, 'automatic_triangles': automatic_triangles}
+        attrs = {"triangles": triangles, "automatic_triangles": automatic_triangles}
         return Markers.__new__(cls, vertex, None, None, attrs=attrs, **kwargs)

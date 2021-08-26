@@ -39,8 +39,13 @@ all_rt_real.append(
 )
 
 # Create some Rototrans attached to the second model
-one_rt = Rototrans.from_markers(origin=d[:, [3, 5], :].mean("channel", keepdims=True),
-                                axis_1=d[:, [4, 3], :], axis_2=d[:, [4, 5], :], axes_name="zx", axis_to_recalculate="z")
+one_rt = Rototrans.from_markers(
+    origin=d[:, [3, 5], :].mean("channel", keepdims=True),
+    axis_1=d[:, [4, 3], :],
+    axis_2=d[:, [4, 5], :],
+    axes_name="zx",
+    axis_to_recalculate="z",
+)
 
 # Create some mesh (could be from any mesh source)
 meshes = []
