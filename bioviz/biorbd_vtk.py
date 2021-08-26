@@ -23,6 +23,8 @@ from vtk import (
     vtkUnsignedCharArray,
     vtkOggTheoraWriter,
     vtkWindowToImageFilter,
+    vtkPolygon,
+    vtkExtractEdges,
 )
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
@@ -156,8 +158,8 @@ class VtkModel(QtWidgets.QWidget):
         segments_center_of_mass_size=0.005,
         segments_center_of_mass_color=(0, 0, 0),
         segments_center_of_mass_opacity=1.0,
-        mesh_color=(0, 0, 0),
-        mesh_opacity=1.0,
+        mesh_color=(0.89, 0.855, 0.788),
+        mesh_opacity=0.8,
         wrapping_color=(0, 0, 1),
         wrapping_opacity=1.0,
         muscle_color=(150 / 255, 15 / 255, 15 / 255),
@@ -681,24 +683,49 @@ class VtkModel(QtWidgets.QWidget):
 
             points = vtkPoints()
             for j in range(mesh.channel.size):
-                points.InsertNextPoint([0, 0, 0])
+                # points.InsertNextPoint([0, 0, 0])
+                points.InsertNextPoint(mesh.data[:3, j, 0].tolist())
 
-            # Create an array for each triangle
-            cell = vtkCellArray()
-            for j in range(mesh.triangles.shape[1]):  # For each triangle
-                line = vtkPolyLine()
-                line.GetPointIds().SetNumberOfIds(4)
-                for k in range(len(mesh.triangles[:, j])):  # For each index
-                    line.GetPointIds().SetId(k, mesh.triangles[k, j])
-                line.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
-                cell.InsertNextCell(line)
-            poly_line = vtkPolyData()
-            poly_line.SetPoints(points)
-            poly_line.SetLines(cell)
+            if mesh.triangles.shape[1]==0 or len(np.unique(mesh.triangles[:,0])):
+                # Create an array for each triangle
+                cell = vtkCellArray()
+                for j in range(mesh.triangles.shape[1]):  # For each triangle
+                    line = vtkPolyLine()
+                    line.GetPointIds().SetNumberOfIds(4)
+                    for k in range(len(mesh.triangles[:, j])):  # For each index
+                        line.GetPointIds().SetId(k, mesh.triangles[k, j])
+                    line.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
+                    cell.InsertNextCell(line)
+                poly_line = vtkPolyData()
+                poly_line.SetPoints(points)
+                poly_line.SetLines(cell)
 
-            # Create a mapper
-            mapper = vtkPolyDataMapper()
-            mapper.SetInputData(poly_line)
+                # Create a mapper
+                mapper = vtkPolyDataMapper()
+                mapper.SetInputData(poly_line)
+                self.mesh_color = (0, 0, 0)
+
+            else:
+                # Create the polygons
+                polygons = vtkCellArray()
+                for ii in range(mesh.triangles.shape[1]):
+                    polygon = vtkPolygon()
+                    polygon.GetPointIds().SetNumberOfIds(3)  # make a tri
+                    nodeId = mesh.triangles[:,ii]
+                    for jj in range(0, len(nodeId)):
+                        polygon.GetPointIds().SetId(jj, nodeId[jj])
+
+                    # Add the polygon to a list of polygons
+                    polygons.InsertNextCell(polygon)
+
+                # Create a PolyData
+                polygonPolyData = vtkPolyData()
+                polygonPolyData.SetPoints(points)
+                polygonPolyData.SetPolys(polygons)
+
+                # Create a mapper
+                mapper = vtkPolyDataMapper()
+                mapper.SetInputData(polygonPolyData)
 
             # Create an actor
             self.mesh_actors.append(vtkActor())
