@@ -5,7 +5,10 @@ from functools import partial
 from packaging.version import parse as parse_version
 import numpy as np
 import scipy
-import biorbd
+try:
+    import biorbd
+except ImportError:
+    import biorbd_casadi as biorbd
 import pandas
 
 if biorbd.currentLinearAlgebraBackend() == 1:
@@ -320,7 +323,8 @@ class Viz:
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
         self.show_local_ref_frame = show_local_ref_frame
-        if self.model.nbMuscles() > 0:
+        self.biorbd_compiled_with_muscles = hasattr(biorbd.Model, "nbMuscles")
+        if self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0:
             self.show_muscles = show_muscles
         else:
             self.show_muscles = False
@@ -687,12 +691,12 @@ class Viz:
         self.vtk_window.resize(self.vtk_window.size().width() * 2, self.vtk_window.size().height())
 
         # Prepare all the analyses panel
-        self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
+        if self.show_muscles:
+            self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
         if biorbd.currentLinearAlgebraBackend() == 1:
             radio_muscle.setEnabled(False)
         else:
-            if self.model.nbMuscles() == 0:
-                radio_muscle.setEnabled(False)
+            radio_muscle.setEnabled(self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0)
         self.__select_analyses_panel(radio_muscle, 1)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
@@ -867,7 +871,8 @@ class Viz:
         self.movement_slider[0].setValue(1)
 
         # Add the combobox in muscle analyses
-        self.muscle_analyses.add_movement_to_dof_choice()
+        if self.show_muscles:
+            self.muscle_analyses.add_movement_to_dof_choice()
 
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
