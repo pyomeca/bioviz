@@ -5,6 +5,7 @@ from functools import partial
 from packaging.version import parse as parse_version
 import numpy as np
 import scipy
+
 try:
     import biorbd
 except ImportError:
@@ -279,6 +280,7 @@ class Viz:
         show_wrappings=True,
         show_analyses_panel=True,
         background_color=(0.5, 0.5, 0.5),
+        force_wireframe=False,
         **kwargs,
     ):
         """
@@ -305,7 +307,8 @@ class Viz:
             markers_color=(0, 0, 1),
             markers_size=markers_size,
             contacts_size=contacts_size,
-            segments_center_of_mass_size=segments_center_of_mass_size
+            segments_center_of_mass_size=segments_center_of_mass_size,
+            force_wireframe=force_wireframe,
         )
         self.is_executing = False
         self.animation_warning_already_shown = False
@@ -355,8 +358,11 @@ class Viz:
             self.mesh = []
             self.meshPointsInMatrix = InterfacesCollections.MeshPointsInMatrix(self.model)
             for i, vertices in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
-                triangles = np.array([p.face() for p in self.model.meshFaces()[i]], dtype="int32") \
-                    if len(self.model.meshFaces()[i]) else np.ndarray((0, 3), dtype="int32")
+                triangles = (
+                    np.array([p.face() for p in self.model.meshFaces()[i]], dtype="int32")
+                    if len(self.model.meshFaces()[i])
+                    else np.ndarray((0, 3), dtype="int32")
+                )
                 self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
         if self.show_muscles:
             self.model.updateMuscles(self.Q, True)
@@ -391,13 +397,20 @@ class Viz:
                         res = 11  # resolution
                         x = np.sin(np.linspace(0, np.pi, res)) * wrap_cylinder.radius()
                         y = np.cos(np.linspace(0, np.pi, res)) * wrap_cylinder.radius()
-                        z = np.ones((res, )) * wrap_cylinder.length()
-                        vertices = np.concatenate([np.array([0, 0, z[0]])[:, np.newaxis], [x, y, z],
-                                                   np.array([0, 0, -z[0]])[:, np.newaxis], [x, y, -z]], axis=1)
+                        z = np.ones((res,)) * wrap_cylinder.length()
+                        vertices = np.concatenate(
+                            [
+                                np.array([0, 0, z[0]])[:, np.newaxis],
+                                [x, y, z],
+                                np.array([0, 0, -z[0]])[:, np.newaxis],
+                                [x, y, -z],
+                            ],
+                            axis=1,
+                        )
 
-                        tri_0_0 = np.zeros((res-1, 1))
+                        tri_0_0 = np.zeros((res - 1, 1))
                         tri_1_0 = np.arange(1, res)[:, np.newaxis]
-                        tri_2_0 = np.arange(2, res+1)[:, np.newaxis]
+                        tri_2_0 = np.arange(2, res + 1)[:, np.newaxis]
                         tri_0 = np.concatenate([tri_0_0, tri_1_0, tri_2_0], axis=1)
                         tri_1 = tri_0 + res + 1
                         tri_2 = np.concatenate([tri_1_0, tri_2_0, tri_1_0 + res + 1], axis=1)
@@ -451,7 +464,7 @@ class Viz:
         self.__update_muscle_analyses_graphs(False, False, False, False)
 
     def copy_q_to_clipboard(self):
-        pandas.DataFrame(self.Q[np.newaxis, :]).to_clipboard(sep=',', index=False, header=False)
+        pandas.DataFrame(self.Q[np.newaxis, :]).to_clipboard(sep=",", index=False, header=False)
 
     def set_q(self, Q, refresh_window=True):
         """
@@ -916,7 +929,11 @@ class Viz:
         for i, wraps in enumerate(self.wraps_base):
             for j, wrap in enumerate(wraps):
                 if self.model.muscle(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
-                    rt = biorbd.WrappingHalfCylinder(self.model.muscle(i).pathModifier().object(j)).RT(self.model, self.Q).to_array()
+                    rt = (
+                        biorbd.WrappingHalfCylinder(self.model.muscle(i).pathModifier().object(j))
+                        .RT(self.model, self.Q)
+                        .to_array()
+                    )
                     self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
                 else:
                     raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
@@ -926,4 +943,3 @@ class Viz:
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
             self.rt[k] = Rototrans(rt)
         self.vtk_model.update_rt(self.rt)
-
