@@ -5,10 +5,9 @@ from functools import partial
 from packaging.version import parse as parse_version
 import numpy as np
 import scipy
-try:
-	import biorbd_casadi as biorbd
-except:
-	import biorbd
+import xarray as xr
+
+import biorbd
 import pandas
 
 if biorbd.currentLinearAlgebraBackend() == 1:
@@ -272,6 +271,8 @@ class Viz:
         show_global_ref_frame=True,
         show_local_ref_frame=True,
         show_markers=True,
+        show_exp_markers=False,
+        exp_markers=None,
         markers_size=0.010,
         show_contacts=True,
         contacts_size=0.010,
@@ -309,6 +310,13 @@ class Viz:
             segments_center_of_mass_size=segments_center_of_mass_size,
             force_wireframe=force_wireframe,
         )
+        if show_exp_markers:
+            if exp_markers is not None:
+                self.vtk_model_markers = VtkModel(
+                    self.vtk_window, markers_color=(1, 0.5, 0.5), markers_size=markers_size
+                )
+            else:
+                raise RuntimeError("Please set experimental data to show or turn show_exp_markers to False.")
         self.is_executing = False
         self.animation_warning_already_shown = False
 
@@ -320,6 +328,8 @@ class Viz:
 
         # Get the options
         self.show_markers = show_markers
+        self.show_exp_markers = show_exp_markers
+        self.exp_markers = exp_markers
         self.show_contacts = show_contacts
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
@@ -344,6 +354,18 @@ class Viz:
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
             self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
+        if self.show_exp_markers:
+            if isinstance(exp_markers, str):
+                self.exp_markers = Markers.from_c3d(exp_markers)
+                if self.exp_markers.attrs["units"] == "mm":
+                    self.exp_markers = self.exp_markers * 0.001
+            elif isinstance(exp_markers, (np.ndarray, xr.DataArray)):
+                self.exp_markers = Markers(exp_markers)
+            else:
+                raise RuntimeError(
+                    f"Wrong type of experimental markers data ({type(exp_markers)}. "
+                    f"Allowed type are numpy array, data array or .c3d file."
+                )
         if self.show_contacts:
             self.Contacts = InterfacesCollections.Contact(self.model)
             self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
@@ -494,6 +516,8 @@ class Viz:
             self.__set_segments_center_of_mass_from_q()
         if self.show_markers:
             self.__set_markers_from_q()
+        if self.show_exp_markers:
+            self.__set_markers_from_frame()
         if self.show_contacts:
             self.__set_contacts_from_q()
         if self.show_wrappings:
@@ -889,6 +913,13 @@ class Viz:
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
+
+    def __set_markers_from_frame(self):
+        self.vtk_model_markers.update_markers(
+            self.exp_markers[:3, :, self.movement_slider[0].value() : self.movement_slider[0].value() + 1].isel(
+                time=[0]
+            )
+        )
 
     def __set_contacts_from_q(self):
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
