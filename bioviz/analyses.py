@@ -17,9 +17,9 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib import pyplot as plt
 
 try:
-    import biorbd
-except ImportError:
-    import biorbd_casadi as biorbd
+	import biorbd_casadi as biorbd
+except:
+	import biorbd
 
 
 class MuscleAnalyses:
