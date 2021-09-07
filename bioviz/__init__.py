@@ -479,7 +479,7 @@ class Viz:
         for slider in self.sliders:
             slider[1].setValue(0)
             slider[2].setText(f"{0:.2f}")
-        self.set_q(self.Q)
+        self.set_q(self.Q, reset=True)
 
         # Reset also muscle analyses graphs
         self.__update_muscle_analyses_graphs(False, False, False, False)
@@ -487,7 +487,7 @@ class Viz:
     def copy_q_to_clipboard(self):
         pandas.DataFrame(self.Q[np.newaxis, :]).to_clipboard(sep=",", index=False, header=False)
 
-    def set_q(self, Q, refresh_window=True):
+    def set_q(self, Q, refresh_window=True, reset=False):
         """
         Manually update
         Args:
@@ -517,7 +517,7 @@ class Viz:
         if self.show_markers:
             self.__set_markers_from_q()
         if self.show_exp_markers:
-            self.__set_markers_from_frame()
+            self.__set_markers_from_frame(reset=reset)
         if self.show_contacts:
             self.__set_contacts_from_q()
         if self.show_wrappings:
@@ -555,6 +555,9 @@ class Viz:
         self.refresh_window()
 
     def exec(self):
+        if self.exp_markers.shape[2] != self.movement_slider[0].maximum():
+            raise RuntimeError("Number of experimental markers frames must match with number of joint angle frames")
+        
         self.is_executing = True
         while self.vtk_window.is_active:
             self.update()
@@ -914,12 +917,11 @@ class Viz:
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
 
-    def __set_markers_from_frame(self):
-        self.vtk_model_markers.update_markers(
-            self.exp_markers[:3, :, self.movement_slider[0].value() : self.movement_slider[0].value() + 1].isel(
-                time=[0]
-            )
-        )
+    def __set_markers_from_frame(self, reset=False):
+        first_value = 0 if reset else self.movement_slider[0].value()
+        second_value = 1 if reset else self.movement_slider[0].value() + 1
+
+        self.vtk_model_markers.update_markers(self.exp_markers[:3, :, first_value : second_value + 1].isel(time=[0]))
 
     def __set_contacts_from_q(self):
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
