@@ -476,7 +476,7 @@ class Viz:
         for slider in self.sliders:
             slider[1].setValue(0)
             slider[2].setText(f"{0:.2f}")
-        self.set_q(self.Q, reset=True)
+        self.set_q(self.Q)
 
         # Reset also muscle analyses graphs
         self.__update_muscle_analyses_graphs(False, False, False, False)
@@ -484,7 +484,7 @@ class Viz:
     def copy_q_to_clipboard(self):
         pandas.DataFrame(self.Q[np.newaxis, :]).to_clipboard(sep=",", index=False, header=False)
 
-    def set_q(self, Q, refresh_window=True, reset=False):
+    def set_q(self, Q, refresh_window=True):
         """
         Manually update
         Args:
