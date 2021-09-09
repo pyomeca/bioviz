@@ -1,10 +1,13 @@
 numpy
 casadi
-pytest
-matplotlib
 scipy
+pandas
 packaging
 setuptools
+matplotlib
 rbdl
-biorbd >=1.6.1
-biorviz
+biorbd
+vtk
+pytest
+xarray
+PyQt5

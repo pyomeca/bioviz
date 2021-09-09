@@ -1,20 +1,17 @@
 import os
 import copy
 from functools import partial
-
 from packaging.version import parse as parse_version
+
 import numpy as np
 import scipy
-
+import xarray as xr
+import pandas
 try:
     import biorbd
 except ImportError:
     import biorbd_casadi as biorbd
-import pandas
-
-if biorbd.currentLinearAlgebraBackend() == 1:
     import casadi
-
 import pyomeca
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, Rototrans
 from PyQt5.QtWidgets import (
@@ -273,6 +270,7 @@ class Viz:
         show_global_ref_frame=True,
         show_local_ref_frame=True,
         show_markers=True,
+        experimental_markers_color=(1, 1, 1),
         markers_size=0.010,
         show_contacts=True,
         contacts_size=0.010,
@@ -291,25 +289,38 @@ class Viz:
         """
 
         # Load and store the model
+        self.has_model = False
         if loaded_model is not None:
             if not isinstance(loaded_model, biorbd.Model):
                 raise TypeError("loaded_model should be of a biorbd.Model type")
             self.model = loaded_model
+            self.has_model = True
         elif model_path is not None:
             self.model = biorbd.Model(model_path)
+            self.has_model = True
         else:
-            raise ValueError("loaded_model or model_path must be provided")
+            self.model = biorbd.Model()
+            show_meshes = False
+            show_global_center_of_mass = False
+            show_segments_center_of_mass = False
+            show_local_ref_frame = False
+            show_markers = False
+            show_contacts = False
+            show_muscles = False
+            show_wrappings = False
 
         # Create the plot
         self.vtk_window = VtkWindow(background_color=background_color)
+        self.vtk_markers_size = markers_size
         self.vtk_model = VtkModel(
             self.vtk_window,
             markers_color=(0, 0, 1),
-            markers_size=markers_size,
+            markers_size=self.vtk_markers_size,
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
             force_wireframe=force_wireframe,
         )
+        self.vtk_model_markers: VtkModel = None
         self.is_executing = False
         self.animation_warning_already_shown = False
 
@@ -321,12 +332,17 @@ class Viz:
 
         # Get the options
         self.show_markers = show_markers
+        self.show_experimental_markers = False
+        self.experimental_markers = None
+        self.experimental_markers_color = experimental_markers_color
+
         self.show_contacts = show_contacts
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
         self.show_local_ref_frame = show_local_ref_frame
         self.biorbd_compiled_with_muscles = hasattr(biorbd.Model, "nbMuscles")
+
         if self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0:
             self.show_muscles = show_muscles
         else:
@@ -345,6 +361,7 @@ class Viz:
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
             self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
+
         if self.show_contacts:
             self.Contacts = InterfacesCollections.Contact(self.model)
             self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
@@ -426,11 +443,12 @@ class Viz:
 
         self.show_analyses_panel = show_analyses_panel
         if self.show_analyses_panel:
-            self.muscle_analyses = []
             self.palette_active = QPalette()
             self.palette_inactive = QPalette()
             self.set_viz_palette()
-            self.animated_Q = []
+            self.animated_Q = None
+
+            self.muscle_analyses = []
 
             self.play_stop_push_button = []
             self.is_animating = False
@@ -544,105 +562,106 @@ class Viz:
         self.palette_inactive.setColor(QPalette.WindowText, QColor(Qt.gray))
 
     def add_options_panel(self):
-        # Prepare the sliders
-        options_layout = QVBoxLayout()
+        if self.has_model:
+            # Prepare the sliders
+            options_layout = QVBoxLayout()
 
-        options_layout.addStretch()  # Centralize the sliders
-        sliders_layout = QVBoxLayout()
-        max_label_width = -1
+            options_layout.addStretch()  # Centralize the sliders
+            sliders_layout = QVBoxLayout()
+            max_label_width = -1
 
-        # Get min and max for all dof
-        ranges = []
-        for i in range(self.model.nbSegment()):
-            seg = self.model.segment(i)
-            for r in seg.QRanges():
-                ranges.append([r.min(), r.max()])
+            # Get min and max for all dof
+            ranges = []
+            for i in range(self.model.nbSegment()):
+                seg = self.model.segment(i)
+                for r in seg.QRanges():
+                    ranges.append([r.min(), r.max()])
 
-        for i in range(self.model.nbQ()):
-            slider_layout = QHBoxLayout()
-            sliders_layout.addLayout(slider_layout)
+            for i in range(self.model.nbQ()):
+                slider_layout = QHBoxLayout()
+                sliders_layout.addLayout(slider_layout)
 
-            # Add a name
-            name_label = QLabel()
-            name = f"{self.model.nameDof()[i].to_string()}"
-            name_label.setText(name)
-            name_label.setPalette(self.palette_active)
-            label_width = name_label.fontMetrics().boundingRect(name_label.text()).width()
-            if label_width > max_label_width:
-                max_label_width = label_width
-            slider_layout.addWidget(name_label)
+                # Add a name
+                name_label = QLabel()
+                name = f"{self.model.nameDof()[i].to_string()}"
+                name_label.setText(name)
+                name_label.setPalette(self.palette_active)
+                label_width = name_label.fontMetrics().boundingRect(name_label.text()).width()
+                if label_width > max_label_width:
+                    max_label_width = label_width
+                slider_layout.addWidget(name_label)
 
-            # Add the slider
-            slider = QSlider(Qt.Horizontal)
-            slider.setMinimumSize(100, 0)
-            slider.setMinimum(int(ranges[i][0] * self.double_factor))
-            slider.setMaximum(int(ranges[i][1] * self.double_factor))
-            slider.setPageStep(self.double_factor)
-            slider.setValue(0)
-            slider.valueChanged.connect(self.__move_avatar_from_sliders)
-            slider.sliderReleased.connect(partial(self.__update_muscle_analyses_graphs, False, False, False, False))
-            slider_layout.addWidget(slider)
+                # Add the slider
+                slider = QSlider(Qt.Horizontal)
+                slider.setMinimumSize(100, 0)
+                slider.setMinimum(int(ranges[i][0] * self.double_factor))
+                slider.setMaximum(int(ranges[i][1] * self.double_factor))
+                slider.setPageStep(self.double_factor)
+                slider.setValue(0)
+                slider.valueChanged.connect(self.__move_avatar_from_sliders)
+                slider.sliderReleased.connect(partial(self.__update_muscle_analyses_graphs, False, False, False, False))
+                slider_layout.addWidget(slider)
 
-            # Add the value
-            value_label = QLabel()
-            value_label.setText(f"{0:.2f}")
-            value_label.setPalette(self.palette_active)
-            slider_layout.addWidget(value_label)
+                # Add the value
+                value_label = QLabel()
+                value_label.setText(f"{0:.2f}")
+                value_label.setPalette(self.palette_active)
+                slider_layout.addWidget(value_label)
 
-            # Add to the main sliders
-            self.sliders.append((name_label, slider, value_label))
-        # Adjust the size of the names
-        for name_label, _, _ in self.sliders:
-            name_label.setFixedWidth(max_label_width + 1)
+                # Add to the main sliders
+                self.sliders.append((name_label, slider, value_label))
+            # Adjust the size of the names
+            for name_label, _, _ in self.sliders:
+                name_label.setFixedWidth(max_label_width + 1)
 
-        # Put the sliders in a scrollable area
-        sliders_widget = QWidget()
-        sliders_widget.setLayout(sliders_layout)
-        sliders_scroll = QScrollArea()
-        sliders_scroll.setFrameShape(0)
-        sliders_scroll.setWidgetResizable(True)
-        sliders_scroll.setWidget(sliders_widget)
-        options_layout.addWidget(sliders_scroll)
+            # Put the sliders in a scrollable area
+            sliders_widget = QWidget()
+            sliders_widget.setLayout(sliders_layout)
+            sliders_scroll = QScrollArea()
+            sliders_scroll.setFrameShape(0)
+            sliders_scroll.setWidgetResizable(True)
+            sliders_scroll.setWidget(sliders_widget)
+            options_layout.addWidget(sliders_scroll)
 
-        # Add reset button
-        button_layout = QHBoxLayout()
-        options_layout.addLayout(button_layout)
-        reset_push_button = QPushButton("Reset")
-        reset_push_button.setPalette(self.palette_active)
-        reset_push_button.released.connect(self.reset_q)
-        button_layout.addWidget(reset_push_button)
-        copyq_push_button = QPushButton("Copy Q to clipboard")
-        copyq_push_button.setPalette(self.palette_active)
-        copyq_push_button.released.connect(self.copy_q_to_clipboard)
-        button_layout.addWidget(copyq_push_button)
+            # Add reset button
+            button_layout = QHBoxLayout()
+            options_layout.addLayout(button_layout)
+            reset_push_button = QPushButton("Reset")
+            reset_push_button.setPalette(self.palette_active)
+            reset_push_button.released.connect(self.reset_q)
+            button_layout.addWidget(reset_push_button)
+            copyq_push_button = QPushButton("Copy Q to clipboard")
+            copyq_push_button.setPalette(self.palette_active)
+            copyq_push_button.released.connect(self.copy_q_to_clipboard)
+            button_layout.addWidget(copyq_push_button)
 
-        # Add the radio button for analyses
-        option_analyses_group = QGroupBox()
-        option_analyses_layout = QVBoxLayout()
-        # Add text
-        analyse_text = QLabel()
-        analyse_text.setPalette(self.palette_active)
-        analyse_text.setText("Analyses")
-        option_analyses_layout.addWidget(analyse_text)
-        # Add the no analyses
-        radio_none = QRadioButton()
-        radio_none.setPalette(self.palette_active)
-        radio_none.setChecked(True)
-        radio_none.toggled.connect(lambda: self.__select_analyses_panel(radio_none, 0))
-        radio_none.setText("None")
-        option_analyses_layout.addWidget(radio_none)
-        # Add the muscles analyses
-        radio_muscle = QRadioButton()
-        radio_muscle.setPalette(self.palette_active)
-        radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 1))
-        radio_muscle.setText("Muscles")
-        option_analyses_layout.addWidget(radio_muscle)
-        # Add the layout to the interface
-        option_analyses_group.setLayout(option_analyses_layout)
-        options_layout.addWidget(option_analyses_group)
+            # Add the radio button for analyses
+            option_analyses_group = QGroupBox()
+            option_analyses_layout = QVBoxLayout()
+            # Add text
+            analyse_text = QLabel()
+            analyse_text.setPalette(self.palette_active)
+            analyse_text.setText("Analyses")
+            option_analyses_layout.addWidget(analyse_text)
+            # Add the no analyses
+            radio_none = QRadioButton()
+            radio_none.setPalette(self.palette_active)
+            radio_none.setChecked(True)
+            radio_none.toggled.connect(lambda: self.__select_analyses_panel(radio_none, 0))
+            radio_none.setText("None")
+            option_analyses_layout.addWidget(radio_none)
+            # Add the muscles analyses
+            radio_muscle = QRadioButton()
+            radio_muscle.setPalette(self.palette_active)
+            radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 1))
+            radio_muscle.setText("Muscles")
+            option_analyses_layout.addWidget(radio_muscle)
+            # Add the layout to the interface
+            option_analyses_group.setLayout(option_analyses_layout)
+            options_layout.addWidget(option_analyses_group)
 
-        # Finalize the options panel
-        options_layout.addStretch()  # Centralize the sliders
+            # Finalize the options panel
+            options_layout.addStretch()  # Centralize the sliders
 
         # Animation panel
         animation_layout = QVBoxLayout()
@@ -651,10 +670,20 @@ class Viz:
         # Add the animation slider
         animation_slider_layout = QHBoxLayout()
         animation_layout.addLayout(animation_slider_layout)
-        load_push_button = QPushButton("Load movement")
-        load_push_button.setPalette(self.palette_active)
-        load_push_button.released.connect(self.__load_movement_from_button)
-        animation_slider_layout.addWidget(load_push_button)
+
+        load_buttons_layout = QVBoxLayout()
+        if self.has_model:
+            load_push_button = QPushButton("Load movement")
+            load_push_button.setPalette(self.palette_active)
+            load_push_button.released.connect(self.__load_movement_from_button)
+            load_buttons_layout.addWidget(load_push_button)
+
+        load_c3d_push_button = QPushButton("Load C3D")
+        load_c3d_push_button.setPalette(self.palette_active)
+        load_c3d_push_button.released.connect(self.__load_experimental_data_from_button)
+        load_buttons_layout.addWidget(load_c3d_push_button)
+
+        animation_slider_layout.addLayout(load_buttons_layout)
 
         # Controllers
         self.play_stop_push_button = QPushButton()
@@ -695,22 +724,26 @@ class Viz:
         self.movement_slider = (slider, frame_label)
 
         # Global placement of the window
-        self.vtk_window.main_layout.addLayout(options_layout, 0, 0)
-        self.vtk_window.main_layout.addLayout(animation_layout, 0, 1)
-        self.vtk_window.main_layout.setColumnStretch(0, 1)
-        self.vtk_window.main_layout.setColumnStretch(1, 2)
+        if self.has_model:
+            self.vtk_window.main_layout.addLayout(options_layout, 0, 0)
+            self.vtk_window.main_layout.addLayout(animation_layout, 0, 1)
+            self.vtk_window.main_layout.setColumnStretch(0, 1)
+            self.vtk_window.main_layout.setColumnStretch(1, 2)
+        else:
+            self.vtk_window.main_layout.addLayout(animation_layout, 0, 0)
 
         # Change the size of the window to account for the new sliders
         self.vtk_window.resize(self.vtk_window.size().width() * 2, self.vtk_window.size().height())
 
         # Prepare all the analyses panel
-        if self.show_muscles:
-            self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
-        if biorbd.currentLinearAlgebraBackend() == 1:
-            radio_muscle.setEnabled(False)
-        else:
-            radio_muscle.setEnabled(self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0)
-        self.__select_analyses_panel(radio_muscle, 1)
+        if self.has_model:
+            if self.show_muscles:
+                self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
+            if biorbd.currentLinearAlgebraBackend() == 1:
+                radio_muscle.setEnabled(False)
+            else:
+                radio_muscle.setEnabled(self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0)
+            self.__select_analyses_panel(radio_muscle, 1)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
         if not radio_button.isChecked():
@@ -784,8 +817,14 @@ class Viz:
     def __animate_from_slider(self):
         # Move the avatar
         self.movement_slider[1].setText(f"{self.movement_slider[0].value()}")
-        self.Q = copy.copy(self.animated_Q[self.movement_slider[0].value() - 1])  # 1-based
-        self.set_q(self.Q)
+        if self.animated_Q is not None:
+            t_slider = self.movement_slider[0].value() - 1
+            t = t_slider if t_slider < self.animated_Q.shape[0] else self.animated_Q.shape[0] - 1
+            self.Q = copy.copy(self.animated_Q[t, :])  # 1-based
+            self.set_q(self.Q)
+
+        if self.show_experimental_markers:
+            self.__set_experimental_markers_from_frame()
 
         # Update graph of muscle analyses
         self.__update_muscle_analyses_graphs(True, True, True, True)
@@ -867,6 +906,13 @@ class Viz:
             self.__start_stop_animation()
 
     def __load_movement(self):
+        self.__set_movement_slider()
+
+        # Add the combobox in muscle analyses
+        if self.show_muscles:
+            self.muscle_analyses.add_movement_to_dof_choice()
+
+    def __set_movement_slider(self):
         # Activate the start button
         self.is_animating = False
         self.play_stop_push_button.setEnabled(True)
@@ -875,7 +921,9 @@ class Viz:
         # Update the slider bar and frame count
         self.movement_slider[0].setEnabled(True)
         self.movement_slider[0].setMinimum(1)
-        self.movement_slider[0].setMaximum(self.animated_Q.shape[0])
+        experiment_shape = 0 if self.experimental_markers is None else self.experimental_markers.shape[2]
+        q_shape = 0 if self.animated_Q is None else self.animated_Q.shape[0]
+        self.movement_slider[0].setMaximum(max(q_shape, experiment_shape))
         pal = QPalette()
         pal.setColor(QPalette.WindowText, QColor(Qt.black))
         self.movement_slider[1].setPalette(pal)
@@ -883,13 +931,55 @@ class Viz:
         # Put back to first frame
         self.movement_slider[0].setValue(1)
 
-        # Add the combobox in muscle analyses
-        if self.show_muscles:
-            self.muscle_analyses.add_movement_to_dof_choice()
+    def __load_experimental_data_from_button(self):
+        # Load the actual movement
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        file_name = QFileDialog.getOpenFileName(
+            self.vtk_window, "Data to load", "", "C3D (*.c3d)", options=options
+        )
+        if not file_name[0]:
+            return
+        self.load_experimental_markers(file_name[0])
+
+    def load_c3d(self, data, auto_start=True, ignore_animation_warning=True):
+        self.load_experimental_markers(data, auto_start, ignore_animation_warning)
+
+    def load_experimental_markers(self, data, auto_start=True, ignore_animation_warning=True):
+        if isinstance(data, str):
+            self.experimental_markers = Markers.from_c3d(data)
+            if self.experimental_markers.units == "mm":
+                self.experimental_markers = self.experimental_markers * 0.001
+
+        elif isinstance(data, (np.ndarray, xr.DataArray)):
+            self.experimental_markers = Markers(data)
+
+        else:
+            raise RuntimeError(
+                f"Wrong type of experimental markers data ({type(data)}. "
+                f"Allowed type are numpy array (3xNxT), data array (3xNxT) or .c3d file (str)."
+            )
+
+        self.vtk_model_markers = VtkModel(
+            self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size
+        )
+
+        self.__set_movement_slider()
+        self.show_experimental_markers = True
+
+        if ignore_animation_warning:
+            self.animation_warning_already_shown = True
+        if auto_start:
+            self.__start_stop_animation()
 
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
+
+    def __set_experimental_markers_from_frame(self):
+        t_slider = self.movement_slider[0].value() - 1
+        t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
+        self.vtk_model_markers.update_markers(self.experimental_markers.isel(time=t))
 
     def __set_contacts_from_q(self):
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
