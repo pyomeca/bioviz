@@ -264,6 +264,7 @@ class Viz:
         model_path=None,
         loaded_model=None,
         show_meshes=True,
+        patch_color=(0.89, 0.855, 0.788),
         show_global_center_of_mass=True,
         show_segments_center_of_mass=True,
         segments_center_of_mass_size=0.005,
@@ -315,6 +316,7 @@ class Viz:
         self.vtk_model = VtkModel(
             self.vtk_window,
             markers_color=(0, 0, 1),
+            patch_color=patch_color,
             markers_size=self.vtk_markers_size,
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
