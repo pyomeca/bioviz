@@ -695,7 +695,7 @@ class VtkModel(QtWidgets.QWidget):
             if draw_patch:
                 poly_type = vtkPolygon
                 n_ids = 3
-                color = self.patch_color
+                color = self.patch_color[i]
             else:
                 poly_type = vtkPolyLine
                 n_ids = 4

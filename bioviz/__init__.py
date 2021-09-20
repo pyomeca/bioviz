@@ -204,6 +204,20 @@ class InterfacesCollections:
                 for m in g:
                     self.data.append(np.array(m(Q)))
 
+    class MeshColor:
+        @staticmethod
+        def get_color(model):
+            if biorbd.currentLinearAlgebraBackend() == 0:
+                return [model.segment(i).characteristics().mesh().color().to_array() for i in range(model.nbSegment())]
+            elif biorbd.currentLinearAlgebraBackend() == 1:
+                color = []
+                for i in range(model.nbSegment()):
+                    func = biorbd.to_casadi_func("color", model.segment(i).characteristics().mesh().color().to_mx())
+                    color.append(np.array(func()["o0"])[:, 0])
+                return color
+            else:
+                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
+
     class MeshPointsInMatrix(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
@@ -264,7 +278,6 @@ class Viz:
         model_path=None,
         loaded_model=None,
         show_meshes=True,
-        patch_color=(0.89, 0.855, 0.788),
         show_global_center_of_mass=True,
         show_segments_center_of_mass=True,
         segments_center_of_mass_size=0.005,
@@ -316,7 +329,7 @@ class Viz:
         self.vtk_model = VtkModel(
             self.vtk_window,
             markers_color=(0, 0, 1),
-            patch_color=patch_color,
+            patch_color=InterfacesCollections.MeshColor.get_color(self.model),
             markers_size=self.vtk_markers_size,
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
