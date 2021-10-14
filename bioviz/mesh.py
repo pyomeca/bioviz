@@ -3,12 +3,7 @@ from pyomeca.markers import Markers
 
 
 class Mesh(Markers):
-    def __new__(
-        cls,
-        vertex=None,
-        triangles=np.ndarray((3, 0)),
-        **kwargs,
-    ):
+    def __new__(cls, vertex=None, triangles=np.ndarray((3, 0)), **kwargs):
         if isinstance(triangles, list):
             triangles = np.array(triangles)
 
