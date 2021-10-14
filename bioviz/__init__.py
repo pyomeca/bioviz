@@ -7,6 +7,7 @@ import numpy as np
 import scipy
 import xarray as xr
 import pandas
+
 try:
     import biorbd
 except ImportError:
@@ -280,6 +281,7 @@ class Viz:
         show_analyses_panel=True,
         background_color=(0.5, 0.5, 0.5),
         force_wireframe=False,
+        experimental_reaction_forces_colors=(85, 78, 0),
         **kwargs,
     ):
         """
@@ -321,6 +323,7 @@ class Viz:
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
             force_wireframe=force_wireframe,
+            reaction_force_color=experimental_reaction_forces_colors,
         )
         self.vtk_model_markers: VtkModel = None
         self.is_executing = False
@@ -337,6 +340,10 @@ class Viz:
         self.show_experimental_markers = False
         self.experimental_markers = None
         self.experimental_markers_color = experimental_markers_color
+        self.show_experimental_reaction_forces = False
+        self.experimental_reaction_forces = None
+        self.segment_reaction_forces = []
+        self.experimental_reaction_forces_color = experimental_reaction_forces_colors
 
         self.show_contacts = show_contacts
         self.show_global_ref_frame = show_global_ref_frame
@@ -828,6 +835,9 @@ class Viz:
         if self.show_experimental_markers:
             self.__set_experimental_markers_from_frame()
 
+        if self.show_experimental_reaction_forces:
+            self.__set_experimental_reaction_forces_from_frame()
+
         # Update graph of muscle analyses
         self.__update_muscle_analyses_graphs(True, True, True, True)
 
@@ -923,7 +933,12 @@ class Viz:
         # Update the slider bar and frame count
         self.movement_slider[0].setEnabled(True)
         self.movement_slider[0].setMinimum(1)
-        experiment_shape = 0 if self.experimental_markers is None else self.experimental_markers.shape[2]
+        experiment_shape = 0
+        if self.experimental_reaction_forces is not None:
+            experiment_shape = self.experimental_reaction_forces.shape[2]
+        if self.experimental_markers is not None:
+            experiment_shape = max(self.experimental_markers.shape[2], experiment_shape)
+
         q_shape = 0 if self.animated_Q is None else self.animated_Q.shape[0]
         self.movement_slider[0].setMaximum(max(q_shape, experiment_shape))
         pal = QPalette()
@@ -937,9 +952,7 @@ class Viz:
         # Load the actual movement
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        file_name = QFileDialog.getOpenFileName(
-            self.vtk_window, "Data to load", "", "C3D (*.c3d)", options=options
-        )
+        file_name = QFileDialog.getOpenFileName(self.vtk_window, "Data to load", "", "C3D (*.c3d)", options=options)
         if not file_name[0]:
             return
         self.load_experimental_markers(file_name[0])
@@ -958,7 +971,7 @@ class Viz:
 
         else:
             raise RuntimeError(
-                f"Wrong type of experimental markers data ({type(data)}. "
+                f"Wrong type of experimental markers data ({type(data)}). "
                 f"Allowed type are numpy array (3xNxT), data array (3xNxT) or .c3d file (str)."
             )
 
@@ -974,6 +987,31 @@ class Viz:
         if auto_start:
             self.__start_stop_animation()
 
+    def load_experimental_reaction_forces(self, segments, data, auto_start=True, ignore_animation_warning=True):
+        if isinstance(data, (np.ndarray, xr.DataArray)):
+            self.experimental_reaction_forces = data if isinstance(data, xr.DataArray) else xr.DataArray(data)
+        else:
+            raise RuntimeError(
+                f"Wrong type of experimental reaction force data ({type(data)}). "
+                f"Allowed type are numpy array (SxNxT), data array (SxNxT)."
+            )
+
+        self.segment_reaction_forces = segments if isinstance(segments, (list, np.ndarray)) else [segments]
+
+        if len(segments) != self.experimental_reaction_forces.shape[0]:
+            raise RuntimeError(
+                "Number of segment must match number of experimental reaction forces. "
+                f"You have {len(segments)} and {self.experimental_reaction_forces.shape[0]}."
+            )
+
+        self.show_experimental_reaction_forces = True
+        self.__set_movement_slider()
+
+        if ignore_animation_warning:
+            self.animation_warning_already_shown = True
+        if auto_start:
+            self.__start_stop_animation()
+
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
@@ -981,7 +1019,45 @@ class Viz:
     def __set_experimental_markers_from_frame(self):
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
-        self.vtk_model_markers.update_markers(self.experimental_markers.isel(time=t))
+        self.vtk_model_markers.update_markers(self.experimental_markers[:, :, t : t + 1].isel(time=[0]))
+
+    def __set_experimental_reaction_forces_from_frame(self):
+        segment_names = []
+        for i in range(self.model.nbSegment()):
+            segment_names.append(self.model.segment(i).name().to_string())
+        global_jcs = self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)
+        segment_jcs = []
+
+        segment_idx = []
+        for segment in self.segment_reaction_forces:
+            if isinstance(segment, str):
+                segment_jcs.append(global_jcs[segment_names.index(segment)])
+            elif isinstance(segment, (float, int)):
+                segment_jcs.append(global_jcs[segment])
+            else:
+                raise RuntimeError("Wrong type of segment.")
+
+        max_forces = []
+        for i, forces in enumerate(self.experimental_reaction_forces):
+            max_forces.append(
+                max(
+                    np.sqrt(
+                        (forces[3, :] - forces[0, :]) ** 2
+                        + (forces[4, :] - forces[1, :]) ** 2
+                        + (forces[5, :] - forces[2, :]) ** 2
+                    )
+                )
+            )
+
+        t_slider = self.movement_slider[0].value() - 1
+        t = (
+            t_slider
+            if t_slider < self.experimental_reaction_forces.shape[2]
+            else self.experimental_reaction_forces.shape[2] - 1
+        )
+        self.vtk_model.update_reaction_force(
+            segment_jcs, self.experimental_reaction_forces[:, :, t : t + 1], max_forces
+        )
 
     def __set_contacts_from_q(self):
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
