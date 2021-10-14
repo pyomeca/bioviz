@@ -25,7 +25,15 @@ from vtk import (
     vtkWindowToImageFilter,
     vtkPolygon,
     vtkExtractEdges,
+    vtkArrowSource,
+    vtkNamedColors,
+    vtkMath,
+    vtkMatrix4x4,
+    vtkMinimalStandardRandomSequence,
+    vtkTransform,
+    vtkTransformPolyDataFilter,
 )
+
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from pyomeca import Markers, Rototrans
@@ -168,6 +176,8 @@ class VtkModel(QtWidgets.QWidget):
         muscle_opacity=1.0,
         rt_length=0.1,
         rt_width=2,
+        reaction_force_color=(85, 78, 0),
+        reaction_force_opacity=1.0,
     ):
         """
         Creates a model that will holds things to plot
@@ -243,6 +253,13 @@ class VtkModel(QtWidgets.QWidget):
         self.wrapping_color = wrapping_color
         self.wrapping_opacity = wrapping_opacity
         self.wrapping_actors = list()
+
+        self.all_reaction_forces = []
+        self.reaction_force_centers = []
+        self.max_forces = []
+        self.reaction_force_color = reaction_force_color
+        self.reaction_force_opacity = reaction_force_opacity
+        self.reaction_force_actors = list()
 
     def set_markers_color(self, markers_color):
         """
@@ -1212,3 +1229,179 @@ class VtkModel(QtWidgets.QWidget):
 
         self.parent_window.ren.AddActor(actor)
         self.parent_window.ren.ResetCamera()
+
+    def set_reaction_force_color(self, reaction_force_color):
+        """
+        Dynamically change the color of the reaction_force
+        Parameters
+        ----------
+        reaction_force_color : tuple(int)
+            Color the reaction force should be drawn (1 is max brightness)
+        """
+        self.reaction_force_color = reaction_force_color
+        self.update_reaction_force(self.reaction_force_centers, self.all_reaction_force, self.max_forces)
+
+    def set_reaction_force_opacity(self, reaction_force_opacity):
+        """
+        Dynamically change the opacity of the reaction_force
+        Parameters
+        ----------
+        reaction_force_opacity : float
+            Opacity of the reaction force (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.reaction_force_opacity = reaction_force_opacity
+        self.update_reaction_force(self.reaction_force_centers, self.all_reaction_force, self.max_forces)
+
+    def new_reaction_force_set(self, segment_jcs, all_forces, max_forces):
+        """
+        Define a new reaction force set.
+        Parameters
+        ----------
+        segment_jcs : list
+            list of transformation for each segment
+        all_forces : np.ndarray
+            force reaction array. Dims are : (1) segments, (2) start and end point arrow coordinates (3) frame
+        max_forces : list
+            list of maximal force for each segment on all frames
+
+        """
+        # Arrow visualization parameters
+        arrow_source = vtkArrowSource()
+        arrow_source.SetTipResolution(15)
+        arrow_source.SetShaftResolution(8)
+        arrow_source.SetShaftRadius(0.015)
+        arrow_source.SetTipLength(0.2)
+        arrow_source.SetTipRadius(0.08)
+
+        self.arrow_source = arrow_source
+
+        transform = vtkTransform()
+
+        transform_polydata = vtkTransformPolyDataFilter()
+        transform_polydata.SetTransform(transform)
+        transform_polydata.SetInputConnection(arrow_source.GetOutputPort())
+
+        self.all_reaction_forces = all_forces
+        # Remove previous actors from the scene
+        for actor in self.reaction_force_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.reaction_force_actors = list()
+
+        for i, forces in enumerate(all_forces):
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputConnection(transform_polydata.GetOutputPort())
+
+            # Create an actor
+            self.reaction_force_actors.append(vtkActor())
+            self.reaction_force_actors[i].SetMapper(mapper)
+            self.reaction_force_actors[i].GetProperty().SetColor(self.reaction_force_color)
+            self.reaction_force_actors[i].GetProperty().SetOpacity(self.reaction_force_opacity)
+
+            self.parent_window.ren.AddActor(self.reaction_force_actors[i])
+            self.parent_window.ren.ResetCamera()
+
+        # Set rt orientations
+        self.n_force = len(all_forces)
+        self.update_reaction_force(segment_jcs, all_forces, max_forces)
+
+    @staticmethod
+    def compute_basis_reaction_force(start_point, end_point):
+        """
+        Compute basis to plot vtk arrow object from two points.
+        Parameters
+        ----------
+        start_point : list
+            list of the 3 coordinates for the arrow starting point
+        end_point: list
+            list of the 3 coordinates for the arrow ending point
+        Return
+        ----------
+            matrix of the transformation and the length of the arrow.
+        """
+        # Compute a basis
+        normalizedX = [0.0] * 3
+        normalizedY = [0.0] * 3
+        normalizedZ = [0.0] * 3
+
+        # The X axis is a vector from start to end
+        vtkMath.Subtract(end_point, start_point, normalizedX)
+        length = vtkMath.Norm(normalizedX)
+        vtkMath.Normalize(normalizedX)
+
+        rng = vtkMinimalStandardRandomSequence()
+        rng.SetSeed(8775070)
+        max_r = 10.0
+
+        # The Z axis is an arbitrary vector cross X
+        arbitrary = [0.0] * 3
+        for i in range(0, 3):
+            arbitrary[i] = rng.GetRangeValue(-max_r, max_r)
+            rng.Next()
+        vtkMath.Cross(normalizedX, arbitrary, normalizedZ)
+        vtkMath.Normalize(normalizedZ)
+
+        # The Y axis is Z cross X
+        vtkMath.Cross(normalizedZ, normalizedX, normalizedY)
+        matrix = vtkMatrix4x4()
+
+        # Create the direction cosine matrix
+        matrix.Identity()
+        for i in range(0, 3):
+            matrix.SetElement(i, 0, normalizedX[i])
+            matrix.SetElement(i, 1, normalizedY[i])
+            matrix.SetElement(i, 2, normalizedZ[i])
+
+        return matrix, length
+
+    def update_reaction_force(self, segment_jcs, all_forces, max_forces):
+        """
+        Update reaction force on the screen (but do not repaint)
+        Parameters
+        ----------
+        segment_jcs : list
+            list of roto-translation matrix for each segment
+        all_forces : np.ndarray
+            force reaction array. Dims are : (1) nb of segments, (2) arrow start and end points coordinates (3) frame
+        max_forces : list
+            list of maximal force for each segment compute from all frames
+        """
+        if self.all_reaction_forces == []:
+            self.new_reaction_force_set(segment_jcs, all_forces, max_forces)
+            return  # Prevent calling update_markers recursively
+
+        self.max_forces = max_forces
+        self.all_reaction_forces = all_forces
+        for i, forces in enumerate(all_forces):
+            # Express force from current segment basis to global basis
+            rot_seg = segment_jcs[i][:3, :3]
+            trans_seg = segment_jcs[i][:-1, 3:]
+            force_end = np.dot(rot_seg, forces[3:, :])
+            force_end = force_end + trans_seg
+            force_start = np.dot(rot_seg, forces[:3, :])
+            force_start = force_start + trans_seg
+            start_point = [force_start[0, :], force_start[1, :], force_start[2, :]]
+            end_point = [force_end[0, :], force_end[1, :], force_end[2, :]]
+            # Compute a basis for the arrow scaling
+            matrix, length = self.compute_basis_reaction_force(start_point, end_point)
+            # Normalize force for visualization
+            length = length * 0.2 / max_forces[i]
+            transform = vtkTransform()
+            transform.Translate(start_point)
+            transform.Concatenate(matrix)
+            transform.Scale(length, length, length)
+
+            # Create an actor
+            mapper = self.reaction_force_actors[i].GetMapper()
+            transform_polydata = vtkTransformPolyDataFilter()
+            transform_polydata.SetTransform(transform)
+            transform_polydata.SetInputConnection(self.arrow_source.GetOutputPort())
+
+            mapper.SetInputConnection(transform_polydata.GetOutputPort())
+
+            self.reaction_force_actors[i].SetMapper(mapper)
+            self.reaction_force_actors[i].GetProperty().SetColor(self.reaction_force_color)
+            self.reaction_force_actors[i].GetProperty().SetOpacity(self.reaction_force_opacity)
