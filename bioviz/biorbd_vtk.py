@@ -158,6 +158,9 @@ class VtkModel(QtWidgets.QWidget):
         contacts_color=(0, 1, 0),
         contacts_size=0.01,
         contacts_opacity=1.0,
+        soft_contacts_color=(1, 0.35, 0),
+        soft_contacts_size=0.1,
+        soft_contacts_opacity=0.5,
         global_ref_frame_length=0.15,
         global_ref_frame_width=5,
         global_center_of_mass_size=0.0075,
@@ -213,6 +216,12 @@ class VtkModel(QtWidgets.QWidget):
         self.contacts_color = contacts_color
         self.contacts_opacity = contacts_opacity
         self.contacts_actors = list()
+
+        self.soft_contacts = Markers()
+        self.soft_contacts_size = soft_contacts_size
+        self.soft_contacts_color = soft_contacts_color
+        self.soft_contacts_opacity = soft_contacts_opacity
+        self.soft_contacts_actors = list()
 
         self.has_global_ref_frame = False
         self.global_ref_frame_length = global_ref_frame_length
@@ -454,6 +463,103 @@ class VtkModel(QtWidgets.QWidget):
             source = vtkSphereSource()
             source.SetCenter(contacts[0:3, i])
             source.SetRadius(self.contacts_size)
+            mapper.SetInputConnection(source.GetOutputPort())
+
+    def set_soft_contacts_color(self, soft_contacts_color):
+        """
+        Dynamically change the color of the soft_contacts
+        Parameters
+        ----------
+        soft_contacts_color : tuple(int)
+            Color the soft_contacts should be drawn (1 is max brightness)
+        """
+        self.soft_contacts_color = soft_contacts_color
+        self.update_soft_contacts(self.soft_contacts)
+
+    def set_soft_contacts_size(self, soft_contacts_size):
+        """
+        Dynamically change the size of the soft_contacts
+        Parameters
+        ----------
+        soft_contacts_size : float
+            Size the soft_contacts should be drawn
+        """
+        self.soft_contacts_size = soft_contacts_size
+        self.update_soft_contacts(self.soft_contacts)
+
+    def set_soft_contacts_opacity(self, soft_contacts_opacity):
+        """
+        Dynamically change the opacity of the soft_contacts
+        Parameters
+        ----------
+        soft_contacts_opacity : float
+            Opacity of the soft_contacts (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.soft_contacts_opacity = soft_contacts_opacity
+        self.update_soft_contacts(self.soft_contacts)
+
+    def new_soft_contacts_set(self, soft_contacts):
+        """
+        Define a new marker set. This function must be called each time the number of soft_contacts change
+        Parameters
+        ----------
+        soft_contacts : Markers3d
+            One frame of soft_contacts
+
+        """
+        if soft_contacts.time.size != 1:
+            raise IndexError("soft_contacts should be from one frame only")
+        self.soft_contacts = soft_contacts
+
+        # Remove previous actors from the scene
+        for actor in self.soft_contacts_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.soft_contacts_actors = list()
+
+        # Create the geometry of a point (the coordinate) points = vtk.vtkPoints()
+        for i in range(soft_contacts.channel.size):
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+
+            # Create an actor
+            self.soft_contacts_actors.append(vtkActor())
+            self.soft_contacts_actors[i].SetMapper(mapper)
+
+            self.parent_window.ren.AddActor(self.soft_contacts_actors[i])
+            self.parent_window.ren.ResetCamera()
+
+        # Update marker position
+        self.update_soft_contacts(self.soft_contacts)
+
+    def update_soft_contacts(self, soft_contacts):
+        """
+        Update position of the soft_contacts on the screen (but do not repaint)
+        Parameters
+        ----------
+        soft_contacts : Markers3d
+            One frame of soft_contacts
+
+        """
+
+        if soft_contacts.time.size != 1:
+            raise IndexError("soft_contacts should be from one frame only")
+        if soft_contacts.channel.size != self.soft_contacts.channel.size:
+            self.new_soft_contacts_set(soft_contacts)
+            return  # Prevent calling update_soft_contacts recursively
+        self.soft_contacts = soft_contacts
+        soft_contacts = np.array(soft_contacts)
+
+        for i, actor in enumerate(self.soft_contacts_actors):
+            # mapper = actors.GetNextActor().GetMapper()
+            mapper = actor.GetMapper()
+            self.soft_contacts_actors[i].GetProperty().SetColor(self.soft_contacts_color)
+            self.soft_contacts_actors[i].GetProperty().SetOpacity(self.soft_contacts_opacity)
+            source = vtkSphereSource()
+            source.SetCenter(soft_contacts[0:3, i])
+            source.SetRadius(self.soft_contacts_size[i])
             mapper.SetInputConnection(source.GetOutputPort())
 
     def set_global_center_of_mass_color(self, global_center_of_mass_color):

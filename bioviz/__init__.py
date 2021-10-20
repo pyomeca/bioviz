@@ -126,6 +126,27 @@ class InterfacesCollections:
             if self.m.nbContacts():
                 self.data[:, :, 0] = np.array(self.contacts(Q))
 
+    class SoftContacts(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+            self.data = np.ndarray((3, self.m.nbSoftContacts(), 1))
+
+        def _prepare_function_for_casadi(self):
+            q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.soft_contacts = biorbd.to_casadi_func("SoftContacts", self.m.softContacts, q_sym, True)
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            if compute_kin:
+                soft_contacts = self.m.softContacts(Q, True)
+            else:
+                soft_contacts = self.m.softContacts(Q, False)
+            for i in range(self.m.nbSoftContacts()):
+                self.data[:, i, 0] = soft_contacts[i].to_array()
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            if self.m.nbContacts():
+                self.data[:, :, 0] = np.array(self.soft_contacts(Q))
+
     class CoM(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
@@ -261,28 +282,30 @@ class InterfacesCollections:
 
 class Viz:
     def __init__(
-        self,
-        model_path=None,
-        loaded_model=None,
-        show_meshes=True,
-        patch_color=(0.89, 0.855, 0.788),
-        show_global_center_of_mass=True,
-        show_segments_center_of_mass=True,
-        segments_center_of_mass_size=0.005,
-        show_global_ref_frame=True,
-        show_local_ref_frame=True,
-        show_markers=True,
-        experimental_markers_color=(1, 1, 1),
-        markers_size=0.010,
-        show_contacts=True,
-        contacts_size=0.010,
-        show_muscles=True,
-        show_wrappings=True,
-        show_analyses_panel=True,
-        background_color=(0.5, 0.5, 0.5),
-        force_wireframe=False,
-        experimental_forces_colors=(85, 78, 0),
-        **kwargs,
+            self,
+            model_path=None,
+            loaded_model=None,
+            show_meshes=True,
+            patch_color=(0.89, 0.855, 0.788),
+            show_global_center_of_mass=True,
+            show_segments_center_of_mass=True,
+            segments_center_of_mass_size=0.005,
+            show_global_ref_frame=True,
+            show_local_ref_frame=True,
+            show_markers=True,
+            experimental_markers_color=(1, 1, 1),
+            markers_size=0.010,
+            show_contacts=True,
+            contacts_size=0.010,
+            show_soft_contacts=True,
+            soft_contacts_color=(1, 0.35, 0),
+            show_muscles=True,
+            show_wrappings=True,
+            show_analyses_panel=True,
+            background_color=(0.5, 0.5, 0.5),
+            force_wireframe=False,
+            experimental_forces_colors=(85, 78, 0),
+            **kwargs,
     ):
         """
         Class that easily shows a biorbd model
@@ -311,10 +334,12 @@ class Viz:
             show_contacts = False
             show_muscles = False
             show_wrappings = False
+            show_soft_contact = False,
 
         # Create the plot
         self.vtk_window = VtkWindow(background_color=background_color)
         self.vtk_markers_size = markers_size
+        soft_contacts_size = [0.1] * self.model.nbSoftContacts()
         self.vtk_model = VtkModel(
             self.vtk_window,
             markers_color=(0, 0, 1),
@@ -324,6 +349,8 @@ class Viz:
             segments_center_of_mass_size=segments_center_of_mass_size,
             force_wireframe=force_wireframe,
             force_color=experimental_forces_colors,
+            soft_contacts_size=soft_contacts_size,
+            soft_contacts_color=soft_contacts_color,
         )
         self.vtk_model_markers: VtkModel = None
         self.is_executing = False
@@ -347,6 +374,8 @@ class Viz:
         self.force_normalization_ratio = None
 
         self.show_contacts = show_contacts
+        self.show_soft_contacts = show_soft_contacts
+        self.soft_contacts_color = soft_contacts_color
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
@@ -375,6 +404,9 @@ class Viz:
         if self.show_contacts:
             self.Contacts = InterfacesCollections.Contact(self.model)
             self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
+        if self.show_soft_contacts:
+            self.SoftContacts = InterfacesCollections.SoftContacts(self.model)
+            self.soft_contacts = Markers(np.ndarray((3, self.model.nbSoftContacts(), 1)))
         if self.show_global_center_of_mass:
             self.CoM = InterfacesCollections.CoM(self.model)
             self.global_center_of_mass = Markers(np.ndarray((3, 1, 1)))
@@ -523,8 +555,12 @@ class Viz:
             self.__set_segments_center_of_mass_from_q()
         if self.show_markers:
             self.__set_markers_from_q()
+        if self.show_markers:
+            self.__set_markers_from_q()
         if self.show_contacts:
             self.__set_contacts_from_q()
+        if self.show_soft_contacts:
+            self.__set_soft_contacts_from_q()
         if self.show_wrappings:
             self.__set_wrapping_from_q()
 
@@ -816,7 +852,7 @@ class Viz:
         self.set_q(self.Q)
 
     def __update_muscle_analyses_graphs(
-        self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
+            self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
     ):
         # Adjust muscle analyses if needed
         if self.active_analyses_widget == self.analyses_muscle_widget:
@@ -977,8 +1013,7 @@ class Viz:
             )
 
         self.vtk_model_markers = VtkModel(
-            self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size
-        )
+            self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size)
 
         self.__set_movement_slider()
         self.show_experimental_markers = True
@@ -989,7 +1024,7 @@ class Viz:
             self.__start_stop_animation()
 
     def load_experimental_forces(
-        self, data, segments=None, normalization_ratio=0.2, auto_start=True, ignore_animation_warning=True
+            self, data, segments=None, normalization_ratio=0.2, auto_start=True, ignore_animation_warning=True
     ):
         if isinstance(data, (np.ndarray, xr.DataArray)):
             self.experimental_forces = data if isinstance(data, xr.DataArray) else xr.DataArray(data)
@@ -1027,7 +1062,7 @@ class Viz:
     def __set_experimental_markers_from_frame(self):
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
-        self.vtk_model_markers.update_markers(self.experimental_markers[:, :, t : t + 1].isel(time=[0]))
+        self.vtk_model_markers.update_markers(self.experimental_markers[:, :, t: t + 1].isel(time=[0]))
 
     def __set_experimental_forces_from_frame(self):
         segment_names = []
@@ -1062,12 +1097,16 @@ class Viz:
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_forces.shape[2] else self.experimental_forces.shape[2] - 1
         self.vtk_model.update_force(
-            segment_jcs, self.experimental_forces[:, :, t : t + 1], max_forces, self.force_normalization_ratio
+            segment_jcs, self.experimental_forces[:, :, t: t + 1], max_forces, self.force_normalization_ratio
         )
 
     def __set_contacts_from_q(self):
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_contacts(self.contacts.isel(time=[0]))
+
+    def __set_soft_contacts_from_q(self):
+        self.soft_contacts[0:3, :, :] = self.SoftContacts.get_data(Q=self.Q, compute_kin=False)
+        self.vtk_model.update_soft_contacts(self.soft_contacts.isel(time=[0]))
 
     def __set_global_center_of_mass_from_q(self):
         com = self.CoM.get_data(Q=self.Q, compute_kin=False)
@@ -1105,8 +1144,8 @@ class Viz:
                 if self.model.muscle(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
                     rt = (
                         biorbd.WrappingHalfCylinder(self.model.muscle(i).pathModifier().object(j))
-                        .RT(self.model, self.Q)
-                        .to_array()
+                            .RT(self.model, self.Q)
+                            .to_array()
                     )
                     self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
                 else:
