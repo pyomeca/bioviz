@@ -7,6 +7,7 @@ import numpy as np
 import scipy
 import xarray as xr
 import pandas
+
 try:
     import biorbd
 except ImportError:
@@ -124,6 +125,27 @@ class InterfacesCollections:
         def _get_data_from_casadi(self, Q=None, compute_kin=True):
             if self.m.nbContacts():
                 self.data[:, :, 0] = np.array(self.contacts(Q))
+
+    class SoftContacts(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+            self.data = np.ndarray((3, self.m.nbSoftContacts(), 1))
+
+        def _prepare_function_for_casadi(self):
+            q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.soft_contacts = biorbd.to_casadi_func("SoftContacts", self.m.softContacts, q_sym, True)
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            if compute_kin:
+                soft_contacts = self.m.softContacts(Q, True)
+            else:
+                soft_contacts = self.m.softContacts(Q, False)
+            for i in range(self.m.nbSoftContacts()):
+                self.data[:, i, 0] = soft_contacts[i].to_array()
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            if self.m.nbContacts():
+                self.data[:, :, 0] = np.array(self.soft_contacts(Q))
 
     class CoM(BiorbdFunc):
         def __init__(self, model):
@@ -288,11 +310,14 @@ class Viz:
         markers_size=0.010,
         show_contacts=True,
         contacts_size=0.010,
+        show_soft_contacts=True,
+        soft_contacts_color=(0.11, 0.63, 0.95),
         show_muscles=True,
         show_wrappings=True,
         show_analyses_panel=True,
         background_color=(0.5, 0.5, 0.5),
         force_wireframe=False,
+        experimental_forces_color=(85, 78, 0),
         **kwargs,
     ):
         """
@@ -322,10 +347,20 @@ class Viz:
             show_contacts = False
             show_muscles = False
             show_wrappings = False
+            show_soft_contacts = False
 
         # Create the plot
         self.vtk_window = VtkWindow(background_color=background_color)
         self.vtk_markers_size = markers_size
+
+        # soft_contact sphere sizes
+        radius = []
+        for i in range(self.model.nbSoftContacts()):
+            c = self.model.softContact(i)
+            if c.typeOfNode() == biorbd.SOFT_CONTACT_SPHERE:
+                radius.append(biorbd.SoftContactSphere(self.model.softContact(i)).radius())
+        soft_contacts_size = radius
+
         self.vtk_model = VtkModel(
             self.vtk_window,
             markers_color=(0, 0, 1),
@@ -334,6 +369,9 @@ class Viz:
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
             force_wireframe=force_wireframe,
+            force_color=experimental_forces_color,
+            soft_contacts_size=soft_contacts_size,
+            soft_contacts_color=soft_contacts_color,
         )
         self.vtk_model_markers: VtkModel = None
         self.is_executing = False
@@ -350,8 +388,15 @@ class Viz:
         self.show_experimental_markers = False
         self.experimental_markers = None
         self.experimental_markers_color = experimental_markers_color
+        self.show_experimental_forces = False
+        self.experimental_forces = None
+        self.segment_forces = []
+        self.experimental_forces_color = experimental_forces_color
+        self.force_normalization_ratio = None
 
         self.show_contacts = show_contacts
+        self.show_soft_contacts = show_soft_contacts
+        self.soft_contacts_color = soft_contacts_color
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
@@ -380,6 +425,9 @@ class Viz:
         if self.show_contacts:
             self.Contacts = InterfacesCollections.Contact(self.model)
             self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
+        if self.show_soft_contacts:
+            self.SoftContacts = InterfacesCollections.SoftContacts(self.model)
+            self.soft_contacts = Markers(np.ndarray((3, self.model.nbSoftContacts(), 1)))
         if self.show_global_center_of_mass:
             self.CoM = InterfacesCollections.CoM(self.model)
             self.global_center_of_mass = Markers(np.ndarray((3, 1, 1)))
@@ -528,8 +576,12 @@ class Viz:
             self.__set_segments_center_of_mass_from_q()
         if self.show_markers:
             self.__set_markers_from_q()
+        if self.show_markers:
+            self.__set_markers_from_q()
         if self.show_contacts:
             self.__set_contacts_from_q()
+        if self.show_soft_contacts:
+            self.__set_soft_contacts_from_q()
         if self.show_wrappings:
             self.__set_wrapping_from_q()
 
@@ -841,6 +893,9 @@ class Viz:
         if self.show_experimental_markers:
             self.__set_experimental_markers_from_frame()
 
+        if self.show_experimental_forces:
+            self.__set_experimental_forces_from_frame()
+
         # Update graph of muscle analyses
         self.__update_muscle_analyses_graphs(True, True, True, True)
 
@@ -936,7 +991,12 @@ class Viz:
         # Update the slider bar and frame count
         self.movement_slider[0].setEnabled(True)
         self.movement_slider[0].setMinimum(1)
-        experiment_shape = 0 if self.experimental_markers is None else self.experimental_markers.shape[2]
+        experiment_shape = 0
+        if self.experimental_forces is not None:
+            experiment_shape = self.experimental_forces.shape[2]
+        if self.experimental_markers is not None:
+            experiment_shape = max(self.experimental_markers.shape[2], experiment_shape)
+
         q_shape = 0 if self.animated_Q is None else self.animated_Q.shape[0]
         self.movement_slider[0].setMaximum(max(q_shape, experiment_shape))
         pal = QPalette()
@@ -950,9 +1010,7 @@ class Viz:
         # Load the actual movement
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        file_name = QFileDialog.getOpenFileName(
-            self.vtk_window, "Data to load", "", "C3D (*.c3d)", options=options
-        )
+        file_name = QFileDialog.getOpenFileName(self.vtk_window, "Data to load", "", "C3D (*.c3d)", options=options)
         if not file_name[0]:
             return
         self.load_experimental_markers(file_name[0])
@@ -971,7 +1029,7 @@ class Viz:
 
         else:
             raise RuntimeError(
-                f"Wrong type of experimental markers data ({type(data)}. "
+                f"Wrong type of experimental markers data ({type(data)}). "
                 f"Allowed type are numpy array (3xNxT), data array (3xNxT) or .c3d file (str)."
             )
 
@@ -987,6 +1045,38 @@ class Viz:
         if auto_start:
             self.__start_stop_animation()
 
+    def load_experimental_forces(
+        self, data, segments=None, normalization_ratio=0.2, auto_start=True, ignore_animation_warning=True
+    ):
+        if isinstance(data, (np.ndarray, xr.DataArray)):
+            self.experimental_forces = data if isinstance(data, xr.DataArray) else xr.DataArray(data)
+        else:
+            raise RuntimeError(
+                f"Wrong type of experimental force data ({type(data)}). "
+                f"Allowed type are numpy array (SxNxT), data array (SxNxT)."
+            )
+
+        if segments:
+            self.segment_forces = segments if isinstance(segments, (list, np.ndarray)) else [segments]
+        else:
+            self.segment_forces = ["ground"] * self.experimental_forces.shape[0]
+
+        if len(self.segment_forces) != self.experimental_forces.shape[0]:
+            raise RuntimeError(
+                "Number of segment must match number of experimental  forces. "
+                f"You have {len(segments)} and {self.experimental_forces.shape[0]}."
+            )
+
+        self.force_normalization_ratio = normalization_ratio
+
+        self.show_experimental_forces = True
+        self.__set_movement_slider()
+
+        if ignore_animation_warning:
+            self.animation_warning_already_shown = True
+        if auto_start:
+            self.__start_stop_animation()
+
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
@@ -994,11 +1084,51 @@ class Viz:
     def __set_experimental_markers_from_frame(self):
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
-        self.vtk_model_markers.update_markers(self.experimental_markers.isel(time=t))
+        self.vtk_model_markers.update_markers(self.experimental_markers[:, :, t : t + 1].isel(time=[0]))
+
+    def __set_experimental_forces_from_frame(self):
+        segment_names = []
+        for i in range(self.model.nbSegment()):
+            segment_names.append(self.model.segment(i).name().to_string())
+        global_jcs = self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)
+        segment_jcs = []
+
+        for segment in self.segment_forces:
+            if isinstance(segment, str):
+                if segment == "ground":
+                    segment_jcs.append(np.identity(4))
+                else:
+                    segment_jcs.append(global_jcs[segment_names.index(segment)])
+            elif isinstance(segment, (float, int)):
+                segment_jcs.append(global_jcs[segment])
+            else:
+                raise RuntimeError("Wrong type of segment.")
+
+        max_forces = []
+        for i, forces in enumerate(self.experimental_forces):
+            max_forces.append(
+                max(
+                    np.sqrt(
+                        (forces[3, :] - forces[0, :]) ** 2
+                        + (forces[4, :] - forces[1, :]) ** 2
+                        + (forces[5, :] - forces[2, :]) ** 2
+                    )
+                )
+            )
+
+        t_slider = self.movement_slider[0].value() - 1
+        t = t_slider if t_slider < self.experimental_forces.shape[2] else self.experimental_forces.shape[2] - 1
+        self.vtk_model.update_force(
+            segment_jcs, self.experimental_forces[:, :, t : t + 1], max_forces, self.force_normalization_ratio
+        )
 
     def __set_contacts_from_q(self):
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_contacts(self.contacts.isel(time=[0]))
+
+    def __set_soft_contacts_from_q(self):
+        self.soft_contacts[0:3, :, :] = self.SoftContacts.get_data(Q=self.Q, compute_kin=False)
+        self.vtk_model.update_soft_contacts(self.soft_contacts.isel(time=[0]))
 
     def __set_global_center_of_mass_from_q(self):
         com = self.CoM.get_data(Q=self.Q, compute_kin=False)
