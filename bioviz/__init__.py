@@ -304,7 +304,7 @@ class Viz:
         show_analyses_panel=True,
         background_color=(0.5, 0.5, 0.5),
         force_wireframe=False,
-        experimental_forces_colors=(85, 78, 0),
+        experimental_forces_color=(85, 78, 0),
         **kwargs,
     ):
         """
@@ -334,7 +334,7 @@ class Viz:
             show_contacts = False
             show_muscles = False
             show_wrappings = False
-            show_soft_contact = (False,)
+            show_soft_contacts = False
 
         # Create the plot
         self.vtk_window = VtkWindow(background_color=background_color)
@@ -356,7 +356,7 @@ class Viz:
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
             force_wireframe=force_wireframe,
-            force_color=experimental_forces_colors,
+            force_color=experimental_forces_color,
             soft_contacts_size=soft_contacts_size,
             soft_contacts_color=soft_contacts_color,
         )
@@ -378,7 +378,7 @@ class Viz:
         self.show_experimental_forces = False
         self.experimental_forces = None
         self.segment_forces = []
-        self.experimental_forces_color = experimental_forces_colors
+        self.experimental_forces_color = experimental_forces_color
         self.force_normalization_ratio = None
 
         self.show_contacts = show_contacts
