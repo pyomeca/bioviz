@@ -126,6 +126,27 @@ class InterfacesCollections:
             if self.m.nbContacts():
                 self.data[:, :, 0] = np.array(self.contacts(Q))
 
+    class SoftContacts(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+            self.data = np.ndarray((3, self.m.nbSoftContacts(), 1))
+
+        def _prepare_function_for_casadi(self):
+            q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.soft_contacts = biorbd.to_casadi_func("SoftContacts", self.m.softContacts, q_sym, True)
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            if compute_kin:
+                soft_contacts = self.m.softContacts(Q, True)
+            else:
+                soft_contacts = self.m.softContacts(Q, False)
+            for i in range(self.m.nbSoftContacts()):
+                self.data[:, i, 0] = soft_contacts[i].to_array()
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            if self.m.nbContacts():
+                self.data[:, :, 0] = np.array(self.soft_contacts(Q))
+
     class CoM(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
@@ -276,12 +297,14 @@ class Viz:
         markers_size=0.010,
         show_contacts=True,
         contacts_size=0.010,
+        show_soft_contacts=True,
+        soft_contacts_color=(0.11, 0.63, 0.95),
         show_muscles=True,
         show_wrappings=True,
         show_analyses_panel=True,
         background_color=(0.5, 0.5, 0.5),
         force_wireframe=False,
-        experimental_forces_colors=(85, 78, 0),
+        experimental_forces_color=(85, 78, 0),
         **kwargs,
     ):
         """
@@ -311,10 +334,20 @@ class Viz:
             show_contacts = False
             show_muscles = False
             show_wrappings = False
+            show_soft_contacts = False
 
         # Create the plot
         self.vtk_window = VtkWindow(background_color=background_color)
         self.vtk_markers_size = markers_size
+
+        # soft_contact sphere sizes
+        radius = []
+        for i in range(self.model.nbSoftContacts()):
+            c = self.model.softContact(i)
+            if c.typeOfNode() == biorbd.SOFT_CONTACT_SPHERE:
+                radius.append(biorbd.SoftContactSphere(self.model.softContact(i)).radius())
+        soft_contacts_size = radius
+
         self.vtk_model = VtkModel(
             self.vtk_window,
             markers_color=(0, 0, 1),
@@ -323,7 +356,9 @@ class Viz:
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
             force_wireframe=force_wireframe,
-            force_color=experimental_forces_colors,
+            force_color=experimental_forces_color,
+            soft_contacts_size=soft_contacts_size,
+            soft_contacts_color=soft_contacts_color,
         )
         self.vtk_model_markers: VtkModel = None
         self.is_executing = False
@@ -343,10 +378,12 @@ class Viz:
         self.show_experimental_forces = False
         self.experimental_forces = None
         self.segment_forces = []
-        self.experimental_forces_color = experimental_forces_colors
+        self.experimental_forces_color = experimental_forces_color
         self.force_normalization_ratio = None
 
         self.show_contacts = show_contacts
+        self.show_soft_contacts = show_soft_contacts
+        self.soft_contacts_color = soft_contacts_color
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_segments_center_of_mass = show_segments_center_of_mass
@@ -375,6 +412,9 @@ class Viz:
         if self.show_contacts:
             self.Contacts = InterfacesCollections.Contact(self.model)
             self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
+        if self.show_soft_contacts:
+            self.SoftContacts = InterfacesCollections.SoftContacts(self.model)
+            self.soft_contacts = Markers(np.ndarray((3, self.model.nbSoftContacts(), 1)))
         if self.show_global_center_of_mass:
             self.CoM = InterfacesCollections.CoM(self.model)
             self.global_center_of_mass = Markers(np.ndarray((3, 1, 1)))
@@ -523,8 +563,12 @@ class Viz:
             self.__set_segments_center_of_mass_from_q()
         if self.show_markers:
             self.__set_markers_from_q()
+        if self.show_markers:
+            self.__set_markers_from_q()
         if self.show_contacts:
             self.__set_contacts_from_q()
+        if self.show_soft_contacts:
+            self.__set_soft_contacts_from_q()
         if self.show_wrappings:
             self.__set_wrapping_from_q()
 
@@ -1068,6 +1112,10 @@ class Viz:
     def __set_contacts_from_q(self):
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_contacts(self.contacts.isel(time=[0]))
+
+    def __set_soft_contacts_from_q(self):
+        self.soft_contacts[0:3, :, :] = self.SoftContacts.get_data(Q=self.Q, compute_kin=False)
+        self.vtk_model.update_soft_contacts(self.soft_contacts.isel(time=[0]))
 
     def __set_global_center_of_mass_from_q(self):
         com = self.CoM.get_data(Q=self.Q, compute_kin=False)
