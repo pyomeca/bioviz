@@ -49,7 +49,7 @@ def check_version(tool_to_compare, min_version, max_version):
         raise ImportError(f"{name} should be lesser than version {max_version}")
 
 
-check_version(biorbd, "1.4.0", "2.0.0")
+check_version(biorbd, "1.7.4", "2.0.0")
 check_version(pyomeca, "2020.0.1", "2020.1.0")
 from pyomeca import Markers
 
@@ -226,6 +226,20 @@ class InterfacesCollections:
                 for m in g:
                     self.data.append(np.array(m(Q)))
 
+    class MeshColor:
+        @staticmethod
+        def get_color(model):
+            if biorbd.currentLinearAlgebraBackend() == 0:
+                return [model.segment(i).characteristics().mesh().color().to_array() for i in range(model.nbSegment())]
+            elif biorbd.currentLinearAlgebraBackend() == 1:
+                color = []
+                for i in range(model.nbSegment()):
+                    func = biorbd.to_casadi_func("color", model.segment(i).characteristics().mesh().color().to_mx())
+                    color.append(np.array(func()["o0"])[:, 0])
+                return color
+            else:
+                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
+
     class MeshPointsInMatrix(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
@@ -286,7 +300,6 @@ class Viz:
         model_path=None,
         loaded_model=None,
         show_meshes=True,
-        patch_color=(0.89, 0.855, 0.788),
         show_global_center_of_mass=True,
         show_segments_center_of_mass=True,
         segments_center_of_mass_size=0.005,
@@ -351,7 +364,7 @@ class Viz:
         self.vtk_model = VtkModel(
             self.vtk_window,
             markers_color=(0, 0, 1),
-            patch_color=patch_color,
+            patch_color=InterfacesCollections.MeshColor.get_color(self.model),
             markers_size=self.vtk_markers_size,
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
