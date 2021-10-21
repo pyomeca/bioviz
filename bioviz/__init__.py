@@ -298,7 +298,7 @@ class Viz:
             show_contacts=True,
             contacts_size=0.010,
             show_soft_contacts=True,
-            soft_contacts_color=(1, 0.35, 0),
+            soft_contacts_color=(0.11, 0.63, 0.95),
             show_muscles=True,
             show_wrappings=True,
             show_analyses_panel=True,
@@ -339,7 +339,15 @@ class Viz:
         # Create the plot
         self.vtk_window = VtkWindow(background_color=background_color)
         self.vtk_markers_size = markers_size
-        soft_contacts_size = [0.1] * self.model.nbSoftContacts()
+
+        # soft_contact sphere sizes
+        radius =[]
+        for i in range(self.model.nbSoftContacts()):
+            c = self.model.softContact(i)
+            if c.typeOfNode() == biorbd.SOFT_CONTACT_SPHERE:
+                radius.append(biorbd.SoftContactSphere(self.model.softContact(i)).radius())
+        soft_contacts_size = radius
+
         self.vtk_model = VtkModel(
             self.vtk_window,
             markers_color=(0, 0, 1),

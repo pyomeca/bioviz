@@ -160,7 +160,7 @@ class VtkModel(QtWidgets.QWidget):
         contacts_opacity=1.0,
         soft_contacts_color=(1, 0.35, 0),
         soft_contacts_size=0.1,
-        soft_contacts_opacity=0.5,
+        soft_contacts_opacity=0.35,
         global_ref_frame_length=0.15,
         global_ref_frame_width=5,
         global_center_of_mass_size=0.0075,
