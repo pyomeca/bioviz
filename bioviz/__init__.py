@@ -282,30 +282,30 @@ class InterfacesCollections:
 
 class Viz:
     def __init__(
-            self,
-            model_path=None,
-            loaded_model=None,
-            show_meshes=True,
-            patch_color=(0.89, 0.855, 0.788),
-            show_global_center_of_mass=True,
-            show_segments_center_of_mass=True,
-            segments_center_of_mass_size=0.005,
-            show_global_ref_frame=True,
-            show_local_ref_frame=True,
-            show_markers=True,
-            experimental_markers_color=(1, 1, 1),
-            markers_size=0.010,
-            show_contacts=True,
-            contacts_size=0.010,
-            show_soft_contacts=True,
-            soft_contacts_color=(0.11, 0.63, 0.95),
-            show_muscles=True,
-            show_wrappings=True,
-            show_analyses_panel=True,
-            background_color=(0.5, 0.5, 0.5),
-            force_wireframe=False,
-            experimental_forces_colors=(85, 78, 0),
-            **kwargs,
+        self,
+        model_path=None,
+        loaded_model=None,
+        show_meshes=True,
+        patch_color=(0.89, 0.855, 0.788),
+        show_global_center_of_mass=True,
+        show_segments_center_of_mass=True,
+        segments_center_of_mass_size=0.005,
+        show_global_ref_frame=True,
+        show_local_ref_frame=True,
+        show_markers=True,
+        experimental_markers_color=(1, 1, 1),
+        markers_size=0.010,
+        show_contacts=True,
+        contacts_size=0.010,
+        show_soft_contacts=True,
+        soft_contacts_color=(0.11, 0.63, 0.95),
+        show_muscles=True,
+        show_wrappings=True,
+        show_analyses_panel=True,
+        background_color=(0.5, 0.5, 0.5),
+        force_wireframe=False,
+        experimental_forces_colors=(85, 78, 0),
+        **kwargs,
     ):
         """
         Class that easily shows a biorbd model
@@ -334,14 +334,14 @@ class Viz:
             show_contacts = False
             show_muscles = False
             show_wrappings = False
-            show_soft_contact = False,
+            show_soft_contact = (False,)
 
         # Create the plot
         self.vtk_window = VtkWindow(background_color=background_color)
         self.vtk_markers_size = markers_size
 
         # soft_contact sphere sizes
-        radius =[]
+        radius = []
         for i in range(self.model.nbSoftContacts()):
             c = self.model.softContact(i)
             if c.typeOfNode() == biorbd.SOFT_CONTACT_SPHERE:
@@ -860,7 +860,7 @@ class Viz:
         self.set_q(self.Q)
 
     def __update_muscle_analyses_graphs(
-            self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
+        self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
     ):
         # Adjust muscle analyses if needed
         if self.active_analyses_widget == self.analyses_muscle_widget:
@@ -1021,7 +1021,8 @@ class Viz:
             )
 
         self.vtk_model_markers = VtkModel(
-            self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size)
+            self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size
+        )
 
         self.__set_movement_slider()
         self.show_experimental_markers = True
@@ -1032,7 +1033,7 @@ class Viz:
             self.__start_stop_animation()
 
     def load_experimental_forces(
-            self, data, segments=None, normalization_ratio=0.2, auto_start=True, ignore_animation_warning=True
+        self, data, segments=None, normalization_ratio=0.2, auto_start=True, ignore_animation_warning=True
     ):
         if isinstance(data, (np.ndarray, xr.DataArray)):
             self.experimental_forces = data if isinstance(data, xr.DataArray) else xr.DataArray(data)
@@ -1070,7 +1071,7 @@ class Viz:
     def __set_experimental_markers_from_frame(self):
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
-        self.vtk_model_markers.update_markers(self.experimental_markers[:, :, t: t + 1].isel(time=[0]))
+        self.vtk_model_markers.update_markers(self.experimental_markers[:, :, t : t + 1].isel(time=[0]))
 
     def __set_experimental_forces_from_frame(self):
         segment_names = []
@@ -1105,7 +1106,7 @@ class Viz:
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_forces.shape[2] else self.experimental_forces.shape[2] - 1
         self.vtk_model.update_force(
-            segment_jcs, self.experimental_forces[:, :, t: t + 1], max_forces, self.force_normalization_ratio
+            segment_jcs, self.experimental_forces[:, :, t : t + 1], max_forces, self.force_normalization_ratio
         )
 
     def __set_contacts_from_q(self):
@@ -1152,8 +1153,8 @@ class Viz:
                 if self.model.muscle(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
                     rt = (
                         biorbd.WrappingHalfCylinder(self.model.muscle(i).pathModifier().object(j))
-                            .RT(self.model, self.Q)
-                            .to_array()
+                        .RT(self.model, self.Q)
+                        .to_array()
                     )
                     self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
                 else:
