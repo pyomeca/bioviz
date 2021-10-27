@@ -1581,5 +1581,3 @@ class VtkModel(QtWidgets.QWidget):
 
         self.parent_window.ren.AddActor(self.gravity_actors)
         self.parent_window.ren.ResetCamera()
-
-
