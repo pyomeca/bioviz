@@ -301,6 +301,7 @@ class Viz:
         loaded_model=None,
         show_meshes=True,
         show_global_center_of_mass=True,
+        show_global_gravity_vector=True,
         show_segments_center_of_mass=True,
         segments_center_of_mass_size=0.005,
         show_global_ref_frame=True,
@@ -399,6 +400,7 @@ class Viz:
         self.soft_contacts_color = soft_contacts_color
         self.show_global_ref_frame = show_global_ref_frame
         self.show_global_center_of_mass = show_global_center_of_mass
+        self.show_global_gravity_vector = show_global_gravity_vector
         self.show_segments_center_of_mass = show_segments_center_of_mass
         self.show_local_ref_frame = show_local_ref_frame
         self.biorbd_compiled_with_muscles = hasattr(biorbd.Model, "nbMuscles")
@@ -572,6 +574,8 @@ class Viz:
             self.__set_meshes_from_q()
         if self.show_global_center_of_mass:
             self.__set_global_center_of_mass_from_q()
+        if self.show_global_gravity_vector:
+            self.__set_global_gravity_vector()
         if self.show_segments_center_of_mass:
             self.__set_segments_center_of_mass_from_q()
         if self.show_markers:
@@ -1135,6 +1139,16 @@ class Viz:
         self.global_center_of_mass.loc[{"channel": 0, "time": 0}] = com.squeeze()
         self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.isel(time=[0]))
 
+    def __set_global_gravity_vector(self):
+        start = [0, 0, 0]
+        magnitude = self.model.getGravity().to_array()
+        global_gravity = np.concatenate((start, magnitude))
+        length = np.linalg.norm(global_gravity)
+        id_matrix = np.identity(4)
+        self.vtk_model.new_gravity_vector(
+            id_matrix, global_gravity, length, normalization_ratio=0.3, vector_color=(0, 0, 0)
+        )
+
     def __set_segments_center_of_mass_from_q(self):
         coms = self.CoMbySegment.get_data(Q=self.Q, compute_kin=False)
         for k, com in enumerate(coms):
@@ -1148,7 +1162,6 @@ class Viz:
 
     def __set_muscles_from_q(self):
         muscles = self.musclesPointsInGlobal.get_data(Q=self.Q)
-
         idx = 0
         cmp = 0
         for group_idx in range(self.model.nbMuscleGroups()):

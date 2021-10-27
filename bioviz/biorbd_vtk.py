@@ -271,6 +271,8 @@ class VtkModel(QtWidgets.QWidget):
         self.normalization_ratio = 0.2
         self.force_actors = list()
 
+        self.gravity_actors = list()
+
     def set_markers_color(self, markers_color):
         """
         Dynamically change the color of the markers
@@ -1346,7 +1348,6 @@ class VtkModel(QtWidgets.QWidget):
             Color the force should be drawn (1 is max brightness)
         """
         self.force_color = force_color
-        self.update_force(self.force_centers, self.all_force, self.max_forces, self.normalization_ratio)
 
     def set_force_opacity(self, force_opacity):
         """
@@ -1360,7 +1361,6 @@ class VtkModel(QtWidgets.QWidget):
 
         """
         self.force_opacity = force_opacity
-        self.update_force(self.force_centers, self.all_force, self.max_forces, self.normalization_ratio)
 
     def new_force_set(self, segment_jcs, all_forces, max_forces, normalization_ratio):
         """
@@ -1514,3 +1514,72 @@ class VtkModel(QtWidgets.QWidget):
             self.force_actors[i].SetMapper(mapper)
             self.force_actors[i].GetProperty().SetColor(self.force_color)
             self.force_actors[i].GetProperty().SetOpacity(self.force_opacity)
+
+    def new_gravity_vector(self, segment_rt, gravity, length, normalization_ratio, vector_color):
+        """
+        Define a new gravity vector.
+        Parameters
+        ----------
+        segment_rt : np.ndarray
+            homogeneous matrix in which coordinates are applied
+        gravity : np.ndarray
+            gravity array with 3 application coordinates and 3 magnitude coordinates
+        length : float
+            absolut length of gravity vector to scale arrow
+        normalization_ratio: float
+            ratio to scale arrow
+        vector_color: tuple
+            tuple of RGB for vector color
+
+        """
+        # Arrow visualization parameters
+        arrow_source = vtkArrowSource()
+        arrow_source.SetTipResolution(15)
+        arrow_source.SetShaftResolution(8)
+        arrow_source.SetShaftRadius(0.015)
+        arrow_source.SetTipLength(0.2)
+        arrow_source.SetTipRadius(0.08)
+
+        self.arrow_source = arrow_source
+
+        # Arrow orientation
+        transform = vtkTransform()
+        transform_polydata = vtkTransformPolyDataFilter()
+        transform_polydata.SetTransform(transform)
+        transform_polydata.SetInputConnection(arrow_source.GetOutputPort())
+
+        rot_seg = segment_rt[:3, :3]
+        trans_seg = segment_rt[:-1, 3:]
+        force_magnitude = np.dot(rot_seg, gravity[3:])
+        force_magnitude = force_magnitude + trans_seg.reshape(3)
+        force_application = np.dot(rot_seg, gravity[:3])
+        force_application = force_application + trans_seg.reshape(3)
+        application_point = [force_application[0], force_application[1], force_application[2]]
+        magnitude_point = [force_magnitude[0], force_magnitude[1], force_magnitude[2]]
+
+        # Compute a basis for the arrow scaling
+        matrix, length = self.compute_basis_force(application_point, magnitude_point)
+
+        # Normalize force for visualization
+        length = length * normalization_ratio / length
+        transform = vtkTransform()
+        transform.Translate(application_point)
+        transform.Concatenate(matrix)
+        transform.Scale(length, length, length)
+
+        # Create an actor
+        mapper = vtkPolyDataMapper()
+
+        transform_polydata = vtkTransformPolyDataFilter()
+        transform_polydata.SetTransform(transform)
+        transform_polydata.SetInputConnection(self.arrow_source.GetOutputPort())
+        mapper.SetInputConnection(transform_polydata.GetOutputPort())
+
+        self.gravity_actors = vtkActor()
+        self.gravity_actors.SetMapper(mapper)
+        self.gravity_actors.GetProperty().SetColor(vector_color)
+
+        self.parent_window.ren.AddActor(self.gravity_actors)
+        self.parent_window.ren.ResetCamera()
+
+
