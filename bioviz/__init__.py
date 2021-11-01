@@ -167,6 +167,22 @@ class InterfacesCollections:
         def _get_data_from_casadi(self, Q=None, compute_kin=True):
             self.data[:3, :, 0] = self.CoM(Q)
 
+    class Gravity(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+            self.data = np.zeros(3)
+
+        def _get_data_from_eigen(self):
+            self.data = self.m.getGravity().to_array()
+
+        def _prepare_function_for_casadi(self):
+            self.gravity = biorbd.to_casadi_func("Gravity", self.m.getGravity)
+
+        def _get_data_from_casadi(self):
+            self.data = self.gravity()
+            for key in self.data.keys():
+                self.data = np.array(self.data[key]).reshape(3,)
+
     class CoMbySegment(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
@@ -423,7 +439,8 @@ class Viz:
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
             self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
-
+        if show_gravity_vector:
+            self.Gravity = InterfacesCollections.Gravity(self.model)
         if self.show_contacts:
             self.Contacts = InterfacesCollections.Contact(self.model)
             self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
@@ -1141,7 +1158,7 @@ class Viz:
 
     def __set_gravity_vector(self):
         start = [0, 0, 0]
-        magnitude = self.model.getGravity().to_array()
+        magnitude = self.Gravity.get_data()
         gravity = np.concatenate((start, magnitude))
         length = np.linalg.norm(gravity)
         id_matrix = np.identity(4)

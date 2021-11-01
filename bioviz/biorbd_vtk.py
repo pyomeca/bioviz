@@ -1580,4 +1580,3 @@ class VtkModel(QtWidgets.QWidget):
         self.gravity_actors.GetProperty().SetColor(vector_color)
 
         self.parent_window.ren.AddActor(self.gravity_actors)
-        self.parent_window.ren.ResetCamera()
