@@ -32,6 +32,7 @@ from vtk import (
     vtkMinimalStandardRandomSequence,
     vtkTransform,
     vtkTransformPolyDataFilter,
+    vtkPlaneSource,
 )
 
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -273,6 +274,9 @@ class VtkModel(QtWidgets.QWidget):
 
         self.gravity_actors = list()
 
+        self.plane_source = []
+        self.plane_actor = []
+
     def set_markers_color(self, markers_color):
         """
         Dynamically change the color of the markers
@@ -337,7 +341,6 @@ class VtkModel(QtWidgets.QWidget):
             self.markers_actors[i].SetMapper(mapper)
 
             self.parent_window.ren.AddActor(self.markers_actors[i])
-            self.parent_window.ren.ResetCamera()
 
         # Update marker position
         self.update_markers(self.markers)
@@ -434,7 +437,6 @@ class VtkModel(QtWidgets.QWidget):
             self.contacts_actors[i].SetMapper(mapper)
 
             self.parent_window.ren.AddActor(self.contacts_actors[i])
-            self.parent_window.ren.ResetCamera()
 
         # Update marker position
         self.update_contacts(self.contacts)
@@ -531,8 +533,6 @@ class VtkModel(QtWidgets.QWidget):
             self.soft_contacts_actors[i].SetMapper(mapper)
 
             self.parent_window.ren.AddActor(self.soft_contacts_actors[i])
-            self.parent_window.ren.ResetCamera()
-
         # Update marker position
         self.update_soft_contacts(self.soft_contacts)
 
@@ -629,7 +629,6 @@ class VtkModel(QtWidgets.QWidget):
             self.global_center_of_mass_actors[i].SetMapper(mapper)
 
             self.parent_window.ren.AddActor(self.global_center_of_mass_actors[i])
-            self.parent_window.ren.ResetCamera()
 
         # Update marker position
         self.update_global_center_of_mass(self.global_center_of_mass)
@@ -726,7 +725,6 @@ class VtkModel(QtWidgets.QWidget):
             self.segments_center_of_mass_actors[i].SetMapper(mapper)
 
             self.parent_window.ren.AddActor(self.segments_center_of_mass_actors[i])
-            self.parent_window.ren.ResetCamera()
 
         # Update marker position
         self.update_segments_center_of_mass(self.segments_center_of_mass)
@@ -855,7 +853,6 @@ class VtkModel(QtWidgets.QWidget):
             self.mesh_actors[i].GetProperty().SetOpacity(self.mesh_opacity)
 
             self.parent_window.ren.AddActor(self.mesh_actors[i])
-            self.parent_window.ren.ResetCamera()
 
         # Update marker position
         self.update_mesh(self.all_meshes)
@@ -979,7 +976,6 @@ class VtkModel(QtWidgets.QWidget):
             self.muscle_actors[i].GetProperty().SetLineWidth(5)
 
             self.parent_window.ren.AddActor(self.muscle_actors[i])
-            self.parent_window.ren.ResetCamera()
 
         # Update marker position
         self.update_muscle(self.all_muscles)
@@ -1102,7 +1098,6 @@ class VtkModel(QtWidgets.QWidget):
             self.wrapping_actors[seg][i].GetProperty().SetOpacity(self.wrapping_opacity)
 
             self.parent_window.ren.AddActor(self.wrapping_actors[seg][i])
-            self.parent_window.ren.ResetCamera()
 
         # # Update marker position
         # self.update_wrapping(self.all_wrappings)
@@ -1226,7 +1221,6 @@ class VtkModel(QtWidgets.QWidget):
             self.rt_actors[i].GetProperty().SetLineWidth(self.rt_width)
 
             self.parent_window.ren.AddActor(self.rt_actors[i])
-            self.parent_window.ren.ResetCamera()
 
         # Set rt orientations
         self.n_rt = len(all_rt)
@@ -1337,7 +1331,6 @@ class VtkModel(QtWidgets.QWidget):
         actor.GetProperty().SetLineWidth(self.global_ref_frame_width)
 
         self.parent_window.ren.AddActor(actor)
-        self.parent_window.ren.ResetCamera()
 
     def set_force_color(self, force_color):
         """
@@ -1409,7 +1402,7 @@ class VtkModel(QtWidgets.QWidget):
             self.force_actors[i].GetProperty().SetOpacity(self.force_opacity)
 
             self.parent_window.ren.AddActor(self.force_actors[i])
-            self.parent_window.ren.ResetCamera()
+            # self.parent_window.ren.ResetCamera()
 
         # Set rt orientations
         self.n_force = len(all_forces)
@@ -1580,3 +1573,30 @@ class VtkModel(QtWidgets.QWidget):
         self.gravity_actors.GetProperty().SetColor(vector_color)
 
         self.parent_window.ren.AddActor(self.gravity_actors)
+
+    def new_floor(self, origin, normal, color, scale):
+        self.plane_source = vtkPlaneSource()
+        self.plane_source.SetResolution(1, 1)
+
+        # Ground orientation
+        self.plane_source.SetCenter(origin)
+        self.plane_source.SetNormal(normal)
+        self.plane_source.Update()
+
+        # Scale ground size
+        transform = vtkTransform()
+        transform.Scale(scale)
+
+        transform_polydata = vtkTransformPolyDataFilter()
+        transform_polydata.SetTransform(transform)
+        transform_polydata.SetInputConnection(self.plane_source.GetOutputPort())
+
+        mapper = vtkPolyDataMapper()
+        mapper.SetInputConnection(transform_polydata.GetOutputPort())
+
+        self.plane_actor = vtkActor()
+        self.plane_actor.SetMapper(mapper)
+        self.plane_actor.GetProperty().SetColor(color)
+        self.plane_actor.GetProperty().SetOpacity(0.02)
+
+        self.parent_window.ren.AddActor(self.plane_actor)
