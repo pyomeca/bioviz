@@ -338,7 +338,7 @@ class Viz:
         experimental_forces_color=(85, 78, 0),
         floor_origin=None,
         floor_normal=None,
-        floor_color=(0.5, 0.5, 0.5),
+        floor_color=(0.7, 0.7, 0.7),
         floor_scale=5,
         **kwargs,
     ):

@@ -1576,7 +1576,9 @@ class VtkModel(QtWidgets.QWidget):
 
     def new_floor(self, origin, normal, color, scale):
         self.plane_source = vtkPlaneSource()
-        self.plane_source.SetResolution(1, 1)
+        n_grid_per_meter = 2
+        resolution = [scale[0] * n_grid_per_meter, scale[1] * n_grid_per_meter]
+        self.plane_source.SetResolution(resolution[0], resolution[1])
 
         # Ground orientation
         self.plane_source.SetCenter(origin)
@@ -1596,6 +1598,8 @@ class VtkModel(QtWidgets.QWidget):
 
         self.plane_actor = vtkActor()
         self.plane_actor.SetMapper(mapper)
+        self.plane_actor.GetProperty().EdgeVisibilityOn()
+        self.plane_actor.GetProperty().SetEdgeColor(1, 1, 1)
         self.plane_actor.GetProperty().SetColor(color)
         self.plane_actor.GetProperty().SetOpacity(0.02)
 
