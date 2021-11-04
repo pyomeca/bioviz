@@ -167,6 +167,22 @@ class InterfacesCollections:
         def _get_data_from_casadi(self, Q=None, compute_kin=True):
             self.data[:3, :, 0] = self.CoM(Q)
 
+    class Gravity(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+            self.data = np.zeros(3)
+
+        def _get_data_from_eigen(self):
+            self.data = self.m.getGravity().to_array()
+
+        def _prepare_function_for_casadi(self):
+            self.gravity = biorbd.to_casadi_func("Gravity", self.m.getGravity)
+
+        def _get_data_from_casadi(self):
+            self.data = self.gravity()
+            for key in self.data.keys():
+                self.data = np.array(self.data[key]).reshape(3)
+
     class CoMbySegment(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
@@ -302,6 +318,7 @@ class Viz:
         show_meshes=True,
         show_global_center_of_mass=True,
         show_gravity_vector=True,
+        show_floor=True,
         show_segments_center_of_mass=True,
         segments_center_of_mass_size=0.005,
         show_global_ref_frame=True,
@@ -319,6 +336,10 @@ class Viz:
         background_color=(0.5, 0.5, 0.5),
         force_wireframe=False,
         experimental_forces_color=(85, 78, 0),
+        floor_origin=None,
+        floor_normal=None,
+        floor_color=(0.7, 0.7, 0.7),
+        floor_scale=5,
         **kwargs,
     ):
         """
@@ -399,6 +420,10 @@ class Viz:
         self.show_soft_contacts = show_soft_contacts
         self.soft_contacts_color = soft_contacts_color
         self.show_global_ref_frame = show_global_ref_frame
+        self.show_floor = show_floor
+        self.floor_origin, self.floor_normal = floor_origin, floor_normal
+        self.floor_scale = floor_scale
+        self.floor_color = floor_color
         self.show_global_center_of_mass = show_global_center_of_mass
         self.show_gravity_vector = show_gravity_vector
         self.show_segments_center_of_mass = show_segments_center_of_mass
@@ -423,7 +448,8 @@ class Viz:
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
             self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
-
+        if show_gravity_vector:
+            self.Gravity = InterfacesCollections.Gravity(self.model)
         if self.show_contacts:
             self.Contacts = InterfacesCollections.Contact(self.model)
             self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
@@ -576,6 +602,8 @@ class Viz:
             self.__set_global_center_of_mass_from_q()
         if self.show_gravity_vector:
             self.__set_gravity_vector()
+        if self.show_floor:
+            self.__set_floor()
         if self.show_segments_center_of_mass:
             self.__set_segments_center_of_mass_from_q()
         if self.show_markers:
@@ -1141,13 +1169,18 @@ class Viz:
 
     def __set_gravity_vector(self):
         start = [0, 0, 0]
-        magnitude = self.model.getGravity().to_array()
+        magnitude = self.Gravity.get_data()
         gravity = np.concatenate((start, magnitude))
         length = np.linalg.norm(gravity)
         id_matrix = np.identity(4)
-        self.vtk_model.new_gravity_vector(
-            id_matrix, gravity, length, normalization_ratio=0.3, vector_color=(0, 0, 0)
-        )
+        self.vtk_model.new_gravity_vector(id_matrix, gravity, length, normalization_ratio=0.3, vector_color=(0, 0, 0))
+
+    def __set_floor(self):
+        origin = self.floor_origin if self.floor_origin else (0, 0, 0)
+        normal = self.floor_normal if self.floor_normal else self.Gravity.get_data()
+        scale = self.floor_scale
+        scale = (scale, scale, scale) if isinstance(scale, (int, float)) else scale
+        self.vtk_model.new_floor(origin=origin, normal=normal, color=self.floor_color, scale=scale)
 
     def __set_segments_center_of_mass_from_q(self):
         coms = self.CoMbySegment.get_data(Q=self.Q, compute_kin=False)
