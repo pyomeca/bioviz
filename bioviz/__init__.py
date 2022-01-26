@@ -643,16 +643,25 @@ class Viz:
             )
 
             if self.is_recording:
-                self.__record()
+                self.add_frame()
                 if self.movement_slider[0].value() + 1 == (self.movement_slider[0].maximum() + 1):
                     self.__start_stop_animation()
         self.refresh_window()
+
+    def resize(self, width: int, height: int):
+        self.vtk_window.setFixedSize(width, height)
 
     def exec(self):
         self.is_executing = True
         while self.vtk_window.is_active:
             self.update()
         self.is_executing = False
+
+    def quit(self):
+        self.vtk_window.close()
+
+    def maximize(self):
+        self.vtk_window.showMaximized()
 
     def set_viz_palette(self):
         self.palette_active.setColor(QPalette.WindowText, QColor(Qt.black))
@@ -804,14 +813,14 @@ class Viz:
         self.record_push_button.setIcon(self.record_icon)
         self.record_push_button.setPalette(self.palette_active)
         self.record_push_button.setEnabled(True)
-        self.record_push_button.released.connect(self.__record)
+        self.record_push_button.released.connect(self.start_recording)
         animation_slider_layout.addWidget(self.record_push_button)
 
         self.stop_record_push_button = QPushButton()
         self.stop_record_push_button.setIcon(self.stop_icon)
         self.stop_record_push_button.setPalette(self.palette_active)
         self.stop_record_push_button.setEnabled(False)
-        self.stop_record_push_button.released.connect(self.__stop_record, True)
+        self.stop_record_push_button.released.connect(self.stop_recording)
         animation_slider_layout.addWidget(self.stop_record_push_button)
 
         # Add the frame count
@@ -953,20 +962,32 @@ class Viz:
             self.record_push_button.setEnabled(False)
             self.stop_record_push_button.setEnabled(False)
 
-    def __stop_record(self):
-        self.__record(finish=True)
+    def stop_recording(self):
+        self._record(finish=True)
 
-    def __record(self, finish=False):
-        file_name = None
+    def start_recording(self, save_path: str = None):
+        self._record(finish=False, file_name=save_path)
+
+    def add_frame(self):
         if not self.is_recording:
-            options = QFileDialog.Options()
-            options |= QFileDialog.DontUseNativeDialog
-            file_name = QFileDialog.getSaveFileName(
-                self.vtk_window, "Save the video", "", "OGV files (*.ogv)", options=options
-            )
-            file_name, file_extension = os.path.splitext(file_name[0])
+            raise ValueError("add_frame must be called after 'start_recording'")
+
+        self._record(finish=False)
+
+    def _record(self, finish, file_name: str = None):
+        if not self.is_recording:
+            if file_name is None:
+                options = QFileDialog.Options()
+                options |= QFileDialog.DontUseNativeDialog
+                file_name = QFileDialog.getSaveFileName(
+                    self.vtk_window, "Save the video", "", "OGV files (*.ogv)", options=options
+                )[0]
+
+            file_name, file_extension = os.path.splitext(file_name)
             if file_name == "":
                 return
+            if file_extension and file_extension != ".ogv":
+                raise ValueError("The only supported format for video is .ogv")
             file_name += ".ogv"
 
             self.record_push_button.setIcon(self.add_icon)
