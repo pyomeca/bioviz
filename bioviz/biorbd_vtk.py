@@ -1,7 +1,7 @@
 """
 Visualization toolkit in pyomeca
 """
-
+import os
 import time
 import sys
 
@@ -133,6 +133,12 @@ class VtkWindow(QtWidgets.QMainWindow):
         cam = self.ren.GetActiveCamera()
         cam.SetParallelScale(1 / zoom)
 
+    def get_camera_focus_point(self) -> tuple:
+        return self.ren.GetActiveCamera().GetFocalPoint()
+
+    def set_camera_focus_point(self, x: float, y: float, z: float):
+        self.ren.GetActiveCamera().SetFocalPoint(x, y, z)
+
     def change_background_color(self, color):
         """
         Dynamically change the background color of the windows
@@ -149,6 +155,12 @@ class VtkWindow(QtWidgets.QMainWindow):
         w2if.Update()
 
         w = vtkPNGWriter()
+        folder_path = os.path.dirname(save_path)
+        try:
+            os.mkdir(folder_path)
+        except FileExistsError:
+            pass
+
         w.SetFileName(save_path)
         w.SetInputData(w2if.GetOutput())
 

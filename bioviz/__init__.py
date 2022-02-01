@@ -1,3 +1,4 @@
+from typing import Union
 import os
 import copy
 from functools import partial
@@ -445,6 +446,7 @@ class Viz:
         # Create all the reference to the things to plot
         self.nQ = self.model.nbQ()
         self.Q = np.zeros(self.nQ)
+        self.idx_markers_to_remove = []
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
             self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
@@ -463,6 +465,7 @@ class Viz:
             self.CoMbySegment = InterfacesCollections.CoMbySegment(self.model)
             self.segments_center_of_mass = Markers(np.ndarray((3, self.model.nbSegment(), 1)))
         if self.show_meshes:
+            self.show_segment_is_on = []
             self.mesh = []
             self.meshPointsInMatrix = InterfacesCollections.MeshPointsInMatrix(self.model)
             for i, vertices in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
@@ -472,6 +475,7 @@ class Viz:
                     else np.ndarray((0, 3), dtype="int32")
                 )
                 self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
+                self.show_segment_is_on.append(True)
         if self.show_muscles:
             self.model.updateMuscles(self.Q, True)
             self.muscles = []
@@ -648,6 +652,32 @@ class Viz:
     def set_camera_zoom(self, zoom: float):
         self.vtk_window.set_camera_zoom(zoom)
         self.refresh_window()
+
+    def get_camera_focus_point(self) -> tuple:
+        return self.vtk_window.get_camera_focus_point()
+
+    def set_camera_focus_point(self, x: float, y: float, z: float):
+        self.vtk_window.set_camera_focus_point(x, y, z)
+        self.refresh_window()
+
+    def toggle_segments(self, idx: Union[int, tuple]):
+        # Todo add graphical usage
+        if isinstance(idx, int):
+            idx = (idx,)
+        for i in idx:
+            self.show_segment_is_on[i] = not self.show_segment_is_on[i]
+        self.__set_meshes_from_q()
+
+        # Compute which marker index to remove
+        offset_marker = 0
+        self.idx_markers_to_remove = []
+        for s in range(self.model.nbSegment()):
+            nb_markers = self.model.nbMarkers(s)
+            if not self.show_segment_is_on[s]:
+                self.idx_markers_to_remove += list(range(offset_marker, offset_marker + nb_markers))
+            offset_marker += nb_markers
+        self.__set_markers_from_q()
+        self.__set_rt_from_q()
 
     def refresh_window(self):
         """
@@ -1162,6 +1192,8 @@ class Viz:
 
     def __set_markers_from_q(self):
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
+        if self.idx_markers_to_remove:
+            self.markers[0:3, self.idx_markers_to_remove, :] = np.nan
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
 
     def __set_experimental_markers_from_frame(self):
@@ -1241,7 +1273,10 @@ class Viz:
 
     def __set_meshes_from_q(self):
         for m, meshes in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
-            self.mesh[m][0:3, :, :] = meshes
+            if self.show_segment_is_on[m]:
+                self.mesh[m][0:3, :, :] = meshes
+            else:
+                self.mesh[m][0:3, :, :] = np.nan
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):
@@ -1273,5 +1308,8 @@ class Viz:
 
     def __set_rt_from_q(self):
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
-            self.rt[k] = Rototrans(rt)
+            if self.show_segment_is_on[k]:
+                self.rt[k] = Rototrans(rt)
+            else:
+                self.rt[k] = Rototrans(np.eye(4)) * np.nan
         self.vtk_model.update_rt(self.rt)
