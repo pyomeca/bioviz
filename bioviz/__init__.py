@@ -628,6 +628,27 @@ class Viz:
         if refresh_window:
             self.refresh_window()
 
+    def get_camera_position(self) -> tuple:
+        return self.vtk_window.get_camera_position()
+
+    def set_camera_position(self, x: float, y: float, z: float):
+        self.vtk_window.set_camera_position(x, y, z)
+        self.refresh_window()
+
+    def get_camera_roll(self) -> float:
+        return self.vtk_window.get_camera_roll()
+
+    def set_camera_roll(self, roll: float):
+        self.vtk_window.set_camera_roll(roll)
+        self.refresh_window()
+
+    def get_camera_zoom(self) -> float:
+        return self.vtk_window.get_camera_zoom()
+
+    def set_camera_zoom(self, zoom: float):
+        self.vtk_window.set_camera_zoom(zoom)
+        self.refresh_window()
+
     def refresh_window(self):
         """
         Manually refresh the window. One should be aware when manually managing the window, that the plot won't even
@@ -961,6 +982,15 @@ class Viz:
             self.play_stop_push_button.setIcon(self.pause_icon)
             self.record_push_button.setEnabled(False)
             self.stop_record_push_button.setEnabled(False)
+
+    def snapshot(self, save_path: str):
+        # Todo Add a button
+        file_name, extension = os.path.splitext(save_path)
+        if not extension:
+            extension = ".png"
+        if extension != ".png":
+            raise NotImplementedError("The only snapshot format implemented is PNG")
+        self.vtk_window.snapshot(file_name + extension)
 
     def stop_recording(self):
         self._record(finish=True)
