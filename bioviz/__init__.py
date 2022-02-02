@@ -317,6 +317,7 @@ class Viz:
         model_path=None,
         loaded_model=None,
         show_meshes=True,
+        mesh_opacity=0.8,
         show_global_center_of_mass=True,
         show_gravity_vector=True,
         show_floor=True,
@@ -388,6 +389,7 @@ class Viz:
             self.vtk_window,
             markers_color=(0, 0, 1),
             patch_color=InterfacesCollections.MeshColor.get_color(self.model),
+            mesh_opacity=mesh_opacity,
             markers_size=self.vtk_markers_size,
             contacts_size=contacts_size,
             segments_center_of_mass_size=segments_center_of_mass_size,
@@ -596,30 +598,18 @@ class Viz:
         self.Q = Q
 
         self.model.UpdateKinematicsCustom(self.Q)
-        if self.show_muscles:
-            self.__set_muscles_from_q()
-        if self.show_local_ref_frame:
-            self.__set_rt_from_q()
-        if self.show_meshes:
-            self.__set_meshes_from_q()
-        if self.show_global_center_of_mass:
-            self.__set_global_center_of_mass_from_q()
-        if self.show_gravity_vector:
-            self.__set_gravity_vector()
-        if self.show_floor:
-            self.__set_floor()
-        if self.show_segments_center_of_mass:
-            self.__set_segments_center_of_mass_from_q()
-        if self.show_markers:
-            self.__set_markers_from_q()
-        if self.show_markers:
-            self.__set_markers_from_q()
-        if self.show_contacts:
-            self.__set_contacts_from_q()
-        if self.show_soft_contacts:
-            self.__set_soft_contacts_from_q()
-        if self.show_wrappings:
-            self.__set_wrapping_from_q()
+
+        self.__set_muscles_from_q()
+        self.__set_rt_from_q()
+        self.__set_meshes_from_q()
+        self.__set_global_center_of_mass_from_q()
+        self.__set_gravity_vector()
+        self.__set_floor()
+        self.__set_segments_center_of_mass_from_q()
+        self.__set_markers_from_q()
+        self.__set_contacts_from_q()
+        self.__set_soft_contacts_from_q()
+        self.__set_wrapping_from_q()
 
         # Update the sliders
         if self.show_analyses_panel:
@@ -982,11 +972,8 @@ class Viz:
             self.Q = copy.copy(self.animated_Q[t, :])  # 1-based
             self.set_q(self.Q)
 
-        if self.show_experimental_markers:
-            self.__set_experimental_markers_from_frame()
-
-        if self.show_experimental_forces:
-            self.__set_experimental_forces_from_frame()
+        self.__set_experimental_markers_from_frame()
+        self.__set_experimental_forces_from_frame()
 
         # Update graph of muscle analyses
         self.__update_muscle_analyses_graphs(True, True, True, True)
@@ -1191,17 +1178,26 @@ class Viz:
             self.__start_stop_animation()
 
     def __set_markers_from_q(self):
+        if not self.show_markers:
+            return
+
         self.markers[0:3, :, :] = self.Markers.get_data(Q=self.Q, compute_kin=False)
         if self.idx_markers_to_remove:
             self.markers[0:3, self.idx_markers_to_remove, :] = np.nan
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
 
     def __set_experimental_markers_from_frame(self):
+        if not self.show_experimental_markers:
+            return
+
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
         self.vtk_model_markers.update_markers(self.experimental_markers[:, :, t : t + 1].isel(time=[0]))
 
     def __set_experimental_forces_from_frame(self):
+        if not self.show_experimental_forces:
+            return
+
         segment_names = []
         for i in range(self.model.nbSegment()):
             segment_names.append(self.model.segment(i).name().to_string())
@@ -1238,19 +1234,31 @@ class Viz:
         )
 
     def __set_contacts_from_q(self):
+        if not self.show_contacts:
+            return
+
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_contacts(self.contacts.isel(time=[0]))
 
     def __set_soft_contacts_from_q(self):
+        if not self.show_soft_contacts:
+            return
+
         self.soft_contacts[0:3, :, :] = self.SoftContacts.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_soft_contacts(self.soft_contacts.isel(time=[0]))
 
     def __set_global_center_of_mass_from_q(self):
+        if not self.show_global_center_of_mass:
+            return
+
         com = self.CoM.get_data(Q=self.Q, compute_kin=False)
         self.global_center_of_mass.loc[{"channel": 0, "time": 0}] = com.squeeze()
         self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.isel(time=[0]))
 
     def __set_gravity_vector(self):
+        if not self.show_gravity_vector:
+            return
+
         start = [0, 0, 0]
         magnitude = self.Gravity.get_data()
         gravity = np.concatenate((start, magnitude))
@@ -1259,6 +1267,9 @@ class Viz:
         self.vtk_model.new_gravity_vector(id_matrix, gravity, length, normalization_ratio=0.3, vector_color=(0, 0, 0))
 
     def __set_floor(self):
+        if not self.show_floor:
+            return
+
         origin = self.floor_origin if self.floor_origin else (0, 0, 0)
         normal = self.floor_normal if self.floor_normal else self.Gravity.get_data()
         scale = self.floor_scale
@@ -1266,12 +1277,18 @@ class Viz:
         self.vtk_model.new_floor(origin=origin, normal=normal, color=self.floor_color, scale=scale)
 
     def __set_segments_center_of_mass_from_q(self):
+        if not self.show_segments_center_of_mass:
+            return
+
         coms = self.CoMbySegment.get_data(Q=self.Q, compute_kin=False)
         for k, com in enumerate(coms):
             self.segments_center_of_mass.loc[{"channel": k, "time": 0}] = com.squeeze()
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.isel(time=[0]))
 
     def __set_meshes_from_q(self):
+        if not self.show_meshes:
+            return
+
         for m, meshes in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
             if self.show_segment_is_on[m]:
                 self.mesh[m][0:3, :, :] = meshes
@@ -1280,6 +1297,9 @@ class Viz:
         self.vtk_model.update_mesh(self.mesh)
 
     def __set_muscles_from_q(self):
+        if not self.show_muscles:
+            return
+
         muscles = self.musclesPointsInGlobal.get_data(Q=self.Q)
         idx = 0
         cmp = 0
@@ -1293,6 +1313,9 @@ class Viz:
         self.vtk_model.update_muscle(self.muscles)
 
     def __set_wrapping_from_q(self):
+        if not self.show_wrappings:
+            return
+
         for i, wraps in enumerate(self.wraps_base):
             for j, wrap in enumerate(wraps):
                 if self.model.muscle(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
@@ -1307,6 +1330,9 @@ class Viz:
         self.vtk_model.update_wrapping(self.wraps_current)
 
     def __set_rt_from_q(self):
+        if not self.show_local_ref_frame:
+            return
+
         for k, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
             if self.show_segment_is_on[k]:
                 self.rt[k] = Rototrans(rt)
