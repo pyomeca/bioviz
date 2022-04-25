@@ -1,7 +1,7 @@
 """
 Visualization toolkit in pyomeca
 """
-
+import os
 import time
 import sys
 
@@ -33,6 +33,7 @@ from vtk import (
     vtkTransform,
     vtkTransformPolyDataFilter,
     vtkPlaneSource,
+    vtkPNGWriter,
 )
 
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -109,6 +110,35 @@ class VtkWindow(QtWidgets.QMainWindow):
         self.interactor.Render()
         app.processEvents()
 
+    def get_camera_position(self) -> tuple:
+        return self.ren.GetActiveCamera().GetPosition()
+
+    def set_camera_position(self, x: float, y: float, z: float):
+        cam = self.ren.GetActiveCamera()
+        cam.SetPosition(x, y, z)
+        self.ren.ResetCamera()
+
+    def get_camera_roll(self) -> float:
+        return self.ren.GetActiveCamera().GetRoll()
+
+    def set_camera_roll(self, roll: float):
+        cam = self.ren.GetActiveCamera()
+        cam.SetRoll(roll)
+        self.ren.ResetCamera()
+
+    def get_camera_zoom(self) -> float:
+        return 1 / self.ren.GetActiveCamera().GetParallelScale()
+
+    def set_camera_zoom(self, zoom: float):
+        cam = self.ren.GetActiveCamera()
+        cam.SetParallelScale(1 / zoom)
+
+    def get_camera_focus_point(self) -> tuple:
+        return self.ren.GetActiveCamera().GetFocalPoint()
+
+    def set_camera_focus_point(self, x: float, y: float, z: float):
+        self.ren.GetActiveCamera().SetFocalPoint(x, y, z)
+
     def change_background_color(self, color):
         """
         Dynamically change the background color of the windows
@@ -118,6 +148,23 @@ class VtkWindow(QtWidgets.QMainWindow):
         """
         self.ren.SetBackground(color)
         self.setPalette(QPalette(QColor(int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))))
+
+    def snapshot(self, save_path: str):
+        w2if = vtkWindowToImageFilter()
+        w2if.SetInput(self.avatar_widget.GetRenderWindow())
+        w2if.Update()
+
+        w = vtkPNGWriter()
+        folder_path = os.path.dirname(save_path)
+        try:
+            os.mkdir(folder_path)
+        except FileExistsError:
+            pass
+
+        w.SetFileName(save_path)
+        w.SetInputData(w2if.GetOutput())
+
+        w.Write()
 
     def record(self, finish=False, button_to_block=(), file_name=None):
         windowToImageFilter = vtkWindowToImageFilter()
