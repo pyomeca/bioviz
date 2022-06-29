@@ -449,6 +449,7 @@ class Viz:
         self.nQ = self.model.nbQ()
         self.Q = np.zeros(self.nQ)
         self.idx_markers_to_remove = []
+        self.show_segment_is_on = [False] * self.model.nbSegment()
         if self.show_markers:
             self.Markers = InterfacesCollections.Markers(self.model)
             self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
@@ -467,7 +468,6 @@ class Viz:
             self.CoMbySegment = InterfacesCollections.CoMbySegment(self.model)
             self.segments_center_of_mass = Markers(np.ndarray((3, self.model.nbSegment(), 1)))
         if self.show_meshes:
-            self.show_segment_is_on = []
             self.mesh = []
             self.meshPointsInMatrix = InterfacesCollections.MeshPointsInMatrix(self.model)
             for i, vertices in enumerate(self.meshPointsInMatrix.get_data(Q=self.Q, compute_kin=False)):
@@ -477,7 +477,7 @@ class Viz:
                     else np.ndarray((0, 3), dtype="int32")
                 )
                 self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
-                self.show_segment_is_on.append(True)
+                self.show_segment_is_on[i] = True
         if self.show_muscles:
             self.model.updateMuscles(self.Q, True)
             self.muscles = []
