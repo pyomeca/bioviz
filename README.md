@@ -125,7 +125,6 @@ else:
 ```Python
 import numpy as np
 import bioviz
-manually_animate = False
 
 # Load the model
 biorbd_viz = bioviz.Viz('path/to/model.bioMod')
