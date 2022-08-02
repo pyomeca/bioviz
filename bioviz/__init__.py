@@ -490,8 +490,9 @@ class Viz:
         if self.show_local_ref_frame or self.show_global_ref_frame:
             self.rt = []
             self.allGlobalJCS = InterfacesCollections.AllGlobalJCS(self.model)
-            for rt in self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False):
+            for i, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
                 self.rt.append(Rototrans(rt))
+                self.show_segment_is_on[i] = True
 
             if self.show_global_ref_frame:
                 self.vtk_model.create_global_ref_frame()
