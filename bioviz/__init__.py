@@ -971,13 +971,16 @@ class Viz:
             t_slider = self.movement_slider[0].value() - 1
             t = t_slider if t_slider < self.animated_Q.shape[0] else self.animated_Q.shape[0] - 1
             self.Q = copy.copy(self.animated_Q[t, :])  # 1-based
-            self.set_q(self.Q)
+            self.set_q(self.Q, refresh_window=False)
 
         self.__set_experimental_markers_from_frame()
         self.__set_experimental_forces_from_frame()
 
         # Update graph of muscle analyses
         self.__update_muscle_analyses_graphs(True, True, True, True)
+
+        # Refresh the window
+        self.refresh_window()
 
     def __start_stop_animation(self):
         if not self.is_executing and not self.animation_warning_already_shown:
