@@ -1137,9 +1137,10 @@ class Viz:
                 f"Allowed type are numpy array (3xNxT), data array (3xNxT) or .c3d file (str)."
             )
 
-        self.vtk_model_markers = VtkModel(
-            self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size
-        )
+        if not self.vtk_model_markers:
+            self.vtk_model_markers = VtkModel(
+                self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size
+            )
 
         self.__set_movement_slider()
         self.show_experimental_markers = True
