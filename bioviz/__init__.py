@@ -32,7 +32,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
-from .analyses import MuscleAnalyses
+from .analyses import MuscleAnalyses, KinematicModelCreationAnalyses
 from ._version import __version__
 
 
@@ -398,7 +398,7 @@ class Viz:
             soft_contacts_size=soft_contacts_size,
             soft_contacts_color=soft_contacts_color,
         )
-        self.vtk_model_markers: VtkModel = None
+        self.vtk_model_markers: VtkModel | None = None
         self.is_executing = False
         self.animation_warning_already_shown = False
 
@@ -546,9 +546,10 @@ class Viz:
             self.set_viz_palette()
             self.animated_Q = None
 
-            self.muscle_analyses = []
+            self.muscle_analyses: MuscleAnalyses | None = None
+            self.kinematic_model_creation_analyses: KinematicModelCreationAnalyses | None = None
 
-            self.play_stop_push_button = []
+            self.play_stop_push_button: QPushButton | None = None
             self.is_animating = False
             self.is_recording = False
             self.start_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/start.png"))
@@ -563,6 +564,7 @@ class Viz:
 
             self.active_analyses_widget = None
             self.analyses_layout = QHBoxLayout()
+            self.analyses_kinematic_model_creation_widget = QWidget()
             self.analyses_muscle_widget = QWidget()
             self.add_options_panel()
 
@@ -712,10 +714,11 @@ class Viz:
         self.palette_inactive.setColor(QPalette.WindowText, QColor(Qt.gray))
 
     def add_options_panel(self):
-        if self.has_model:
-            # Prepare the sliders
-            options_layout = QVBoxLayout()
+        # Prepare the sliders
+        options_layout = QVBoxLayout()
+        radio_muscle = None
 
+        if self.has_model:
             options_layout.addStretch()  # Centralize the sliders
             sliders_layout = QVBoxLayout()
             max_label_width = -1
@@ -800,10 +803,17 @@ class Viz:
             radio_none.toggled.connect(lambda: self.__select_analyses_panel(radio_none, 0))
             radio_none.setText("None")
             option_analyses_layout.addWidget(radio_none)
+            # Add the no analyses
+            radio_static_model = QRadioButton()
+            radio_static_model.setPalette(self.palette_active)
+            radio_static_model.setChecked(False)
+            radio_static_model.toggled.connect(lambda: self.__select_analyses_panel(radio_static_model, 1))
+            radio_static_model.setText("Kinematic model creation")
+            option_analyses_layout.addWidget(radio_static_model)
             # Add the muscles analyses
             radio_muscle = QRadioButton()
             radio_muscle.setPalette(self.palette_active)
-            radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 1))
+            radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 2))
             radio_muscle.setText("Muscles")
             option_analyses_layout.addWidget(radio_muscle)
             # Add the layout to the interface
@@ -887,13 +897,14 @@ class Viz:
 
         # Prepare all the analyses panel
         if self.has_model:
+            self.kinematic_model_creation_analyses = KinematicModelCreationAnalyses(self.analyses_kinematic_model_creation_widget, self)
             if self.show_muscles:
                 self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
             if biorbd.currentLinearAlgebraBackend() == 1:
                 radio_muscle.setEnabled(False)
             else:
                 radio_muscle.setEnabled(self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0)
-            self.__select_analyses_panel(radio_muscle, 1)
+            self.__select_analyses_panel(radio_muscle, 0)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
         if not radio_button.isChecked():
@@ -902,12 +913,16 @@ class Viz:
         # Hide previous analyses panel if necessary
         self.__hide_analyses_panel()
 
+        # The bigger the factor is, the bigger the main screen remains
         size_factor_none = 1
+        size_factor_kinematic_model_creation = 1.8
         size_factor_muscle = 1.40
 
         # Find the size factor to get back to normal size
         if self.active_analyses_widget is None:
             reduction_factor = size_factor_none
+        elif self.active_analyses_widget == self.analyses_kinematic_model_creation_widget:
+            reduction_factor = size_factor_kinematic_model_creation
         elif self.active_analyses_widget == self.analyses_muscle_widget:
             reduction_factor = size_factor_muscle
         else:
@@ -918,6 +933,9 @@ class Viz:
             self.active_analyses_widget = None
             enlargement_factor = size_factor_none
         elif panel_to_activate == 1:
+            self.active_analyses_widget = self.analyses_kinematic_model_creation_widget
+            enlargement_factor = size_factor_kinematic_model_creation
+        elif panel_to_activate == 2:
             self.active_analyses_widget = self.analyses_muscle_widget
             enlargement_factor = size_factor_muscle
         else:
