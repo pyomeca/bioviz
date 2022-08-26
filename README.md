@@ -87,7 +87,7 @@ bioviz.Viz('path/to/model.bioMod',
 
 ### From the GUI
 
-For loading a movement that the model will perform, one has simply to click on the *Load movement* button and load the previously save movement file. The file must be a numpy array of $n_{Frames} \times n_{DoF}$ matrix.
+For loading a movement that the model will perform, one has simply to click on the *Load movement* button and load the previously save movement file. The file must be a numpy array of $n_{DoF} \times n_{Frames}$ matrix.
 
 ### From the command line
 
@@ -103,8 +103,8 @@ biorbd_viz = bioviz.Viz('path/to/model.bioMod')
 
 # Create a movement 
 n_frames = 200
-all_q = np.zeros((n_frames, biorbd_viz.nQ))
-all_q[:, 4] = np.linspace(0, np.pi / 2, n_frames)
+all_q = np.zeros((biorbd_viz.nQ, n_frames))
+all_q[4, :] = np.linspace(0, np.pi / 2, n_frames)
 
 # Animate the model
 if manually_animate:
@@ -117,6 +117,33 @@ else:
     biorbd_viz.exec()
 
 ```
+
+## Loading external forces
+
+### From the command line
+
+```Python
+import numpy as np
+import bioviz
+
+# Load the model
+biorbd_viz = bioviz.Viz('path/to/model.bioMod')
+
+# Create a movement
+n_frames = 200
+all_q = np.zeros((biorbd_viz.nQ, n_frames))
+all_q[4, :] = np.linspace(0, np.pi / 2, n_frames)
+
+f_ext = np.zeros((1,6,n_frames))
+# fill the origin of the external force
+f_ext[0,:3,:] = np.linspace(np.zeros(3), np.ones(3) * 0.1, n_frames).T
+# fill the location of the tip of the arrow
+f_ext[0,3:,:] = np.linspace(np.ones(3) * 0.2, np.ones(3) * 0.25, n_frames).T
+
+# Animate the model
+biorbd_viz.load_movement(all_q)
+biorbd_viz.load_experimental_forces(f_ext, segments=None, normalization_ratio=0.2)
+biorbd_viz.exec()
 
 ## Analyses panel
 
