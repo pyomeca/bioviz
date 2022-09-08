@@ -320,7 +320,7 @@ class Viz:
         mesh_opacity=0.8,
         show_global_center_of_mass=True,
         show_gravity_vector=True,
-        show_floor=True,
+        show_floor=False,
         show_segments_center_of_mass=True,
         segments_center_of_mass_size=0.005,
         show_global_ref_frame=True,
