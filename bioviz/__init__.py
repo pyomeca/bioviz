@@ -922,10 +922,8 @@ class Viz:
         # Find the size factor to get back to normal size
         if self.active_analyses_widget is None:
             reduction_factor = size_factor_none
-            self.column_stretch = 1
         elif self.active_analyses_widget == self.analyses_c3d_editor_widget:
             reduction_factor = size_c3d_editor_creation
-            column_stretch = 1
         elif self.active_analyses_widget == self.analyses_muscle_widget:
             reduction_factor = size_factor_muscle
         else:
