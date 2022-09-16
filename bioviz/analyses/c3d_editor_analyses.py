@@ -6,7 +6,7 @@ except ImportError:
     import biorbd_casadi as biorbd
 
 
-class KinematicModelCreationAnalyses:
+class C3dEditorAnalyses:
     def __init__(self, parent, main_window, background_color=(0.5, 0.5, 0.5)):
         # Centralize the materials
         main_layout = QHBoxLayout(parent)

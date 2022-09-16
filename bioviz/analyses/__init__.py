@@ -1,2 +1,2 @@
 from .muscle_analyses import MuscleAnalyses
-from .kinematic_model_creation_analyses import KinematicModelCreationAnalyses
+from .c3d_editor_analyses import C3dEditorAnalyses

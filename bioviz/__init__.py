@@ -32,7 +32,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
-from .analyses import MuscleAnalyses, KinematicModelCreationAnalyses
+from .analyses import MuscleAnalyses, C3dEditorAnalyses
 from ._version import __version__
 
 
@@ -50,7 +50,7 @@ def check_version(tool_to_compare, min_version, max_version):
         raise ImportError(f"{name} should be lesser than version {max_version}")
 
 
-check_version(biorbd, "1.8.5", "2.0.0")
+check_version(biorbd, "1.9.1", "2.0.0")
 check_version(pyomeca, "2020.0.1", "2020.1.0")
 from pyomeca import Markers
 
@@ -547,7 +547,7 @@ class Viz:
             self.animated_Q = None
 
             self.muscle_analyses: MuscleAnalyses | None = None
-            self.kinematic_model_creation_analyses: KinematicModelCreationAnalyses | None = None
+            self.c3d_editor_analyses: C3dEditorAnalyses | None = None
 
             self.play_stop_push_button: QPushButton | None = None
             self.is_animating = False
@@ -563,8 +563,9 @@ class Viz:
             self.movement_slider = []
 
             self.active_analyses_widget = None
+            self.column_stretch = 0
             self.analyses_layout = QHBoxLayout()
-            self.analyses_kinematic_model_creation_widget = QWidget()
+            self.analyses_c3d_editor_widget = QWidget()
             self.analyses_muscle_widget = QWidget()
             self.add_options_panel()
 
@@ -804,12 +805,12 @@ class Viz:
             radio_none.setText("None")
             option_analyses_layout.addWidget(radio_none)
             # Add the no analyses
-            radio_static_model = QRadioButton()
-            radio_static_model.setPalette(self.palette_active)
-            radio_static_model.setChecked(False)
-            radio_static_model.toggled.connect(lambda: self.__select_analyses_panel(radio_static_model, 1))
-            radio_static_model.setText("Kinematic model creation")
-            option_analyses_layout.addWidget(radio_static_model)
+            radio_c3d_editor_model = QRadioButton()
+            radio_c3d_editor_model.setPalette(self.palette_active)
+            radio_c3d_editor_model.setChecked(False)
+            radio_c3d_editor_model.toggled.connect(lambda: self.__select_analyses_panel(radio_c3d_editor_model, 1))
+            radio_c3d_editor_model.setText("C3D editor")
+            option_analyses_layout.addWidget(radio_c3d_editor_model)
             # Add the muscles analyses
             radio_muscle = QRadioButton()
             radio_muscle.setPalette(self.palette_active)
@@ -897,7 +898,7 @@ class Viz:
 
         # Prepare all the analyses panel
         if self.has_model:
-            self.kinematic_model_creation_analyses = KinematicModelCreationAnalyses(self.analyses_kinematic_model_creation_widget, self)
+            self.c3d_editor_analyses = C3dEditorAnalyses(self.analyses_c3d_editor_widget, self)
             if self.show_muscles:
                 self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
             if biorbd.currentLinearAlgebraBackend() == 1:
@@ -915,14 +916,16 @@ class Viz:
 
         # The bigger the factor is, the bigger the main screen remains
         size_factor_none = 1
-        size_factor_kinematic_model_creation = 1.8
+        size_c3d_editor_creation = 1.5
         size_factor_muscle = 1.40
 
         # Find the size factor to get back to normal size
         if self.active_analyses_widget is None:
             reduction_factor = size_factor_none
-        elif self.active_analyses_widget == self.analyses_kinematic_model_creation_widget:
-            reduction_factor = size_factor_kinematic_model_creation
+            self.column_stretch = 1
+        elif self.active_analyses_widget == self.analyses_c3d_editor_widget:
+            reduction_factor = size_c3d_editor_creation
+            column_stretch = 1
         elif self.active_analyses_widget == self.analyses_muscle_widget:
             reduction_factor = size_factor_muscle
         else:
@@ -932,11 +935,14 @@ class Viz:
         if panel_to_activate == 0:
             self.active_analyses_widget = None
             enlargement_factor = size_factor_none
+            self.column_stretch = 0
         elif panel_to_activate == 1:
-            self.active_analyses_widget = self.analyses_kinematic_model_creation_widget
-            enlargement_factor = size_factor_kinematic_model_creation
+            self.active_analyses_widget = self.analyses_c3d_editor_widget
+            enlargement_factor = size_c3d_editor_creation
+            self.column_stretch = 1
         elif panel_to_activate == 2:
             self.active_analyses_widget = self.analyses_muscle_widget
+            self.column_stretch = 4
             enlargement_factor = size_factor_muscle
         else:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
@@ -961,7 +967,7 @@ class Viz:
         # Give the parent as main window
         if self.active_analyses_widget is not None:
             self.vtk_window.main_layout.addWidget(self.active_analyses_widget, 0, 2)
-            self.vtk_window.main_layout.setColumnStretch(2, 4)
+            self.vtk_window.main_layout.setColumnStretch(2, self.column_stretch)
             self.active_analyses_widget.setVisible(True)
 
         # Update graphs if needed
