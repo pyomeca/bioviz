@@ -87,7 +87,7 @@ bioviz.Viz('path/to/model.bioMod',
 
 ### From the GUI
 
-For loading a movement that the model will perform, one has simply to click on the *Load movement* button and load the previously save movement file. The file must be a numpy array of $n_{Frames} \times n_{DoF}$ matrix.
+For loading a movement that the model will perform, one has simply to click on the *Load movement* button and load the previously save movement file. The file must be a numpy array of $n_{DoF} \times n_{Frames}$ matrix.
 
 ### From the command line
 
