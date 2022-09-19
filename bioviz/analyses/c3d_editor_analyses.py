@@ -120,9 +120,9 @@ class C3dEditorAnalyses:
 
     def _set_time(self, index: int):
         if index == 0:
-            print("Starting time set")
+            self.main_window.set_movement_first_frame(self.main_window.movement_slider[0].value() - 1)
         elif index == 1:
-            print("Ending time set")
+            self.main_window.set_movement_last_frame(self.main_window.movement_slider[0].value())
         else:
             raise ValueError("insert_index should be 0 for start or 1 for end")
 

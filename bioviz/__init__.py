@@ -33,6 +33,7 @@ from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
 from .analyses import MuscleAnalyses, C3dEditorAnalyses
 from .interfaces_collection import InterfacesCollections
+from .qt_ui.rectangle_on_slider import RectangleOnSlider
 from ._version import __version__, check_version
 
 check_version(biorbd, "1.9.1", "2.0.0")
@@ -288,12 +289,15 @@ class Viz:
             self.record_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/record.png"))
             self.add_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/add.png"))
             self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/stop.png"))
+            self.record_push_button = None
 
             self.double_factor = 10000
             self.sliders = list()
             self.movement_slider = []
             self.movement_first_frame = 0
             self.movement_last_frame = -1
+            self.movement_slider_starting_shade = None
+            self.movement_slider_ending_shade = None
 
             self.active_analyses_widget = None
             self.column_stretch = 0
@@ -417,12 +421,13 @@ class Viz:
     def update(self):
         if self.show_analyses_panel and self.is_animating:
             self.movement_slider[0].setValue(self.movement_slider[0].value() + 1)
-            if self.movement_slider[0].value() == self.movement_last_frame:
+
+            if self.movement_slider[0].value() >= self.movement_last_frame:
                 self.movement_slider[0].setValue(self.movement_first_frame + 1)
 
             if self.is_recording:
                 self.add_frame()
-                if self.movement_slider[0].value() + 1 == (self.movement_slider[0].maximum() + 1):
+                if self.movement_slider[0].value() == self.movement_last_frame:
                     self.__start_stop_animation()
         self.refresh_window()
 
@@ -593,6 +598,8 @@ class Viz:
         slider.setValue(0)
         slider.setEnabled(False)
         slider.valueChanged.connect(self.__animate_from_slider)
+        self.movement_slider_starting_shade = RectangleOnSlider(slider, side=RectangleOnSlider.Side.Left)
+        self.movement_slider_ending_shade = RectangleOnSlider(slider, side=RectangleOnSlider.Side.Right)
         animation_slider_layout.addWidget(slider)
 
         self.record_push_button = QPushButton()
@@ -709,6 +716,24 @@ class Viz:
             self.Q[i] = slide[1].value() / self.double_factor
             slide[2].setText(f" {self.Q[i]:.2f}")
         self.set_q(self.Q)
+
+    def set_movement_first_frame(self, value):
+        if value >= self.movement_last_frame:
+            value = self.movement_last_frame
+        print(value)
+
+        self.movement_first_frame = value
+        self.movement_slider_starting_shade.value = value
+        self.movement_slider_starting_shade.update()
+
+    def set_movement_last_frame(self, value):
+        if value <= self.movement_first_frame:
+            value = self.movement_first_frame
+        print(value)
+
+        self.movement_last_frame = value
+        self.movement_slider_ending_shade.value = value
+        self.movement_slider_ending_shade.update()
 
     def __update_muscle_analyses_graphs(
         self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
@@ -858,7 +883,7 @@ class Viz:
         q_shape = 0 if self.animated_Q is None else self.animated_Q.shape[0]
         self.movement_first_frame = 0
         self.movement_last_frame = max(q_shape, experiment_shape)
-        self.movement_slider[0].setMinimum(self.movement_first_frame + 1)
+        self.movement_slider[0].setMinimum(1)
         self.movement_slider[0].setMaximum(self.movement_last_frame)
         pal = QPalette()
         pal.setColor(QPalette.WindowText, QColor(Qt.black))
