@@ -292,6 +292,8 @@ class Viz:
             self.double_factor = 10000
             self.sliders = list()
             self.movement_slider = []
+            self.movement_first_frame = 0
+            self.movement_last_frame = -1
 
             self.active_analyses_widget = None
             self.column_stretch = 0
@@ -414,9 +416,9 @@ class Viz:
 
     def update(self):
         if self.show_analyses_panel and self.is_animating:
-            self.movement_slider[0].setValue(
-                (self.movement_slider[0].value() + 1) % (self.movement_slider[0].maximum() + 1)
-            )
+            self.movement_slider[0].setValue(self.movement_slider[0].value() + 1)
+            if self.movement_slider[0].value() == self.movement_last_frame:
+                self.movement_slider[0].setValue(self.movement_first_frame + 1)
 
             if self.is_recording:
                 self.add_frame()
@@ -847,7 +849,6 @@ class Viz:
 
         # Update the slider bar and frame count
         self.movement_slider[0].setEnabled(True)
-        self.movement_slider[0].setMinimum(1)
         experiment_shape = 0
         if self.experimental_forces is not None:
             experiment_shape = self.experimental_forces.shape[2]
@@ -855,7 +856,10 @@ class Viz:
             experiment_shape = max(self.experimental_markers.shape[2], experiment_shape)
 
         q_shape = 0 if self.animated_Q is None else self.animated_Q.shape[0]
-        self.movement_slider[0].setMaximum(max(q_shape, experiment_shape))
+        self.movement_first_frame = 0
+        self.movement_last_frame = max(q_shape, experiment_shape)
+        self.movement_slider[0].setMinimum(self.movement_first_frame + 1)
+        self.movement_slider[0].setMaximum(self.movement_last_frame)
         pal = QPalette()
         pal.setColor(QPalette.WindowText, QColor(Qt.black))
         self.movement_slider[1].setPalette(pal)
