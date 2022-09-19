@@ -299,11 +299,16 @@ class Viz:
             self.movement_slider_starting_shade = None
             self.movement_slider_ending_shade = None
 
+            self.n_max_events = 100
+            self.last_event_index = -1
+            self.events: list[dict[str: RectangleOnSlider, str: int, str: str], ...] = []  # event list of [marker/frame/event_name]
+
             self.active_analyses_widget = None
             self.column_stretch = 0
             self.analyses_layout = QHBoxLayout()
             self.analyses_c3d_editor_widget = QWidget()
             self.analyses_muscle_widget = QWidget()
+
             self.add_options_panel()
 
         # Update everything at the position Q=0
@@ -339,7 +344,6 @@ class Viz:
         self.Q = Q
 
         self.model.UpdateKinematicsCustom(self.Q)
-
         self.__set_muscles_from_q()
         self.__set_rt_from_q()
         self.__set_meshes_from_q()
@@ -416,6 +420,7 @@ class Viz:
         rotate if not refreshed
 
         """
+
         self.vtk_window.update_frame()
 
     def update(self):
@@ -598,8 +603,6 @@ class Viz:
         slider.setValue(0)
         slider.setEnabled(False)
         slider.valueChanged.connect(self.__animate_from_slider)
-        self.movement_slider_starting_shade = RectangleOnSlider(slider, side=RectangleOnSlider.Side.Left)
-        self.movement_slider_ending_shade = RectangleOnSlider(slider, side=RectangleOnSlider.Side.Right)
         animation_slider_layout.addWidget(slider)
 
         self.record_push_button = QPushButton()
@@ -623,6 +626,15 @@ class Viz:
         animation_slider_layout.addWidget(frame_label)
 
         self.movement_slider = (slider, frame_label)
+        self.movement_slider_starting_shade = RectangleOnSlider(self.movement_slider[0], expand=RectangleOnSlider.Expand.ExpandLeft)
+        self.movement_slider_ending_shade = RectangleOnSlider(self.movement_slider[0], expand=RectangleOnSlider.Expand.ExpandRight)
+
+        # We must add all the event markers here because for some reason they are ignored once processEvents is called
+        for i in range(self.n_max_events):
+            event_marker = RectangleOnSlider(self.movement_slider[0], color=Qt.blue)
+            event_marker.value = -1
+            event_marker.update()
+            self.events.append({"marker": event_marker, "frame": -1, "name": ""})
 
         # Global placement of the window
         if self.has_model:
@@ -717,22 +729,45 @@ class Viz:
             slide[2].setText(f" {self.Q[i]:.2f}")
         self.set_q(self.Q)
 
-    def set_movement_first_frame(self, value):
-        if value >= self.movement_last_frame:
-            value = self.movement_last_frame
-        print(value)
+    def select_event(self, index):
+        if index is None or index > self.last_event_index:
+            index = -1
 
-        self.movement_first_frame = value
-        self.movement_slider_starting_shade.value = value
+        for i, event in enumerate(self.events):
+            event["marker"].is_selected = i == index
+            event["marker"].update()
+        return self.events[index]
+
+    def set_event(self, frame: int, name: str, index: int = None, color: str = None):
+        if index is None:
+            self.last_event_index += 1
+            index = self.last_event_index
+
+        if index > self.last_event_index:
+            raise IndexError("list index out of range")
+
+        event = self.events[index]
+        event["frame"] = frame
+        event["name"] = name
+        event["marker"].value = frame
+        event["marker"].update()
+        if color is not None:
+            event["marker"].color = color
+
+    def set_movement_first_frame(self, frame):
+        if frame >= self.movement_last_frame:
+            frame = self.movement_last_frame
+
+        self.movement_first_frame = frame
+        self.movement_slider_starting_shade.value = frame
         self.movement_slider_starting_shade.update()
 
-    def set_movement_last_frame(self, value):
-        if value <= self.movement_first_frame:
-            value = self.movement_first_frame
-        print(value)
+    def set_movement_last_frame(self, frame):
+        if frame <= self.movement_first_frame:
+            frame = self.movement_first_frame
 
-        self.movement_last_frame = value
-        self.movement_slider_ending_shade.value = value
+        self.movement_last_frame = frame
+        self.movement_slider_ending_shade.value = frame
         self.movement_slider_ending_shade.update()
 
     def __update_muscle_analyses_graphs(
