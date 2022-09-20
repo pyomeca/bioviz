@@ -43,13 +43,9 @@ class RectangleOnSlider(QWidget):
         if self.expand == RectangleOnSlider.Expand.ExpandLeft:
             paint.drawRect(0, 0, position, self.slider.height() - 1)
         elif self.expand == RectangleOnSlider.Expand.ExpandRight:
-            paint.drawRect(
-                position, 0, self.slider.width() - position - 1, self.slider.height() - 1
-            )
+            paint.drawRect(position, 0, self.slider.width() - position - 1, self.slider.height() - 1)
         elif self.expand == RectangleOnSlider.Expand.FixedSize:
-            paint.drawRect(
-                int(position - self.size / 2) + 1, 0, self.size, self.slider.height() - 1
-            )
+            paint.drawRect(int(position - self.size / 2) + 1, 0, self.size, self.slider.height() - 1)
         else:
             raise NotImplementedError("Wrong value for expand")
 

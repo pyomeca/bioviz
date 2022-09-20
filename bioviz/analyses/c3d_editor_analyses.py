@@ -3,7 +3,17 @@ import os
 from typing import Callable
 
 import ezc3d
-from PyQt5.QtWidgets import QBoxLayout, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QInputDialog, QWidget, QLineEdit, QFileDialog
+from PyQt5.QtWidgets import (
+    QBoxLayout,
+    QHBoxLayout,
+    QVBoxLayout,
+    QPushButton,
+    QLabel,
+    QInputDialog,
+    QWidget,
+    QLineEdit,
+    QFileDialog,
+)
 from PyQt5.QtCore import Qt
 
 try:
@@ -51,13 +61,15 @@ class C3dEditorAnalyses:
         self.add_subtitle("Event editor", event_editor_layout)
         move_event_layout = QHBoxLayout()
         move_event_layout.setAlignment(Qt.AlignCenter)
-        self.previous_event_button = self.add_button("<", layout=move_event_layout, callback=lambda _: self._select_event(-1))
-        self.next_event_button = self.add_button(">", layout=move_event_layout, callback=lambda _: self._select_event(1))
+        self.previous_event_button = self.add_button(
+            "<", layout=move_event_layout, callback=lambda _: self._select_event(-1)
+        )
+        self.next_event_button = self.add_button(
+            ">", layout=move_event_layout, callback=lambda _: self._select_event(1)
+        )
         event_editor_layout.addLayout(move_event_layout)
         self.clear_events_button = self.add_button(
-            "Clear all events",
-            layout=event_editor_layout,
-            callback=lambda _: self.main_window.clear_events()
+            "Clear all events", layout=event_editor_layout, callback=lambda _: self.main_window.clear_events()
         )
         self.current_event_text = self.add_subtitle("", layout=event_editor_layout)
         self.selected_event_name = self.add_subtitle("No event selected", event_editor_layout)
@@ -67,9 +79,13 @@ class C3dEditorAnalyses:
         frame_editor_layout = QVBoxLayout()
         self.selected_event_frame_edit = self.add_text("", frame_editor_layout, editable=True)
         self.selected_event_frame_edit.setMaximumWidth(50)
-        self.set_event_frame_button = self.add_button("Set", frame_editor_layout, callback=self._set_event_frame_from_text_edit)
+        self.set_event_frame_button = self.add_button(
+            "Set", frame_editor_layout, callback=self._set_event_frame_from_text_edit
+        )
         event_change_info_layout.addLayout(frame_editor_layout)
-        self.reset_event_frame_button = self.add_button("Set to\ncurrent frame", event_change_info_layout, callback=self._set_event_frame_to_current_frame)
+        self.reset_event_frame_button = self.add_button(
+            "Set to\ncurrent frame", event_change_info_layout, callback=self._set_event_frame_to_current_frame
+        )
         event_editor_layout.addLayout(event_change_info_layout)
         self._toggle_event_setter(False)
         self.event_from_c3d_file_name = ""
@@ -105,7 +121,9 @@ class C3dEditorAnalyses:
         layout.addWidget(qlabel)
         return qlabel
 
-    def add_button(self, label: str, layout: QBoxLayout, callback: Callable, insert_index=None, color=None) -> QPushButton:
+    def add_button(
+        self, label: str, layout: QBoxLayout, callback: Callable, insert_index=None, color=None
+    ) -> QPushButton:
         qpush_button = QPushButton(label)
         if color is None:
             qpush_button.setPalette(self.main_window.palette_active)
@@ -125,16 +143,19 @@ class C3dEditorAnalyses:
         """
         if self.add_event_button is None:
             self.add_event_button = self.add_button(
-                "ADD EVENT LABEL",
-                self.events_layout,
-                callback=lambda _: self._create_event_button()
+                "ADD EVENT LABEL", self.events_layout, callback=lambda _: self._create_event_button()
             )
 
         c3d = None
-        if self.main_window.c3d_file_name is not None and self.main_window.c3d_file_name != self.event_from_c3d_file_name:
+        if (
+            self.main_window.c3d_file_name is not None
+            and self.main_window.c3d_file_name != self.event_from_c3d_file_name
+        ):
             self.event_from_c3d_file_name = self.main_window.c3d_file_name
             c3d = ezc3d.c3d(self.main_window.c3d_file_name)
-            n_frames_slider = self.main_window.movement_slider[0].maximum() - self.main_window.movement_slider[0].minimum() + 1
+            n_frames_slider = (
+                self.main_window.movement_slider[0].maximum() - self.main_window.movement_slider[0].minimum() + 1
+            )
             self.first_frame_c3d = c3d["header"]["points"]["first_frame"]
             n_frames_c3d = c3d["data"]["points"].shape[2]
             if n_frames_c3d != n_frames_slider:
@@ -177,21 +198,37 @@ class C3dEditorAnalyses:
         if reload_events_from_c3d:
             self.main_window.clear_events()
             for i in range(c3d["parameters"]["EVENT"]["USED"]["value"][0]):
-                context = c3d["parameters"]["EVENT"]["CONTEXTS"]["value"][i] if "CONTEXTS" in c3d["parameters"]["EVENT"] and len(c3d["parameters"]["EVENT"]["CONTEXTS"]["value"]) > 0 else ""
-                label = c3d["parameters"]["EVENT"]["LABELS"]["value"][i] if len(c3d["parameters"]["EVENT"]["LABELS"]["value"]) > 0 else ""
+                context = (
+                    c3d["parameters"]["EVENT"]["CONTEXTS"]["value"][i]
+                    if "CONTEXTS" in c3d["parameters"]["EVENT"]
+                    and len(c3d["parameters"]["EVENT"]["CONTEXTS"]["value"]) > 0
+                    else ""
+                )
+                label = (
+                    c3d["parameters"]["EVENT"]["LABELS"]["value"][i]
+                    if len(c3d["parameters"]["EVENT"]["LABELS"]["value"]) > 0
+                    else ""
+                )
                 name = f"{context} {label}"
-                frame = round(c3d["parameters"]["EVENT"]["TIMES"]["value"][1, i] * c3d["header"]["points"]["frame_rate"]) - self.first_frame_c3d
+                frame = (
+                    round(c3d["parameters"]["EVENT"]["TIMES"]["value"][1, i] * c3d["header"]["points"]["frame_rate"])
+                    - self.first_frame_c3d
+                )
                 button_index = [button.text() for button in self.event_buttons].index(name)
                 self.main_window.set_event(frame, name, color=self.event_colors[button_index][1])
 
     def _create_event_button(self, text: str = None, save: bool = True):
         if text is None:
-            text, ok = QInputDialog.getText(self.add_event_button, 'Create new event', 'Enter the event name:')
+            text, ok = QInputDialog.getText(self.add_event_button, "Create new event", "Enter the event name:")
             if not ok:
                 return
 
         n_events = len(
-            tuple(self.events_layout.itemAt(i).widget() for i in range(self.events_layout.count()) if self.events_layout.itemAt(i).widget() is not None)
+            tuple(
+                self.events_layout.itemAt(i).widget()
+                for i in range(self.events_layout.count())
+                if self.events_layout.itemAt(i).widget() is not None
+            )
         )
 
         self.event_buttons.append(
@@ -220,15 +257,13 @@ class C3dEditorAnalyses:
         self.main_window.set_event(
             self.main_window.movement_slider[0].value() - 1,
             self.event_buttons[index].text(),
-            color=self.event_colors[index][1]
+            color=self.event_colors[index][1],
         )
 
     def _modify_event_to_trial(self, index: int, frame: int):
         event = self.main_window.select_event(index)
 
-        self.main_window.set_event(
-            frame, event["name"], index, event["marker"].color
-        )
+        self.main_window.set_event(frame, event["name"], index, event["marker"].color)
         self._select_event(step=0)  # Refresh the window
 
     def _select_event(self, step: int):
@@ -290,7 +325,11 @@ class C3dEditorAnalyses:
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         file_name = QFileDialog.getSaveFileName(
-            self.main_window.vtk_window, "C3d path to save", f"{filepath}/{modified_filename}", "C3D (*.c3d)", options=options
+            self.main_window.vtk_window,
+            "C3d path to save",
+            f"{filepath}/{modified_filename}",
+            "C3D (*.c3d)",
+            options=options,
         )
         if not file_name[0]:
             return

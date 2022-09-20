@@ -312,7 +312,9 @@ class Viz:
 
             self.n_max_events = 100
             self.last_event_index = -1
-            self.events: list[dict[str: RectangleOnSlider, str: int, str: str], ...] = []  # event list of [marker/frame/event_name]
+            self.events: list[
+                dict[str:RectangleOnSlider, str:int, str:str], ...
+            ] = []  # event list of [marker/frame/event_name]
 
             self.active_analyses: AnalysePanel | None = None
             self.column_stretch = 0
@@ -564,7 +566,9 @@ class Viz:
             self.radio_c3d_editor_model = QRadioButton()
             self.radio_c3d_editor_model.setPalette(self.palette_active)
             self.radio_c3d_editor_model.setChecked(False)
-            self.radio_c3d_editor_model.toggled.connect(lambda: self.__select_analyses_panel(self.radio_c3d_editor_model, 1))
+            self.radio_c3d_editor_model.toggled.connect(
+                lambda: self.__select_analyses_panel(self.radio_c3d_editor_model, 1)
+            )
             self.radio_c3d_editor_model.setText("C3D event editor")
             self.radio_c3d_editor_model.setEnabled(False)
             option_analyses_layout.addWidget(self.radio_c3d_editor_model)
@@ -640,8 +644,12 @@ class Viz:
         animation_slider_layout.addWidget(frame_label)
 
         self.movement_slider = (slider, frame_label)
-        self.movement_slider_starting_shade = RectangleOnSlider(self.movement_slider[0], expand=RectangleOnSlider.Expand.ExpandLeft)
-        self.movement_slider_ending_shade = RectangleOnSlider(self.movement_slider[0], expand=RectangleOnSlider.Expand.ExpandRight)
+        self.movement_slider_starting_shade = RectangleOnSlider(
+            self.movement_slider[0], expand=RectangleOnSlider.Expand.ExpandLeft
+        )
+        self.movement_slider_ending_shade = RectangleOnSlider(
+            self.movement_slider[0], expand=RectangleOnSlider.Expand.ExpandRight
+        )
 
         # We must add all the event markers here because for some reason they are ignored once processEvents is called
         for i in range(self.n_max_events):
