@@ -1,6 +1,6 @@
 from packaging.version import parse as parse_version
 
-__version__ = "2.1.7"
+__version__ = "2.2.0"
 
 
 def check_version(tool_to_compare, min_version, max_version):
