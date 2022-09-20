@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Protocol
 import os
 import copy
 from functools import partial
@@ -41,6 +41,20 @@ check_version(pyomeca, "2020.0.1", "2020.1.0")
 
 
 from pyomeca import Markers
+
+
+class AnalysePanel(Protocol):
+    @property
+    def widget(self) -> QWidget:
+        """
+        Return the parent widget in which all was added
+        """
+        return QWidget()
+
+    def on_activate(self):
+        """
+        Callback to call when the panel is activated
+        """
 
 
 class Viz:
@@ -278,9 +292,6 @@ class Viz:
             self.set_viz_palette()
             self.animated_Q = None
 
-            self.muscle_analyses: MuscleAnalyses | None = None
-            self.c3d_editor_analyses: C3dEditorAnalyses | None = None
-
             self.play_stop_push_button: QPushButton | None = None
             self.is_animating = False
             self.is_recording = False
@@ -303,12 +314,13 @@ class Viz:
             self.last_event_index = -1
             self.events: list[dict[str: RectangleOnSlider, str: int, str: str], ...] = []  # event list of [marker/frame/event_name]
 
-            self.active_analyses_widget = None
+            self.active_analyses: AnalysePanel | None = None
             self.column_stretch = 0
             self.analyses_layout = QHBoxLayout()
-            self.analyses_c3d_editor_widget = QWidget()
-            self.analyses_muscle_widget = QWidget()
+            self.analyses_c3d_editor: AnalysePanel | None = None
+            self.analyses_muscle: AnalysePanel | None = None
 
+            self.c3d_file_name = None
             self.add_options_panel()
 
         # Update everything at the position Q=0
@@ -548,12 +560,13 @@ class Viz:
             radio_none.setText("None")
             option_analyses_layout.addWidget(radio_none)
             # Add the no analyses
-            radio_c3d_editor_model = QRadioButton()
-            radio_c3d_editor_model.setPalette(self.palette_active)
-            radio_c3d_editor_model.setChecked(False)
-            radio_c3d_editor_model.toggled.connect(lambda: self.__select_analyses_panel(radio_c3d_editor_model, 1))
-            radio_c3d_editor_model.setText("C3D editor")
-            option_analyses_layout.addWidget(radio_c3d_editor_model)
+            self.radio_c3d_editor_model = QRadioButton()
+            self.radio_c3d_editor_model.setPalette(self.palette_active)
+            self.radio_c3d_editor_model.setChecked(False)
+            self.radio_c3d_editor_model.toggled.connect(lambda: self.__select_analyses_panel(self.radio_c3d_editor_model, 1))
+            self.radio_c3d_editor_model.setText("C3D event editor")
+            self.radio_c3d_editor_model.setEnabled(False)
+            option_analyses_layout.addWidget(self.radio_c3d_editor_model)
             # Add the muscles analyses
             radio_muscle = QRadioButton()
             radio_muscle.setPalette(self.palette_active)
@@ -650,9 +663,9 @@ class Viz:
 
         # Prepare all the analyses panel
         if self.has_model:
-            self.c3d_editor_analyses = C3dEditorAnalyses(self.analyses_c3d_editor_widget, self)
+            self.analyses_c3d_editor = C3dEditorAnalyses(main_window=self)
             if self.show_muscles:
-                self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
+                self.analyses_muscle = MuscleAnalyses(main_window=self)
             if biorbd.currentLinearAlgebraBackend() == 1:
                 radio_muscle.setEnabled(False)
             else:
@@ -672,26 +685,26 @@ class Viz:
         size_factor_muscle = 1.40
 
         # Find the size factor to get back to normal size
-        if self.active_analyses_widget is None:
+        if self.active_analyses is None:
             reduction_factor = size_factor_none
-        elif self.active_analyses_widget == self.analyses_c3d_editor_widget:
+        elif self.active_analyses == self.analyses_c3d_editor:
             reduction_factor = size_c3d_editor_creation
-        elif self.active_analyses_widget == self.analyses_muscle_widget:
+        elif self.active_analyses == self.analyses_muscle:
             reduction_factor = size_factor_muscle
         else:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
 
         # Prepare the analyses panel and new size of window
         if panel_to_activate == 0:
-            self.active_analyses_widget = None
+            self.active_analyses = None
             enlargement_factor = size_factor_none
             self.column_stretch = 0
         elif panel_to_activate == 1:
-            self.active_analyses_widget = self.analyses_c3d_editor_widget
+            self.active_analyses = self.analyses_c3d_editor
             enlargement_factor = size_c3d_editor_creation
             self.column_stretch = 1
         elif panel_to_activate == 2:
-            self.active_analyses_widget = self.analyses_muscle_widget
+            self.active_analyses = self.analyses_muscle
             self.column_stretch = 4
             enlargement_factor = size_factor_muscle
         else:
@@ -706,19 +719,20 @@ class Viz:
         )
 
     def __hide_analyses_panel(self):
-        if self.active_analyses_widget is None:
+        if self.active_analyses is None:
             return
         # Remove from main window
-        self.active_analyses_widget.setVisible(False)
-        self.vtk_window.main_layout.removeWidget(self.active_analyses_widget)
+        self.active_analyses.widget.setVisible(False)
+        self.vtk_window.main_layout.removeWidget(self.active_analyses.widget)
         self.vtk_window.main_layout.setColumnStretch(2, 0)
 
     def __show_local_ref_frame(self):
         # Give the parent as main window
-        if self.active_analyses_widget is not None:
-            self.vtk_window.main_layout.addWidget(self.active_analyses_widget, 0, 2)
+        if self.active_analyses is not None:
+            self.active_analyses.on_activate()
+            self.vtk_window.main_layout.addWidget(self.active_analyses.widget, 0, 2)
             self.vtk_window.main_layout.setColumnStretch(2, self.column_stretch)
-            self.active_analyses_widget.setVisible(True)
+            self.active_analyses.widget.setVisible(True)
 
         # Update graphs if needed
         self.__update_muscle_analyses_graphs(False, False, False, False)
@@ -728,6 +742,10 @@ class Viz:
             self.Q[i] = slide[1].value() / self.double_factor
             slide[2].setText(f" {self.Q[i]:.2f}")
         self.set_q(self.Q)
+
+    @property
+    def n_events(self) -> int:
+        return sum([event["frame"] >= 0 for event in self.events])
 
     def select_event(self, index):
         if index is None or index > self.last_event_index:
@@ -750,9 +768,9 @@ class Viz:
         event["frame"] = frame
         event["name"] = name
         event["marker"].value = frame
-        event["marker"].update()
         if color is not None:
             event["marker"].color = color
+        event["marker"].update()
 
     def set_movement_first_frame(self, frame):
         if frame >= self.movement_last_frame:
@@ -774,10 +792,11 @@ class Viz:
         self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
     ):
         # Adjust muscle analyses if needed
-        if self.active_analyses_widget == self.analyses_muscle_widget:
-            self.muscle_analyses.update_all_graphs(
-                skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
-            )
+        if self.active_analyses == self.analyses_muscle:
+            if self.analyses_muscle is not None:
+                self.analyses_muscle.widget.update_all_graphs(
+                    skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
+                )
 
     def __animate_from_slider(self):
         # Move the avatar
@@ -899,7 +918,7 @@ class Viz:
 
         # Add the combobox in muscle analyses
         if self.show_muscles:
-            self.muscle_analyses.add_movement_to_dof_choice()
+            self.analyses_muscle.add_movement_to_dof_choice()
 
     def __set_movement_slider(self):
         # Activate the start button
@@ -944,6 +963,9 @@ class Viz:
             self.experimental_markers = Markers.from_c3d(data)
             if self.experimental_markers.units == "mm":
                 self.experimental_markers = self.experimental_markers * 0.001
+
+            self.c3d_file_name = data
+            self.radio_c3d_editor_model.setEnabled(True)
 
         elif isinstance(data, (np.ndarray, xr.DataArray)):
             self.experimental_markers = Markers(data)

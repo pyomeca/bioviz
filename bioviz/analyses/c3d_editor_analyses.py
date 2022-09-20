@@ -2,7 +2,8 @@ import json
 import os
 from typing import Callable
 
-from PyQt5.QtWidgets import QBoxLayout, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QInputDialog, QWidget, QLineEdit
+import ezc3d
+from PyQt5.QtWidgets import QBoxLayout, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QInputDialog, QWidget, QLineEdit, QFileDialog
 from PyQt5.QtCore import Qt
 
 try:
@@ -12,13 +13,14 @@ except ImportError:
 
 
 class C3dEditorAnalyses:
-    def __init__(self, parent, main_window):
+    def __init__(self, main_window, parent: QWidget = None):
         # Get some aliases
+        self.widget = parent if parent is not None else QWidget()
         self.main_window = main_window
         self.event_save_path = "bioviz_events.json"
 
         # Centralize the materials
-        main_layout = QVBoxLayout(parent)
+        main_layout = QVBoxLayout(self.widget)
         main_layout.setAlignment(Qt.AlignCenter)
 
         # Set time trial
@@ -30,8 +32,9 @@ class C3dEditorAnalyses:
         time_set_layout.addLayout(time_set_button_layout)
 
         # Events
-        events_layout = QVBoxLayout()
-        self.add_subtitle("Events setter", events_layout)
+        self.events_layout = QVBoxLayout()
+        self.add_event_button: QWidget | None = None
+        self.add_subtitle("Events setter", self.events_layout)
         self.event_colors = (
             ("red", Qt.red),
             ("green", Qt.green),
@@ -42,27 +45,29 @@ class C3dEditorAnalyses:
         )
         self.event_buttons = []
         self.current_event_selected = -1
-        button = self.add_button(
-            "ADD EVENT", events_layout, callback=lambda button: self._create_event_button(button, events_layout)
-        )
-        self._read_events(button, events_layout)
+        self._read_events()
 
         event_editor_layout = QVBoxLayout()
         self.add_subtitle("Event editor", event_editor_layout)
         move_event_layout = QHBoxLayout()
         move_event_layout.setAlignment(Qt.AlignCenter)
         self.add_button("<", layout=move_event_layout, callback=lambda _: self._select_event(-1))
-        self.current_event_text = self.add_text("", layout=move_event_layout)
         self.add_button(">", layout=move_event_layout, callback=lambda _: self._select_event(1))
         event_editor_layout.addLayout(move_event_layout)
-        event_info_layout = QHBoxLayout()
-        event_info_layout.setAlignment(Qt.AlignCenter)
-        self.selected_event_name = self.add_text("", event_info_layout)
-        self.selected_event_frame = self.add_text("", event_info_layout)
-        self.selected_event_frame_edit = self.add_text("", event_info_layout, editable=True)
+        self.current_event_text = self.add_subtitle("", layout=event_editor_layout)
+        self.selected_event_name = self.add_subtitle("", event_editor_layout)
+        event_change_info_layout = QHBoxLayout()
+        event_change_info_layout.setAlignment(Qt.AlignCenter)
+        self.selected_event_frame_text = self.add_text("Change frame: ", event_change_info_layout)
+        frame_editor_layout = QVBoxLayout()
+        self.selected_event_frame_edit = self.add_text("", frame_editor_layout, editable=True)
         self.selected_event_frame_edit.setMaximumWidth(50)
-        self.selected_event_frame_edit.setVisible(False)
-        event_editor_layout.addLayout(event_info_layout)
+        self.set_event_frame_button = self.add_button("Set", frame_editor_layout, callback=self._set_event_frame_from_text_edit)
+        event_change_info_layout.addLayout(frame_editor_layout)
+        self.reset_event_frame_button = self.add_button("Set to\ncurrent frame", event_change_info_layout, callback=self._set_event_frame_to_current_frame)
+        event_editor_layout.addLayout(event_change_info_layout)
+        self._toggle_event_setter(False)
+        self.event_from_c3d_file_name = ""
 
         # Add export button
         export_layout = QVBoxLayout()
@@ -72,20 +77,24 @@ class C3dEditorAnalyses:
         main_layout.addStretch()
         main_layout.addLayout(time_set_layout)
         main_layout.addStretch()
-        main_layout.addLayout(events_layout)
+        main_layout.addLayout(self.events_layout)
         main_layout.addStretch()
         main_layout.addLayout(event_editor_layout)
         main_layout.addStretch()
         main_layout.addLayout(export_layout)
         main_layout.addStretch()
 
-    def add_subtitle(self, title, layout: QBoxLayout) -> None:
+    def on_activate(self):
+        self._read_events()
+
+    def add_subtitle(self, title, layout: QBoxLayout) -> QLabel:
         head_layout = QHBoxLayout()
         head_layout.setAlignment(Qt.AlignCenter)
-        self.add_text(title, layout=head_layout)
+        qlabel = self.add_text(title, layout=head_layout)
         layout.addLayout(head_layout)
+        return qlabel
 
-    def add_text(self, label: str, layout: QBoxLayout, editable: bool = False) -> QLabel:
+    def add_text(self, label: str, layout: QBoxLayout, editable: bool = False) -> QLabel | QLineEdit:
         qlabel = QLabel(label) if not editable else QLineEdit(label)
         qlabel.setPalette(self.main_window.palette_active)
         layout.addWidget(qlabel)
@@ -104,33 +113,60 @@ class C3dEditorAnalyses:
             layout.insertWidget(insert_index, qpush_button)
         return qpush_button
 
-    def _read_events(self, add_button: QPushButton, layout: QBoxLayout):
+    def _read_events(self):
         """
         A config file is saved for all the custom events created by the user.
         It is read back here
         """
+
+        if self.add_event_button is None:
+            self.add_event_button = self.add_button(
+                "ADD EVENT",
+                self.events_layout,
+                callback=lambda _: self._create_event_button()
+            )
+
+        c3d = None
+        if self.main_window.c3d_file_name is not None and self.main_window.c3d_file_name != self.event_from_c3d_file_name:
+            self.event_from_c3d_file_name = self.main_window.c3d_file_name
+            c3d = ezc3d.c3d(self.main_window.c3d_file_name)
+
         all_events = []
-        if os.path.exists(self.event_save_path):
+        if c3d is not None and "EVENT" in c3d["parameters"] and c3d["parameters"]["EVENT"]["USED"]["value"] > 0:
+            # Clear the previously loaded events
+            for button in self.event_buttons:
+                self.events_layout.removeWidget(button)
+                button.deleteLater()
+            self.event_buttons.clear()
+            self.events_layout.update()
+            labels = list(set(c3d["parameters"]["EVENT"]["LABELS"]["value"]))
+            contexts = list(set(c3d["parameters"]["EVENT"]["CONTEXTS"]["value"]))
+            for context in contexts:
+                for label in labels:
+                    all_events.append(f"{context} {label}")
+
+        elif not self.event_buttons and os.path.exists(self.event_save_path):
+            # Only add button if the were not previously added and there is a json file
             with open(self.event_save_path, "r") as file:
                 all_events = json.load(file)
 
         for event in all_events:
-            self._create_event_button(add_button, layout, text=event, save=False)
+            self._create_event_button(text=event, save=False)
 
-    def _create_event_button(self, button: QWidget, layout: QBoxLayout, text: str = None, save: bool = True):
+    def _create_event_button(self, text: str = None, save: bool = True):
         if text is None:
-            text, ok = QInputDialog.getText(button, 'Create new event', 'Enter the event name:')
+            text, ok = QInputDialog.getText(self.add_event_button, 'Create new event', 'Enter the event name:')
             if not ok:
                 return
 
         n_events = len(
-            tuple(layout.itemAt(i).widget() for i in range(layout.count()) if layout.itemAt(i).widget() is not None)
+            tuple(self.events_layout.itemAt(i).widget() for i in range(self.events_layout.count()) if self.events_layout.itemAt(i).widget() is not None)
         )
 
         self.event_buttons.append(
             self.add_button(
                 text,
-                layout=layout,
+                layout=self.events_layout,
                 insert_index=n_events,
                 callback=lambda _: self._add_event_to_trial(n_events - 1),
                 color=self.event_colors[n_events - 1][0],
@@ -138,15 +174,12 @@ class C3dEditorAnalyses:
         )
 
         if n_events == len(self.event_colors):
-            button.setEnabled(False)
-            button.setPalette(self.main_window.palette_inactive)
+            self.add_event_button.setEnabled(False)
+            self.add_event_button.setPalette(self.main_window.palette_inactive)
 
         if save:
             # Read the file first
-            all_events = []
-            if os.path.exists(self.event_save_path):
-                with open(self.event_save_path, "r") as file:
-                    all_events = json.load(file)
+            all_events = [event.text for event in self.event_buttons]
 
             all_events.append(text)
             with open(self.event_save_path, "w") as file:
@@ -158,6 +191,14 @@ class C3dEditorAnalyses:
             self.event_buttons[index].text(),
             color=self.event_colors[index][1]
         )
+
+    def _modify_event_to_trial(self, index: int, frame: int):
+        event = self.main_window.select_event(index)
+
+        self.main_window.set_event(
+            frame, event["name"], index, event["marker"].color
+        )
+        self._select_event(step=0)  # Refresh the window
 
     def _select_event(self, step: int):
         self.current_event_selected += step
@@ -171,13 +212,37 @@ class C3dEditorAnalyses:
         if self.current_event_selected < 0:
             self.current_event_text.setText("")
             self.selected_event_name.setText("No event selected")
-            self.selected_event_frame.setText("")
-            self.selected_event_frame_edit.setVisible(False)
+            self._toggle_event_setter(False)
         else:
-            self.current_event_text.setText(str(self.current_event_selected))
-            self.selected_event_name.setText(f"{event['name']}: ")
-            self.selected_event_frame.setText(str(event["frame"]))
+            self.current_event_text.setText(f"The event selected (#{self.current_event_selected}) is")
+            self.selected_event_name.setText(f"'{event['name']}', set on frame: {event['frame'] + 1}")
+            self._toggle_event_setter(True)
+
+    def _toggle_event_setter(self, set_visible: bool):
+        if set_visible:
+            self.selected_event_frame_text.setVisible(True)
             self.selected_event_frame_edit.setVisible(True)
+            self.set_event_frame_button.setVisible(True)
+            self.reset_event_frame_button.setVisible(True)
+        else:
+            self.selected_event_frame_text.setVisible(False)
+            self.selected_event_frame_edit.setVisible(False)
+            self.set_event_frame_button.setVisible(False)
+            self.reset_event_frame_button.setVisible(False)
+
+    def _set_event_frame_from_text_edit(self, _):
+        try:
+            new_frame = int(self.selected_event_frame_edit.text()) - 1
+        except:
+            self.selected_event_frame_edit.setText("")
+            return
+
+        self._modify_event_to_trial(self.current_event_selected, new_frame)
+        self.selected_event_frame_edit.setText("")
+
+    def _set_event_frame_to_current_frame(self, _):
+        new_frame = self.main_window.movement_slider[0].value() - 1
+        self._modify_event_to_trial(self.current_event_selected, new_frame)
 
     def _set_time(self, index: int):
         if index == 0:
@@ -188,4 +253,42 @@ class C3dEditorAnalyses:
             raise ValueError("insert_index should be 0 for start or 1 for end")
 
     def _export_c3d(self):
-        print("C3d exported")
+        filepath = os.path.dirname(self.main_window.c3d_file_name)
+        modified_filename = os.path.splitext(os.path.basename(self.main_window.c3d_file_name))[0] + "_withEvents.c3d"
+
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        file_name = QFileDialog.getSaveFileName(
+            self.main_window.vtk_window, "C3d path to save", f"{filepath}/{modified_filename}", "C3D (*.c3d)", options=options
+        )
+        if not file_name[0]:
+            return
+
+        # Load previous file and export it with the events
+        c3d = ezc3d.c3d(self.main_window.c3d_file_name)
+
+        events = self.main_window.events
+        contexts = []
+        labels = []
+        times = []
+        for event in events:
+            if event["frame"] == -1:
+                continue
+            split_name = event["name"].split(" ")
+            if len(split_name) > 1 and (split_name[0].lower() == "left" or split_name[0].lower == "right"):
+                context = split_name[0]
+                label = " ".join(split_name[1:])
+            else:
+                context = ""
+                label = " ".join(split_name)
+            contexts.append(context)
+            labels.append(label)
+
+            times.append(event["frame"] * 1 / c3d["header"]["points"]["frame_rate"])
+
+        c3d.add_parameter("EVENT", "USED", (self.main_window.n_events,))
+        c3d.add_parameter("EVENT", "CONTEXTS", contexts)
+        c3d.add_parameter("EVENT", "LABELS", labels)
+        c3d.add_parameter("EVENT", "TIMES", times)
+
+        c3d.write(file_name[0])
