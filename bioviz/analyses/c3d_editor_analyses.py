@@ -46,14 +46,13 @@ class C3dEditorAnalyses:
         self.event_buttons = []
         self.current_event_selected = -1
         self.first_frame_c3d = 0
-        self._read_events()
 
         event_editor_layout = QVBoxLayout()
         self.add_subtitle("Event editor", event_editor_layout)
         move_event_layout = QHBoxLayout()
         move_event_layout.setAlignment(Qt.AlignCenter)
-        self.add_button("<", layout=move_event_layout, callback=lambda _: self._select_event(-1))
-        self.add_button(">", layout=move_event_layout, callback=lambda _: self._select_event(1))
+        self.previous_event_button = self.add_button("<", layout=move_event_layout, callback=lambda _: self._select_event(-1))
+        self.next_event_button = self.add_button(">", layout=move_event_layout, callback=lambda _: self._select_event(1))
         event_editor_layout.addLayout(move_event_layout)
         self.current_event_text = self.add_subtitle("", layout=event_editor_layout)
         self.selected_event_name = self.add_subtitle("", event_editor_layout)
@@ -73,7 +72,7 @@ class C3dEditorAnalyses:
         # Add export button
         export_layout = QVBoxLayout()
         self.add_subtitle("C3D editor", export_layout)
-        self.add_button("Export C3D", layout=export_layout, callback=lambda _: self._export_c3d())
+        self.export_c3d_button = self.add_button("Export C3D", layout=export_layout, callback=self._export_c3d)
 
         main_layout.addStretch()
         main_layout.addLayout(time_set_layout)
@@ -119,7 +118,6 @@ class C3dEditorAnalyses:
         A config file is saved for all the custom events created by the user.
         It is read back here
         """
-
         if self.add_event_button is None:
             self.add_event_button = self.add_button(
                 "ADD EVENT",
@@ -279,7 +277,7 @@ class C3dEditorAnalyses:
         else:
             raise ValueError("insert_index should be 0 for start or 1 for end")
 
-    def _export_c3d(self):
+    def _export_c3d(self, _):
         filepath = os.path.dirname(self.main_window.c3d_file_name)
         modified_filename = os.path.splitext(os.path.basename(self.main_window.c3d_file_name))[0] + "_withEvents.c3d"
 
@@ -294,6 +292,7 @@ class C3dEditorAnalyses:
         # Load previous file and export it with the events
         c3d = ezc3d.c3d(self.main_window.c3d_file_name)
 
+        first_frame = self.main_window.movement_first_frame + self.first_frame_c3d
         events = self.main_window.events
         contexts = []
         labels = []
@@ -311,8 +310,10 @@ class C3dEditorAnalyses:
             contexts.append(context)
             labels.append(label)
 
-            times.append((event["frame"] + self.first_frame_c3d) * 1 / c3d["header"]["points"]["frame_rate"])
+            times.append((event["frame"] + first_frame) * 1 / c3d["header"]["points"]["frame_rate"])
 
+        c3d["header"]["points"]["first_frame"] = first_frame
+        c3d["header"]["points"]["last_frame"] = self.main_window.movement_last_frame + self.first_frame_c3d
         c3d.add_parameter("EVENT", "USED", (self.main_window.n_events,))
         c3d.add_parameter("EVENT", "CONTEXTS", contexts)
         c3d.add_parameter("EVENT", "LABELS", labels)
