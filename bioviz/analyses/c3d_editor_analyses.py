@@ -54,8 +54,13 @@ class C3dEditorAnalyses:
         self.previous_event_button = self.add_button("<", layout=move_event_layout, callback=lambda _: self._select_event(-1))
         self.next_event_button = self.add_button(">", layout=move_event_layout, callback=lambda _: self._select_event(1))
         event_editor_layout.addLayout(move_event_layout)
+        self.clear_events_button = self.add_button(
+            "Clear all events",
+            layout=event_editor_layout,
+            callback=lambda _: self.main_window.clear_events()
+        )
         self.current_event_text = self.add_subtitle("", layout=event_editor_layout)
-        self.selected_event_name = self.add_subtitle("", event_editor_layout)
+        self.selected_event_name = self.add_subtitle("No event selected", event_editor_layout)
         event_change_info_layout = QHBoxLayout()
         event_change_info_layout.setAlignment(Qt.AlignCenter)
         self.selected_event_frame_text = self.add_text("Change frame: ", event_change_info_layout)
@@ -120,7 +125,7 @@ class C3dEditorAnalyses:
         """
         if self.add_event_button is None:
             self.add_event_button = self.add_button(
-                "ADD EVENT",
+                "ADD EVENT LABEL",
                 self.events_layout,
                 callback=lambda _: self._create_event_button()
             )
@@ -153,6 +158,7 @@ class C3dEditorAnalyses:
                 button.deleteLater()
             self.event_buttons.clear()
             self.events_layout.update()
+
             labels = list(set(c3d["parameters"]["EVENT"]["LABELS"]["value"]))
             contexts = list(set(c3d["parameters"]["EVENT"]["CONTEXTS"]["value"]))
             for context in contexts:
@@ -293,24 +299,7 @@ class C3dEditorAnalyses:
         c3d = ezc3d.c3d(self.main_window.c3d_file_name)
 
         first_frame = self.main_window.movement_first_frame + self.first_frame_c3d
-        events = self.main_window.events
-        contexts = []
-        labels = []
-        times = []
-        for event in events:
-            if event["frame"] == -1:
-                continue
-            split_name = event["name"].split(" ")
-            if len(split_name) > 1 and (split_name[0].lower() == "left" or split_name[0].lower == "right"):
-                context = split_name[0]
-                label = " ".join(split_name[1:])
-            else:
-                context = ""
-                label = " ".join(split_name)
-            contexts.append(context)
-            labels.append(label)
-
-            times.append((event["frame"] + first_frame) * 1 / c3d["header"]["points"]["frame_rate"])
+        contexts, labels, times = self.convert_event_for_c3d(c3d["header"]["points"]["frame_rate"])
 
         c3d["header"]["points"]["first_frame"] = first_frame
         c3d["header"]["points"]["last_frame"] = self.main_window.movement_last_frame + self.first_frame_c3d
@@ -320,3 +309,26 @@ class C3dEditorAnalyses:
         c3d.add_parameter("EVENT", "TIMES", times)
 
         c3d.write(file_name[0])
+
+    def convert_event_for_c3d(self, frame_rate):
+        first_frame = self.main_window.movement_first_frame + self.first_frame_c3d
+        events = self.main_window.events
+
+        contexts = []
+        labels = []
+        times = []
+        for event in events:
+            if event["frame"] == -1:
+                continue
+            split_name = event["name"].split(" ")
+            if len(split_name) > 1 and (split_name[0].lower() == "left" or split_name[0].lower() == "right"):
+                context = split_name[0]
+                label = " ".join(split_name[1:])
+            else:
+                context = ""
+                label = " ".join(split_name)
+            contexts.append(context)
+            labels.append(label)
+
+            times.append((event["frame"] + first_frame) * 1 / frame_rate)
+        return contexts, labels, times

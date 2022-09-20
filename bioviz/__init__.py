@@ -752,6 +752,8 @@ class Viz:
         for event in self.events:
             event["frame"] = -1
             event["name"] = ""
+            event["marker"].value = -1
+            event["marker"].update()
         self.last_event_index = -1
 
     def select_event(self, index):
