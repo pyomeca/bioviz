@@ -45,6 +45,7 @@ class C3dEditorAnalyses:
         )
         self.event_buttons = []
         self.current_event_selected = -1
+        self.first_frame_c3d = 0
         self._read_events()
 
         event_editor_layout = QVBoxLayout()
@@ -130,8 +131,23 @@ class C3dEditorAnalyses:
         if self.main_window.c3d_file_name is not None and self.main_window.c3d_file_name != self.event_from_c3d_file_name:
             self.event_from_c3d_file_name = self.main_window.c3d_file_name
             c3d = ezc3d.c3d(self.main_window.c3d_file_name)
+            n_frames_slider = self.main_window.movement_slider[0].maximum() - self.main_window.movement_slider[0].minimum() + 1
+            self.first_frame_c3d = c3d["header"]["points"]["first_frame"]
+            n_frames_c3d = c3d["data"]["points"].shape[2]
+            if n_frames_c3d != n_frames_slider:
+                n_frames_c3d = c3d["header"]["points"]["last_frame"]
+                self.first_frame_c3d = 0
 
-        all_events = []
+            if n_frames_c3d != n_frames_slider:
+                print(
+                    "Marker data shape from C3D and movement shape do not correspond. "
+                    "Automatic events loading is skipped"
+                )
+                c3d = None
+                self.first_frame_c3d = 0
+
+        all_event_buttons = []
+        reload_events_from_c3d = False
         if c3d is not None and "EVENT" in c3d["parameters"] and c3d["parameters"]["EVENT"]["USED"]["value"] > 0:
             # Clear the previously loaded events
             for button in self.event_buttons:
@@ -143,15 +159,26 @@ class C3dEditorAnalyses:
             contexts = list(set(c3d["parameters"]["EVENT"]["CONTEXTS"]["value"]))
             for context in contexts:
                 for label in labels:
-                    all_events.append(f"{context} {label}")
+                    all_event_buttons.append(f"{context} {label}")
+            reload_events_from_c3d = True
 
         elif not self.event_buttons and os.path.exists(self.event_save_path):
             # Only add button if the were not previously added and there is a json file
             with open(self.event_save_path, "r") as file:
-                all_events = json.load(file)
+                all_event_buttons = json.load(file)
 
-        for event in all_events:
+        for event in all_event_buttons:
             self._create_event_button(text=event, save=False)
+
+        if reload_events_from_c3d:
+            self.main_window.clear_events()
+            for i in range(c3d["parameters"]["EVENT"]["USED"]["value"][0]):
+                context = c3d["parameters"]["EVENT"]["CONTEXTS"]["value"][i] if "CONTEXTS" in c3d["parameters"]["EVENT"] and len(c3d["parameters"]["EVENT"]["CONTEXTS"]["value"]) > 0 else ""
+                label = c3d["parameters"]["EVENT"]["LABELS"]["value"][i] if len(c3d["parameters"]["EVENT"]["LABELS"]["value"]) > 0 else ""
+                name = f"{context} {label}"
+                frame = round(c3d["parameters"]["EVENT"]["TIMES"]["value"][1, i] * c3d["header"]["points"]["frame_rate"]) - self.first_frame_c3d
+                button_index = [button.text() for button in self.event_buttons].index(name)
+                self.main_window.set_event(frame, name, color=self.event_colors[button_index][1])
 
     def _create_event_button(self, text: str = None, save: bool = True):
         if text is None:
@@ -284,7 +311,7 @@ class C3dEditorAnalyses:
             contexts.append(context)
             labels.append(label)
 
-            times.append(event["frame"] * 1 / c3d["header"]["points"]["frame_rate"])
+            times.append((event["frame"] + self.first_frame_c3d) * 1 / c3d["header"]["points"]["frame_rate"])
 
         c3d.add_parameter("EVENT", "USED", (self.main_window.n_events,))
         c3d.add_parameter("EVENT", "CONTEXTS", contexts)

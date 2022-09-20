@@ -747,6 +747,12 @@ class Viz:
     def n_events(self) -> int:
         return sum([event["frame"] >= 0 for event in self.events])
 
+    def clear_events(self):
+        for event in self.events:
+            event["frame"] = -1
+            event["name"] = ""
+        self.last_event_index = -1
+
     def select_event(self, index):
         if index is None or index > self.last_event_index:
             index = -1
@@ -754,6 +760,8 @@ class Viz:
         for i, event in enumerate(self.events):
             event["marker"].is_selected = i == index
             event["marker"].update()
+
+        self.movement_slider[0].setValue(self.events[index]["frame"] + 1)
         return self.events[index]
 
     def set_event(self, frame: int, name: str, index: int = None, color: str = None):
