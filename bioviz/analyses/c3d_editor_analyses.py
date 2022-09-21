@@ -370,4 +370,5 @@ class C3dEditorAnalyses:
             labels.append(label)
 
             times.append((event["frame"] + first_frame) * 1 / frame_rate)
+        times = [[0] * len(times), times]  # Add a line of zeros as Nexus does
         return contexts, labels, times
