@@ -44,15 +44,31 @@ jobs:
       - name: Install bioviz 
         run: python setup.py install
         
-      - name: Run the actual tests
-        run: pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
+      - name: Run the actual tests on LINUX
+        run: | 
+          sudo apt-get install xvfb
+          xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
+        if: matrix.label == 'linux-64' 
           
-      - name: Test installed version of bioviz
+      - name: Test installed version of bioviz on LINUX
+        run: | 
+          python setup.py install
+          cd
+          xvfb-run --server-args="-screen 0 1024x768x24" python -c "import bioviz"
+        if: matrix.label == 'linux-64' 
+        
+      - name: Upload coverage to Codecov
+        run: codecov
+        if: matrix.label == 'linux-64' 
+        
+      - name: Run the actual tests on MAC
+        run: pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
+        if: matrix.label == 'osx-64' 
+          
+      - name: Test installed version of bioviz on WINDOWS and MAC
         run: | 
           python setup.py install
           cd
           python -c "import bioviz"
+        if: matrix.label != 'linux-64' 
         
-      - name: Upload coverage to Codecov
-        run: codecov
-        if: matrix.label == 'linux-64'
