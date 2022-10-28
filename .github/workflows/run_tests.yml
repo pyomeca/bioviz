@@ -45,17 +45,15 @@ jobs:
         run: python setup.py install
         
       - name: Run the actual tests
-        uses: GabrielBB/xvfb-action@v1
-        with:
-          run: xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
+        run: | 
+          sudo apt-get install xvfb
+          xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
           
       - name: Test installed version of bioviz
-        uses: GabrielBB/xvfb-action@v1
-        with:
-          run: | 
-            python setup.py install
-            cd
-            xvfb-run --server-args="-screen 0 1024x768x24" python -c "import bioviz"
+        run: | 
+          python setup.py install
+          cd
+          xvfb-run --server-args="-screen 0 1024x768x24" python -c "import bioviz"
         
       - name: Upload coverage to Codecov
         run: codecov
