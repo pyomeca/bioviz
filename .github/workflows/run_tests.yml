@@ -46,6 +46,7 @@ jobs:
         
       - name: Run the actual tests
         run: pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
+        if: matrix.label == 'osx-64' 
           
       - name: Test installed version of bioviz
         run: | 
