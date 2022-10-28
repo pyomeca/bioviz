@@ -1,20 +1,13 @@
 # create a dev conda environment with: `make create_env` or `conda env create -f environment.yml`
-name: bioptim
+name: bioviz
 channels:
   - conda-forge
 dependencies:
-  - biorbd >=1.9.1
-  - python
-  - numpy
+  - biorbd >=1.9.5
   - matplotlib
-  - scipy
   - pyomeca
   - vtk
   - pyqt
-  - pandas
-  - eigen
-  - casadi
-  - rbdl
   - packaging
   - pytest
   - setuptools
