@@ -47,7 +47,7 @@ jobs:
       - name: Run the actual tests
         uses: GabrielBB/xvfb-action@v1
         with:
-          run: pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
+          run: xvfb-run --server-args="-screen 0 1024x768x24" pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
           
       - name: Test installed version of bioviz
         uses: GabrielBB/xvfb-action@v1
@@ -55,7 +55,7 @@ jobs:
           run: | 
             python setup.py install
             cd
-            python -c "import bioviz"
+            xvfb-run --server-args="-screen 0 1024x768x24" python -c "import bioviz"
         
       - name: Upload coverage to Codecov
         run: codecov
