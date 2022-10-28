@@ -61,9 +61,9 @@ jobs:
         run: codecov
         if: matrix.label == 'linux-64' 
         
-      - name: Run the actual tests on WINDOWS and MAC
+      - name: Run the actual tests on MAC
         run: pytest -v --color=yes --cov-report term-missing --cov=bioviz tests
-        if: matrix.label != 'linux-64' 
+        if: matrix.label == 'osx-64' 
           
       - name: Test installed version of bioviz on WINDOWS and MAC
         run: | 
