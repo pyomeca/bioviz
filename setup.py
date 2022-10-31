@@ -7,7 +7,7 @@ setup(
     author_email="pariterre@hotmail.com",
     url="https://github.com/pyomeca/biorbd-viz",
     license="Apache 2.0",
-    packages=["bioviz"],
+    packages=["bioviz", "bioviz/analyses", "bioviz/qt_ui"],
     package_data={"": ["ressources/*.png"]},
     keywords="bioviz",
     classifiers=[

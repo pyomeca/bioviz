@@ -6,6 +6,7 @@ dependencies:
   - biorbd >=1.9.5
   - matplotlib
   - pyomeca
+  - ezc3d
   - vtk
   - pyqt
   - packaging

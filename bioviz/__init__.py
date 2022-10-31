@@ -1,8 +1,7 @@
-from typing import Union
+from typing import Union, Protocol
 import os
 import copy
 from functools import partial
-from packaging.version import parse as parse_version
 
 import numpy as np
 import scipy
@@ -32,283 +31,30 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
-from .analyses import MuscleAnalyses
-from ._version import __version__
+from .analyses import MuscleAnalyses, C3dEditorAnalyses
+from .interfaces_collection import InterfacesCollections
+from .qt_ui.rectangle_on_slider import RectangleOnSlider
+from ._version import __version__, check_version
 
-
-def check_version(tool_to_compare, min_version, max_version):
-    name = tool_to_compare.__name__
-    try:
-        ver = parse_version(tool_to_compare.__version__)
-    except AttributeError:
-        print(f"Version for {name} could not be compared...")
-        return
-
-    if ver < parse_version(min_version):
-        raise ImportError(f"{name} should be at least version {min_version}")
-    elif ver > parse_version(max_version):
-        raise ImportError(f"{name} should be lesser than version {max_version}")
-
-
-check_version(biorbd, "1.8.5", "2.0.0")
+check_version(biorbd, "1.9.1", "2.0.0")
 check_version(pyomeca, "2020.0.1", "2020.1.0")
+
+
 from pyomeca import Markers
 
 
-class InterfacesCollections:
-    class BiorbdFunc:
-        def __init__(self, model):
-            self.m = model
-            self.data = None
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                self._prepare_function_for_eigen()
-                self.get_data_func = self._get_data_from_eigen
-            elif biorbd.currentLinearAlgebraBackend() == 1:
-                self._prepare_function_for_casadi()
-                self.get_data_func = self._get_data_from_casadi
-            else:
-                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
+class AnalysePanel(Protocol):
+    @property
+    def widget(self) -> QWidget:
+        """
+        Return the parent widget in which all was added
+        """
+        return QWidget()
 
-        def _prepare_function_for_eigen(self):
-            pass
-
-        def _prepare_function_for_casadi(self):
-            pass
-
-        def _get_data_from_eigen(self, **kwargs):
-            raise RuntimeError("BiorbdFunc is an abstract class and _get_data_from_eigen can't be directly called")
-
-        def _get_data_from_casadi(self, **kwargs):
-            raise RuntimeError("BiorbdFunc is an abstract class and _get_data_from_casadi can't be directly called")
-
-        def get_data(self, **kwargs):
-            self.get_data_func(**kwargs)
-            return self.data
-
-    class Markers(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-            self.data = np.ndarray((3, self.m.nbMarkers(), 1))
-
-        def _prepare_function_for_casadi(self):
-            q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.markers = biorbd.to_casadi_func("Markers", self.m.markers, q_sym)
-
-        def _get_data_from_eigen(self, Q=None, compute_kin=True):
-            if compute_kin:
-                markers = self.m.markers(Q, True, True)
-            else:
-                markers = self.m.markers(Q, True, False)
-            for i in range(self.m.nbMarkers()):
-                self.data[:, i, 0] = markers[i].to_array()
-
-        def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            if self.m.nbMarkers():
-                self.data[:, :, 0] = np.array(self.markers(Q))
-
-    class Contact(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-            self.data = np.ndarray((3, self.m.nbContacts(), 1))
-
-        def _prepare_function_for_casadi(self):
-            q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.contacts = biorbd.to_casadi_func("Contacts", self.m.constraintsInGlobal, q_sym, True)
-
-        def _get_data_from_eigen(self, Q=None, compute_kin=True):
-            if compute_kin:
-                contacts = self.m.constraintsInGlobal(Q, True)
-            else:
-                contacts = self.m.constraintsInGlobal(Q, False)
-            for i in range(self.m.nbContacts()):
-                self.data[:, i, 0] = contacts[i].to_array()
-
-        def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            if self.m.nbContacts():
-                self.data[:, :, 0] = np.array(self.contacts(Q))
-
-    class SoftContacts(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-            self.data = np.ndarray((3, self.m.nbSoftContacts(), 1))
-
-        def _prepare_function_for_casadi(self):
-            q_sym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.soft_contacts = biorbd.to_casadi_func("SoftContacts", self.m.softContacts, q_sym, True)
-
-        def _get_data_from_eigen(self, Q=None, compute_kin=True):
-            if compute_kin:
-                soft_contacts = self.m.softContacts(Q, True)
-            else:
-                soft_contacts = self.m.softContacts(Q, False)
-            for i in range(self.m.nbSoftContacts()):
-                self.data[:, i, 0] = soft_contacts[i].to_array()
-
-        def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            if self.m.nbContacts():
-                self.data[:, :, 0] = np.array(self.soft_contacts(Q))
-
-    class CoM(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-            self.data = np.ones((4, 1, 1))
-
-        def _prepare_function_for_casadi(self):
-            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.CoM = biorbd.to_casadi_func("CoM", self.m.CoM, Qsym)
-
-        def _get_data_from_eigen(self, Q=None, compute_kin=True):
-            if compute_kin:
-                CoM = self.m.CoM(Q)
-            else:
-                CoM = self.m.CoM(Q, False)
-            for i in range(self.m.nbSegment()):
-                self.data[:3, 0, 0] = CoM.to_array()
-
-        def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            self.data[:3, :, 0] = self.CoM(Q)
-
-    class Gravity(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-            self.data = np.zeros(3)
-
-        def _get_data_from_eigen(self):
-            self.data = self.m.getGravity().to_array()
-
-        def _prepare_function_for_casadi(self):
-            self.gravity = biorbd.to_casadi_func("Gravity", self.m.getGravity)
-
-        def _get_data_from_casadi(self):
-            self.data = self.gravity()
-            for key in self.data.keys():
-                self.data = np.array(self.data[key]).reshape(3)
-
-    class CoMbySegment(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-            self.data = np.ndarray((3, 1, 1))
-
-        def _prepare_function_for_casadi(self):
-            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.CoMs = biorbd.to_casadi_func("CoMbySegment", self.m.CoMbySegmentInMatrix, Qsym)
-
-        def _get_data_from_eigen(self, Q=None, compute_kin=True):
-            self.data = []
-            if compute_kin:
-                allCoM = self.m.CoMbySegment(Q)
-            else:
-                allCoM = self.m.CoMbySegment(Q, False)
-            for com in allCoM:
-                self.data.append(np.append(com.to_array(), 1))
-
-        def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            self.data = []
-            for i in range(self.m.nbSegment()):
-                self.data.append(np.append(self.CoMs(Q)[:, i], 1))
-
-    class MusclesPointsInGlobal(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-
-        def _prepare_function_for_casadi(self):
-            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.groups = []
-            for group_idx in range(self.m.nbMuscleGroups()):
-                muscles = []
-                for muscle_idx in range(self.m.muscleGroup(group_idx).nbMuscles()):
-                    musc = self.m.muscleGroup(group_idx).muscle(muscle_idx)
-                    for via in range(len(musc.musclesPointsInGlobal())):
-                        muscles.append(
-                            casadi.Function(
-                                "MusclesPointsInGlobal", [Qsym], [musc.musclesPointsInGlobal(self.m, Qsym)[via].to_mx()]
-                            ).expand()
-                        )
-                self.groups.append(muscles)
-
-        def _get_data_from_eigen(self, Q=None):
-            self.data = []
-            self.m.updateMuscles(Q, True)
-            idx = 0
-            for group_idx in range(self.m.nbMuscleGroups()):
-                for muscle_idx in range(self.m.muscleGroup(group_idx).nbMuscles()):
-                    musc = self.m.muscleGroup(group_idx).muscle(muscle_idx)
-                    for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
-                        self.data.append(pts.to_array()[:, np.newaxis])
-                    idx += 1
-
-        def _get_data_from_casadi(self, Q=None):
-            self.data = []
-            for g in self.groups:
-                for m in g:
-                    self.data.append(np.array(m(Q)))
-
-    class MeshColor:
-        @staticmethod
-        def get_color(model):
-            if biorbd.currentLinearAlgebraBackend() == 0:
-                return [model.segment(i).characteristics().mesh().color().to_array() for i in range(model.nbSegment())]
-            elif biorbd.currentLinearAlgebraBackend() == 1:
-                color = []
-                for i in range(model.nbSegment()):
-                    func = biorbd.to_casadi_func("color", model.segment(i).characteristics().mesh().color().to_mx())
-                    color.append(np.array(func()["o0"])[:, 0])
-                return color
-            else:
-                raise RuntimeError("Unrecognized currentLinearAlgebraBackend")
-
-    class MeshPointsInMatrix(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-
-        def _prepare_function_for_casadi(self):
-            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.segments = []
-            for i in range(self.m.nbSegment()):
-                self.segments.append(
-                    casadi.Function("MeshPointsInMatrix", [Qsym], [self.m.meshPointsInMatrix(Qsym)[i].to_mx()]).expand()
-                )
-
-        def _get_data_from_eigen(self, Q=None, compute_kin=True):
-            self.data = []
-            if compute_kin:
-                meshPointsInMatrix = self.m.meshPointsInMatrix(Q)
-            else:
-                meshPointsInMatrix = self.m.meshPointsInMatrix(Q, False)
-            for i in range(self.m.nbSegment()):
-                self.data.append(meshPointsInMatrix[i].to_array()[:, :, np.newaxis])
-
-        def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            self.data = []
-            for i in range(self.m.nbSegment()):
-                n_vertex = self.m.segment(i).characteristics().mesh().nbVertex()
-                vertices = np.ndarray((3, n_vertex, 1))
-                vertices[:, :, 0] = self.segments[i](Q)
-                self.data.append(vertices)
-
-    class AllGlobalJCS(BiorbdFunc):
-        def __init__(self, model):
-            super().__init__(model)
-
-        def _prepare_function_for_casadi(self):
-            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
-            self.jcs = []
-            for i in range(self.m.nbSegment()):
-                self.jcs.append(casadi.Function("allGlobalJCS", [Qsym], [self.m.allGlobalJCS(Qsym)[i].to_mx()]))
-
-        def _get_data_from_eigen(self, Q=None, compute_kin=True):
-            self.data = []
-            if compute_kin:
-                allJCS = self.m.allGlobalJCS(Q)
-            else:
-                allJCS = self.m.allGlobalJCS()
-            for jcs in allJCS:
-                self.data.append(jcs.to_array())
-
-        def _get_data_from_casadi(self, Q=None, compute_kin=True):
-            self.data = []
-            for i in range(self.m.nbSegment()):
-                self.data.append(np.array(self.jcs[i](Q)))
+    def on_activate(self):
+        """
+        Callback to call when the panel is activated
+        """
 
 
 class Viz:
@@ -320,7 +66,7 @@ class Viz:
         mesh_opacity=0.8,
         show_global_center_of_mass=True,
         show_gravity_vector=True,
-        show_floor=True,
+        show_floor=False,
         show_segments_center_of_mass=True,
         segments_center_of_mass_size=0.005,
         show_global_ref_frame=True,
@@ -398,7 +144,7 @@ class Viz:
             soft_contacts_size=soft_contacts_size,
             soft_contacts_color=soft_contacts_color,
         )
-        self.vtk_model_markers: VtkModel = None
+        self.vtk_model_markers: VtkModel | None = None
         self.is_executing = False
         self.animation_warning_already_shown = False
 
@@ -490,8 +236,9 @@ class Viz:
         if self.show_local_ref_frame or self.show_global_ref_frame:
             self.rt = []
             self.allGlobalJCS = InterfacesCollections.AllGlobalJCS(self.model)
-            for rt in self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False):
+            for i, rt in enumerate(self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)):
                 self.rt.append(Rototrans(rt))
+                self.show_segment_is_on[i] = True
 
             if self.show_global_ref_frame:
                 self.vtk_model.create_global_ref_frame()
@@ -545,9 +292,7 @@ class Viz:
             self.set_viz_palette()
             self.animated_Q = None
 
-            self.muscle_analyses = []
-
-            self.play_stop_push_button = []
+            self.play_stop_push_button: QPushButton | None = None
             self.is_animating = False
             self.is_recording = False
             self.start_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/start.png"))
@@ -555,14 +300,30 @@ class Viz:
             self.record_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/record.png"))
             self.add_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/add.png"))
             self.stop_icon = QIcon(QPixmap(f"{os.path.dirname(__file__)}/ressources/stop.png"))
+            self.record_push_button = None
 
             self.double_factor = 10000
             self.sliders = list()
             self.movement_slider = []
+            self.movement_first_frame = 0
+            self.movement_last_frame = -1
+            self.movement_slider_starting_shade = None
+            self.movement_slider_ending_shade = None
 
-            self.active_analyses_widget = None
+            self.n_max_events = 100
+            self.last_event_index = -1
+            self.events: list[
+                dict[str:RectangleOnSlider, str:int, str:str], ...
+            ] = []  # event list of [marker/frame/event_name]
+
+            self.active_analyses: AnalysePanel | None = None
+            self.column_stretch = 0
             self.analyses_layout = QHBoxLayout()
-            self.analyses_muscle_widget = QWidget()
+            self.analyses_c3d_editor: AnalysePanel | None = None
+            self.analyses_muscle: AnalysePanel | None = None
+
+            self.c3d_file_name = None
+            self.radio_c3d_editor_model: QRadioButton | None = None
             self.add_options_panel()
 
         # Update everything at the position Q=0
@@ -598,7 +359,6 @@ class Viz:
         self.Q = Q
 
         self.model.UpdateKinematicsCustom(self.Q)
-
         self.__set_muscles_from_q()
         self.__set_rt_from_q()
         self.__set_meshes_from_q()
@@ -675,17 +435,19 @@ class Viz:
         rotate if not refreshed
 
         """
+
         self.vtk_window.update_frame()
 
     def update(self):
         if self.show_analyses_panel and self.is_animating:
-            self.movement_slider[0].setValue(
-                (self.movement_slider[0].value() + 1) % (self.movement_slider[0].maximum() + 1)
-            )
+            self.movement_slider[0].setValue(self.movement_slider[0].value() + 1)
+
+            if self.movement_slider[0].value() >= self.movement_last_frame:
+                self.movement_slider[0].setValue(self.movement_first_frame + 1)
 
             if self.is_recording:
                 self.add_frame()
-                if self.movement_slider[0].value() + 1 == (self.movement_slider[0].maximum() + 1):
+                if self.movement_slider[0].value() == self.movement_last_frame:
                     self.__start_stop_animation()
         self.refresh_window()
 
@@ -711,10 +473,11 @@ class Viz:
         self.palette_inactive.setColor(QPalette.WindowText, QColor(Qt.gray))
 
     def add_options_panel(self):
-        if self.has_model:
-            # Prepare the sliders
-            options_layout = QVBoxLayout()
+        # Prepare the sliders
+        options_layout = QVBoxLayout()
+        radio_muscle = None
 
+        if self.has_model:
             options_layout.addStretch()  # Centralize the sliders
             sliders_layout = QVBoxLayout()
             max_label_width = -1
@@ -799,10 +562,20 @@ class Viz:
             radio_none.toggled.connect(lambda: self.__select_analyses_panel(radio_none, 0))
             radio_none.setText("None")
             option_analyses_layout.addWidget(radio_none)
+            # Add the no analyses
+            self.radio_c3d_editor_model = QRadioButton()
+            self.radio_c3d_editor_model.setPalette(self.palette_active)
+            self.radio_c3d_editor_model.setChecked(False)
+            self.radio_c3d_editor_model.toggled.connect(
+                lambda: self.__select_analyses_panel(self.radio_c3d_editor_model, 1)
+            )
+            self.radio_c3d_editor_model.setText("C3D event editor")
+            self.radio_c3d_editor_model.setEnabled(False)
+            option_analyses_layout.addWidget(self.radio_c3d_editor_model)
             # Add the muscles analyses
             radio_muscle = QRadioButton()
             radio_muscle.setPalette(self.palette_active)
-            radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 1))
+            radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 2))
             radio_muscle.setText("Muscles")
             option_analyses_layout.addWidget(radio_muscle)
             # Add the layout to the interface
@@ -871,6 +644,19 @@ class Viz:
         animation_slider_layout.addWidget(frame_label)
 
         self.movement_slider = (slider, frame_label)
+        self.movement_slider_starting_shade = RectangleOnSlider(
+            self.movement_slider[0], expand=RectangleOnSlider.Expand.ExpandLeft
+        )
+        self.movement_slider_ending_shade = RectangleOnSlider(
+            self.movement_slider[0], expand=RectangleOnSlider.Expand.ExpandRight
+        )
+
+        # We must add all the event markers here because for some reason they are ignored once processEvents is called
+        for i in range(self.n_max_events):
+            event_marker = RectangleOnSlider(self.movement_slider[0], color=Qt.blue)
+            event_marker.value = -1
+            event_marker.update()
+            self.events.append({"marker": event_marker, "frame": -1, "name": ""})
 
         # Global placement of the window
         if self.has_model:
@@ -886,13 +672,14 @@ class Viz:
 
         # Prepare all the analyses panel
         if self.has_model:
+            self.analyses_c3d_editor = C3dEditorAnalyses(main_window=self)
             if self.show_muscles:
-                self.muscle_analyses = MuscleAnalyses(self.analyses_muscle_widget, self)
+                self.analyses_muscle = MuscleAnalyses(main_window=self)
             if biorbd.currentLinearAlgebraBackend() == 1:
                 radio_muscle.setEnabled(False)
             else:
                 radio_muscle.setEnabled(self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0)
-            self.__select_analyses_panel(radio_muscle, 1)
+            self.__select_analyses_panel(radio_muscle, 0)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
         if not radio_button.isChecked():
@@ -901,23 +688,33 @@ class Viz:
         # Hide previous analyses panel if necessary
         self.__hide_analyses_panel()
 
+        # The bigger the factor is, the bigger the main screen remains
         size_factor_none = 1
+        size_c3d_editor_creation = 1.5
         size_factor_muscle = 1.40
 
         # Find the size factor to get back to normal size
-        if self.active_analyses_widget is None:
+        if self.active_analyses is None:
             reduction_factor = size_factor_none
-        elif self.active_analyses_widget == self.analyses_muscle_widget:
+        elif self.active_analyses == self.analyses_c3d_editor:
+            reduction_factor = size_c3d_editor_creation
+        elif self.active_analyses == self.analyses_muscle:
             reduction_factor = size_factor_muscle
         else:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
 
         # Prepare the analyses panel and new size of window
         if panel_to_activate == 0:
-            self.active_analyses_widget = None
+            self.active_analyses = None
             enlargement_factor = size_factor_none
+            self.column_stretch = 0
         elif panel_to_activate == 1:
-            self.active_analyses_widget = self.analyses_muscle_widget
+            self.active_analyses = self.analyses_c3d_editor
+            enlargement_factor = size_c3d_editor_creation
+            self.column_stretch = 1
+        elif panel_to_activate == 2:
+            self.active_analyses = self.analyses_muscle
+            self.column_stretch = 4
             enlargement_factor = size_factor_muscle
         else:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
@@ -931,19 +728,20 @@ class Viz:
         )
 
     def __hide_analyses_panel(self):
-        if self.active_analyses_widget is None:
+        if self.active_analyses is None:
             return
         # Remove from main window
-        self.active_analyses_widget.setVisible(False)
-        self.vtk_window.main_layout.removeWidget(self.active_analyses_widget)
+        self.active_analyses.widget.setVisible(False)
+        self.vtk_window.main_layout.removeWidget(self.active_analyses.widget)
         self.vtk_window.main_layout.setColumnStretch(2, 0)
 
     def __show_local_ref_frame(self):
         # Give the parent as main window
-        if self.active_analyses_widget is not None:
-            self.vtk_window.main_layout.addWidget(self.active_analyses_widget, 0, 2)
-            self.vtk_window.main_layout.setColumnStretch(2, 4)
-            self.active_analyses_widget.setVisible(True)
+        if self.active_analyses is not None:
+            self.active_analyses.on_activate()
+            self.vtk_window.main_layout.addWidget(self.active_analyses.widget, 0, 2)
+            self.vtk_window.main_layout.setColumnStretch(2, self.column_stretch)
+            self.active_analyses.widget.setVisible(True)
 
         # Update graphs if needed
         self.__update_muscle_analyses_graphs(False, False, False, False)
@@ -954,14 +752,70 @@ class Viz:
             slide[2].setText(f" {self.Q[i]:.2f}")
         self.set_q(self.Q)
 
+    @property
+    def n_events(self) -> int:
+        return sum([event["frame"] >= 0 for event in self.events])
+
+    def clear_events(self):
+        for event in self.events:
+            event["frame"] = -1
+            event["name"] = ""
+            event["marker"].value = -1
+            event["marker"].update()
+        self.last_event_index = -1
+
+    def select_event(self, index):
+        if index is None or index > self.last_event_index:
+            index = -1
+
+        for i, event in enumerate(self.events):
+            event["marker"].is_selected = i == index
+            event["marker"].update()
+
+        self.movement_slider[0].setValue(self.events[index]["frame"] + 1)
+        return self.events[index]
+
+    def set_event(self, frame: int, name: str, index: int = None, color: str = None):
+        if index is None:
+            self.last_event_index += 1
+            index = self.last_event_index
+
+        if index > self.last_event_index:
+            raise IndexError("list index out of range")
+
+        event = self.events[index]
+        event["frame"] = frame
+        event["name"] = name
+        event["marker"].value = frame
+        if color is not None:
+            event["marker"].color = color
+        event["marker"].update()
+
+    def set_movement_first_frame(self, frame):
+        if frame >= self.movement_last_frame:
+            frame = self.movement_last_frame
+
+        self.movement_first_frame = frame
+        self.movement_slider_starting_shade.value = frame
+        self.movement_slider_starting_shade.update()
+
+    def set_movement_last_frame(self, frame):
+        if frame <= self.movement_first_frame:
+            frame = self.movement_first_frame
+
+        self.movement_last_frame = frame
+        self.movement_slider_ending_shade.value = frame
+        self.movement_slider_ending_shade.update()
+
     def __update_muscle_analyses_graphs(
         self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
     ):
         # Adjust muscle analyses if needed
-        if self.active_analyses_widget == self.analyses_muscle_widget:
-            self.muscle_analyses.update_all_graphs(
-                skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
-            )
+        if self.active_analyses == self.analyses_muscle:
+            if self.analyses_muscle is not None:
+                self.analyses_muscle.widget.update_all_graphs(
+                    skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
+                )
 
     def __animate_from_slider(self):
         # Move the avatar
@@ -970,13 +824,16 @@ class Viz:
             t_slider = self.movement_slider[0].value() - 1
             t = t_slider if t_slider < self.animated_Q.shape[0] else self.animated_Q.shape[0] - 1
             self.Q = copy.copy(self.animated_Q[t, :])  # 1-based
-            self.set_q(self.Q)
+            self.set_q(self.Q, refresh_window=False)
 
         self.__set_experimental_markers_from_frame()
         self.__set_experimental_forces_from_frame()
 
         # Update graph of muscle analyses
         self.__update_muscle_analyses_graphs(True, True, True, True)
+
+        # Refresh the window
+        self.refresh_window()
 
     def __start_stop_animation(self):
         if not self.is_executing and not self.animation_warning_already_shown:
@@ -1080,7 +937,7 @@ class Viz:
 
         # Add the combobox in muscle analyses
         if self.show_muscles:
-            self.muscle_analyses.add_movement_to_dof_choice()
+            self.analyses_muscle.add_movement_to_dof_choice()
 
     def __set_movement_slider(self):
         # Activate the start button
@@ -1090,7 +947,6 @@ class Viz:
 
         # Update the slider bar and frame count
         self.movement_slider[0].setEnabled(True)
-        self.movement_slider[0].setMinimum(1)
         experiment_shape = 0
         if self.experimental_forces is not None:
             experiment_shape = self.experimental_forces.shape[2]
@@ -1098,7 +954,10 @@ class Viz:
             experiment_shape = max(self.experimental_markers.shape[2], experiment_shape)
 
         q_shape = 0 if self.animated_Q is None else self.animated_Q.shape[0]
-        self.movement_slider[0].setMaximum(max(q_shape, experiment_shape))
+        self.movement_first_frame = 0
+        self.movement_last_frame = max(q_shape, experiment_shape)
+        self.movement_slider[0].setMinimum(1)
+        self.movement_slider[0].setMaximum(self.movement_last_frame)
         pal = QPalette()
         pal.setColor(QPalette.WindowText, QColor(Qt.black))
         self.movement_slider[1].setPalette(pal)
@@ -1124,6 +983,9 @@ class Viz:
             if self.experimental_markers.units == "mm":
                 self.experimental_markers = self.experimental_markers * 0.001
 
+            self.c3d_file_name = data
+            self.radio_c3d_editor_model.setEnabled(True)
+
         elif isinstance(data, (np.ndarray, xr.DataArray)):
             self.experimental_markers = Markers(data)
 
@@ -1133,9 +995,10 @@ class Viz:
                 f"Allowed type are numpy array (3xNxT), data array (3xNxT) or .c3d file (str)."
             )
 
-        self.vtk_model_markers = VtkModel(
-            self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size
-        )
+        if not self.vtk_model_markers:
+            self.vtk_model_markers = VtkModel(
+                self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size
+            )
 
         self.__set_movement_slider()
         self.show_experimental_markers = True

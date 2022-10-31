@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QScrollArea,
     QLabel,
+    QWidget,
     QSlider,
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -23,9 +24,10 @@ except ImportError:
 
 
 class MuscleAnalyses:
-    def __init__(self, parent, main_window, background_color=(0.5, 0.5, 0.5)):
+    def __init__(self, main_window, parent: QWidget = None, background_color=(0.5, 0.5, 0.5)):
         # Centralize the materials
-        analyses_muscle_layout = QHBoxLayout(parent)
+        self.widget = parent if parent is not None else QWidget()
+        analyses_muscle_layout = QHBoxLayout(self.widget)
 
         # Get some aliases
         self.main_window = main_window
@@ -146,6 +148,9 @@ class MuscleAnalyses:
         muscles_scroll.setWidget(radio_muscle_group)
         selector_layout.addWidget(muscles_scroll)
         selector_layout.addStretch()
+
+    def on_activate(self):
+        pass
 
     def add_movement_to_dof_choice(self):
         self.animation_checkbox.setPalette(self.main_window.palette_active)
