@@ -1,10 +1,4 @@
-version    3
-
-// General informations
-root_actuated 0
-external_forces 0
-
-
+version    4
 
 // Informations about Pelvis segment
     // Segment
@@ -25,38 +19,38 @@ external_forces 0
         mesh   -0.1432   -0.0024    0.0344
         mesh   -0.1038    0.0821         0
     endsegment
-    
+
     // Markers
         marker  pelv1
             parent  Pelvis
             position    -0.1038    0.0821         0
         endmarker
-        
+
         marker  pelv2
             parent  Pelvis
             position    0.1038    0.0850         0
         endmarker
-        
+
         marker  pelv3
             parent  Pelvis
             position    0.1435    0.0072    0.0351
         endmarker
-        
+
         marker  pelv4
             parent  Pelvis
             position    0.0514   -0.0833   -0.0020
         endmarker
-        
+
         marker  pelv5
             parent  Pelvis
             position    -0.0514   -0.0838    0.0020
         endmarker
-        
+
         marker  pelv6
             parent  Pelvis
             position    -0.1432   -0.0024    0.0344
         endmarker
-    
+
 
     // Actuator
         actuator    Pelvis
@@ -145,7 +139,7 @@ external_forces 0
         mesh    -0.16201    -0.12933    0.36322
         mesh    -0.10683    -0.18364    0.34808
     endsegment
-    
+
     // Markers
         marker  tronc1
             parent Tronc
@@ -455,7 +449,7 @@ external_forces 0
             r2      60.375000
             qopt2   24.694161
         endactuator
-        
+
 
 
 
@@ -635,8 +629,8 @@ external_forces 0
             r2       60.375000
             qopt2    24.694161
         endactuator
-        
-        
+
+
 // Informations about CuisseD segment
     // Segment
     segment    CuisseD
@@ -668,34 +662,34 @@ external_forces 0
             parent CuisseD
             position    0.00000    0.00000    0.00000
         endmarker
-        
+
         marker  cuissed2
             parent CuisseD
             position    0.10917    0.02169    -0.17854
         endmarker
-        
+
         marker  cuissed3
             parent CuisseD
             position    0.10898    0.08260    -0.35937
         endmarker
-        
+
         marker  cuissed4
             parent CuisseD
             position    0.00206    0.08093    -0.37628
         endmarker
-        
+
         marker  cuissed5
             parent CuisseD
             position    0.02884    -0.02404    -0.28043
         endmarker
-        
+
         marker  cuissed6
             parent CuisseD
             position    0.01361    -0.05144    -0.15273
         endmarker
-        
-    
-    
+
+
+
 
     // Actuator
         actuator    CuisseD
@@ -728,7 +722,7 @@ external_forces 0
         endactuator
 
 
-    
+
 // Informations about JambeD segment
     // Segment
     segment    JambeD
@@ -755,7 +749,7 @@ external_forces 0
         mesh    0.00952    0.04773    -0.02947
         mesh    0.00000    0.00000    0.00000
     endsegment
-    
+
     // Markers
         marker  jambed1
             parent JambeD
@@ -781,12 +775,12 @@ external_forces 0
             parent JambeD
             position    -0.00767    -0.00022    -0.26361
         endmarker
-        
+
         marker  jambed6
             parent JambeD
             position    -0.00642    0.06737    -0.14626
         endmarker
-        
+
         marker  jambed7
             parent JambeD
             position    0.00952    0.04773    -0.02947
@@ -856,7 +850,7 @@ external_forces 0
         mesh    0.01175    -0.03816    -0.02629
         mesh    0.06379    0.09487    -0.01280
     endsegment
-    
+
     // Markers
         marker    piedd1
             parent    PiedD
@@ -1019,8 +1013,8 @@ external_forces 0
             qopt	85.510899
             r	    -67.744985
         endactuator
-    
-    
+
+
 
 
 // Informations about JambeG segment
@@ -1049,7 +1043,7 @@ external_forces 0
         mesh    -0.00952    0.04773    -0.02947
         mesh    0.00000    0.00000    0.00000
     endsegment
-    
+
     // Markers
         marker jambeg1
             parent JambeG
@@ -1231,8 +1225,8 @@ external_forces 0
 musclegroup ScapulaBras
 	OriginParent		PiedG
 	InsertionParent		JambeG
-endmusclegroup 	
-		
+endmusclegroup
+
 	muscle	Deltoid
 		Type 			hillthelen
 		musclegroup 		ScapulaBras
