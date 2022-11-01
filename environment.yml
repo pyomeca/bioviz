@@ -10,5 +10,4 @@ dependencies:
   - vtk
   - pyqt
   - packaging
-  - pytest
   - setuptools
