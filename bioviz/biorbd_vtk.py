@@ -369,7 +369,7 @@ class VtkModel(QtWidgets.QWidget):
             One frame of markers
 
         """
-        if markers.time.size != 1:
+        if len(markers.shape) > 2:
             raise IndexError("Markers should be from one frame only")
         self.markers = markers
 
@@ -402,7 +402,7 @@ class VtkModel(QtWidgets.QWidget):
 
         """
 
-        if markers.time.size != 1:
+        if len(markers.shape) > 2:
             raise IndexError("Markers should be from one frame only")
         if markers.channel.size != self.markers.channel.size:
             self.new_marker_set(markers)
