@@ -144,6 +144,7 @@ f_ext[0,3:,:] = np.linspace(np.ones(3) * 0.2, np.ones(3) * 0.25, n_frames).T
 biorbd_viz.load_movement(all_q)
 biorbd_viz.load_experimental_forces(f_ext, segments=None, normalization_ratio=0.2)
 biorbd_viz.exec()
+```
 
 ## Analyses panel
 
