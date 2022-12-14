@@ -195,6 +195,35 @@ class InterfacesCollections:
                 for m in g:
                     self.data.append(np.array(m(Q)))
 
+    class LigamentsPointsInGlobal(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+
+        def _prepare_function_for_casadi(self):
+            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.ligaments = []
+            for ligament in self.m.ligaments():
+                for via in range(len(ligament.pointsInGlobal())):
+                    self.ligaments.append(
+                        casadi.Function(
+                            "pointsInGlobal", [Qsym], [ligament.pointsInGlobal(self.m, Qsym)[via].to_mx()]
+                        ).expand()
+                    )
+
+        def _get_data_from_eigen(self, Q=None):
+            self.data = []
+            self.m.updateLigaments(Q, True)
+            idx = 0
+            for ligament in self.m.ligaments():
+                for k, pts in enumerate(ligament.position().pointsInGlobal()):
+                    self.data.append(pts.to_array()[:, np.newaxis])
+                idx += 1
+
+        def _get_data_from_casadi(self, Q=None):
+            self.data = []
+            for l in self.ligaments:
+                self.data.append(np.array(l(Q)))
+
     class MeshColor:
         @staticmethod
         def get_color(model):
