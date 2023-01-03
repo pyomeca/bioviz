@@ -202,11 +202,12 @@ class InterfacesCollections:
         def _prepare_function_for_casadi(self):
             Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
             self.ligaments = []
-            for ligament in self.m.ligaments():
-                for via in range(len(ligament.pointsInGlobal())):
+            for ligament_idx in range(self.m.nbLigaments()):
+                ligament = self.m.ligament(ligament_idx)
+                for via in range(len(ligament.ligamentsPointsInGlobal())):
                     self.ligaments.append(
                         casadi.Function(
-                            "pointsInGlobal", [Qsym], [ligament.pointsInGlobal(self.m, Qsym)[via].to_mx()]
+                            "pointsInGlobal", [Qsym], [ligament.ligamentsPointsInGlobal(self.m, Qsym)[via].to_mx()]
                         ).expand()
                     )
 
@@ -214,7 +215,8 @@ class InterfacesCollections:
             self.data = []
             self.m.updateLigaments(Q, True)
             idx = 0
-            for ligament in self.m.ligaments():
+            for ligament_idx in range(self.m.nbLigaments()):
+                ligament = self.m.ligament(ligament_idx)
                 for k, pts in enumerate(ligament.position().pointsInGlobal()):
                     self.data.append(pts.to_array()[:, np.newaxis])
                 idx += 1

@@ -238,13 +238,14 @@ class Viz:
             for group_idx in range(self.model.nbMuscleGroups()):
                 for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                     musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                    tp = np.zeros((3, len(musc.position().musclesPointsInGlobal()), 1))
+                    tp = np.zeros((3, len(musc.position().pointsInGlobal()), 1))
                     self.muscles.append(Mesh(vertex=tp))
             self.musclesPointsInGlobal = InterfacesCollections.MusclesPointsInGlobal(self.model)
         if self.show_ligaments:
             self.model.updateLigaments(self.Q, True)
             self.ligaments = []
-            for ligament in self.model.ligaments():
+            for ligament_idx in range(self.model.nbLigaments()):
+                ligament = self.model.ligament(ligament_idx)
                 tp = np.zeros((3, len(ligament.position().pointsInGlobal()), 1))
                 self.ligaments.append(Mesh(vertex=tp))
             self.ligamentsPointsInGlobal = InterfacesCollections.LigamentsPointsInGlobal(self.model)
@@ -264,7 +265,7 @@ class Viz:
                 if m < self.model.nbMuscles():
                     path_modifier = self.model.muscle(m).pathModifier()
                 else:
-                    path_modifier = self.model.ligament(m).pathModifier()
+                    path_modifier = self.model.ligament(m - self.model.nbMuscles()).pathModifier()
                 wraps = []
                 wraps_current = []
                 for w in range(path_modifier.nbWraps()):
@@ -1223,7 +1224,7 @@ class Viz:
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                 musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
+                for k, pts in enumerate(musc.position().pointsInGlobal()):
                     self.muscles[idx].loc[{"channel": k, "time": 0}] = np.append(muscles[cmp], 1)
                     cmp += 1
                 idx += 1
@@ -1234,8 +1235,8 @@ class Viz:
             return
 
         ligaments = self.ligamentsPointsInGlobal.get_data(Q=self.Q)
-        for idx, ligament in enumerate(self.model.ligaments()):
-            for k, pts in enumerate(ligament.position().pointsInGlobal()):
+        for idx in range(self.model.nbLigaments()):
+            for k, pts in enumerate(self.model.ligament(idx).position().pointsInGlobal()):
                 self.ligaments[idx].loc[{"channel": k, "time": 0}] = np.append(ligaments[idx], 1)
         self.vtk_model.update_ligament(self.ligaments)
 
@@ -1245,7 +1246,7 @@ class Viz:
 
         for i, wraps in enumerate(self.wraps_base):
             for j, wrap in enumerate(wraps):
-                try:
+                if i < self.model.nbMuscles():
                     if self.model.muscle(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
                         rt = (
                             biorbd.WrappingHalfCylinder(self.model.muscle(i).pathModifier().object(j))
@@ -1253,7 +1254,10 @@ class Viz:
                             .to_array()
                         )
                         self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
-                except ValueError:
+                    else:
+                        raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
+
+                else:
                     if self.model.ligaments(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
                         rt = (
                             biorbd.WrappingHalfCylinder(self.model.ligaments(i).pathModifier().object(j))
@@ -1261,8 +1265,8 @@ class Viz:
                             .to_array()
                         )
                         self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
-                else:
-                    raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
+                    else:
+                        raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
         self.vtk_model.update_wrapping(self.wraps_current)
 
     def __set_rt_from_q(self):

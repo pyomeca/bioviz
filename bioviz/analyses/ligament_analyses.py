@@ -96,9 +96,8 @@ class LigamentAnalyses:
         ligament_layout = QVBoxLayout()
         self.ligament_mapping = dict()
         self.checkboxes_ligament = list()
-        for l, lig in enumerate(self.model.Ligaments()):
-            # Map the name to the right numbers
-            name = lig.name().to_string()
+        for l in range(self.model.nbLigaments()):
+            name = self.model.ligament(l).name().to_string()
             # Add the CheckBox
             self.checkboxes_ligament.append(QCheckBox())
             self.checkboxes_ligament[l].setPalette(self.main_window.palette_active)
