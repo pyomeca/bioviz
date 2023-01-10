@@ -536,6 +536,7 @@ class Viz:
                 slider.setValue(0)
                 slider.valueChanged.connect(self.__move_avatar_from_sliders)
                 slider.sliderReleased.connect(partial(self.__update_ligament_analyses_graphs, False, False, False))
+                slider.sliderReleased.connect(partial(self.__update_muscle_analyses_graphs, False, False, False, False))
                 slider_layout.addWidget(slider)
 
                 # Add the value
@@ -709,8 +710,11 @@ class Viz:
                 self.analyses_ligament = LigamentAnalyses(main_window=self)
             if biorbd.currentLinearAlgebraBackend() == 1:
                 radio_ligament.setEnabled(False)
+                radio_muscle.setEnabled(False)
             else:
                 radio_ligament.setEnabled(self.biorbd_compiled_with_ligaments and self.model.nbLigaments() > 0)
+                radio_muscle.setEnabled(self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0)
+            self.__select_analyses_panel(radio_muscle, 0)
             self.__select_analyses_panel(radio_ligament, 0)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):

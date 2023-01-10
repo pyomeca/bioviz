@@ -139,10 +139,7 @@ class LigamentAnalyses:
 
     def update_all_graphs(self, skip_ligament_length, skip_moment_arm, skip_passive_forces):
         x_axis, length, moment_arm, passive_forces = self.__compute_all_values()
-        self.__update_specific_plot(
-            self.canvas_ligament_length, self.ax_ligament_length, x_axis, length, skip_ligament_length
-        )
-
+        self.__update_specific_plot(self.canvas_ligament_length, self.ax_ligament_length, x_axis, length, skip_ligament_length)
         self.__update_specific_plot(self.canvas_moment_arm, self.ax_moment_arm, x_axis, moment_arm, skip_moment_arm)
 
         self.__update_specific_plot(
@@ -202,14 +199,6 @@ class LigamentAnalyses:
                 ax.set_xlabel("Time frame")
             else:
                 ax.set_xlabel("Along range")
-
-            # Add vertical bar to show current dof (it must be done after relim so we know the new lims)
-            q_idx = self.combobox_dof.currentIndex()
-            if self.animation_checkbox.isChecked():
-                x = int(self.main_window.movement_slider[1].text()) - 1  # Frame label
-            else:
-                x = self.__get_q_from_slider()[q_idx]
-            ax.get_lines()[-1].set_data([x, x], ax.get_ylim())
 
         # Redraw graphs
         canvas.draw()
