@@ -185,7 +185,7 @@ class InterfacesCollections:
             for group_idx in range(self.m.nbMuscleGroups()):
                 for muscle_idx in range(self.m.muscleGroup(group_idx).nbMuscles()):
                     musc = self.m.muscleGroup(group_idx).muscle(muscle_idx)
-                    for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
+                    for k, pts in enumerate(musc.position().pointsInGlobal()):
                         self.data.append(pts.to_array()[:, np.newaxis])
                     idx += 1
 

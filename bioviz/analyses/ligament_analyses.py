@@ -60,7 +60,7 @@ class LigamentAnalyses:
         self.animation_checkbox.setText("From animation")
         self.animation_checkbox.setPalette(self.main_window.palette_inactive)
         self.animation_checkbox.setEnabled(False)
-        self.animation_checkbox.stateChanged.connect(partial(self.update_all_graphs, False, False, False, False))
+        self.animation_checkbox.stateChanged.connect(partial(self.update_all_graphs, False, False, False))
 
         # Add plots
         analyses_layout = QGridLayout()
@@ -168,14 +168,15 @@ class LigamentAnalyses:
         passive_forces = np.ndarray((self.n_point_for_q, self.n_lig))
         for i, q_mod in enumerate(all_q):
             self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(q_mod))
-            for l, lig in self.model.Ligaments():
+            for l in range(self.model.nbLigaments()):
                 if self.checkboxes_ligament[l].isChecked():
+                    lig = self.model.ligament(l)
                     lig.updateOrientations(self.model, q_mod, 1)
                     ligaments_length_jacobian = self.model.ligamentsLengthJacobian().to_array()
 
                     length[i, l] = lig.length(self.model, q_mod, False)
                     moment_arm[i, l] = -1 * ligaments_length_jacobian[l, q_idx]
-                    passive_forces[i, l] = biorbd.Ligament(lig).Fl()
+                    passive_forces[i, l] = lig.Fl()
 
         return x_axis, length, moment_arm, passive_forces
 
@@ -189,9 +190,6 @@ class LigamentAnalyses:
                 number_of_active += 1
             else:
                 ax.get_lines()[m].set_data(np.nan, np.nan)
-
-        # Empty the vertical bar (otherwise relim takes it in account
-        ax.get_lines()[-1].set_data(np.nan, np.nan)
 
         # If there is no data skip relim and vertical bar adjustment
         if number_of_active != 0:

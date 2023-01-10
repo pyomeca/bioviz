@@ -225,7 +225,7 @@ class VtkModel(QtWidgets.QWidget):
         wrapping_opacity=1.0,
         muscle_color=(150 / 255, 15 / 255, 15 / 255),
         muscle_opacity=1.0,
-        ligament_color=(10 / 255, 15 / 255, 15 / 255),
+        ligament_color=(77 / 255, 0 / 255, 128 / 255),
         ligament_opacity=1.0,
         rt_length=0.1,
         rt_width=2,

@@ -1297,3 +1297,18 @@ endmusclegroup
 		endviapoint
 
 
+	ligament    BRA_lig
+        type    constant
+        origin    Tronc
+        insertion BrasD
+        OriginPosition    0	0	.35
+        InsertionPosition    0	0	-0.1
+        force    987.25999999999999
+        ligamentslackLength    0.053499999999999999
+    endligament
+	    viapoint via1
+			  parent 		BrasD
+			  ligament 		BRA_lig
+			  position 		-0.05 0.02 0 0.05
+		endviapoint
+

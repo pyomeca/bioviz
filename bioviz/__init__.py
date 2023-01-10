@@ -535,7 +535,7 @@ class Viz:
                 slider.setPageStep(self.double_factor)
                 slider.setValue(0)
                 slider.valueChanged.connect(self.__move_avatar_from_sliders)
-                slider.sliderReleased.connect(partial(self.__update_ligament_analyses_graphs, False, False, False, False))
+                slider.sliderReleased.connect(partial(self.__update_ligament_analyses_graphs, False, False, False))
                 slider_layout.addWidget(slider)
 
                 # Add the value
@@ -605,7 +605,7 @@ class Viz:
             # Add the ligaments analyses
             radio_ligament = QRadioButton()
             radio_ligament.setPalette(self.palette_active)
-            radio_ligament.toggled.connect(lambda: self.__select_analyses_panel(radio_ligament, 2))
+            radio_ligament.toggled.connect(lambda: self.__select_analyses_panel(radio_ligament, 3))
             radio_ligament.setText("Ligaments")
             option_analyses_layout.addWidget(radio_ligament)
             # Add the layout to the interface
@@ -751,7 +751,7 @@ class Viz:
             self.active_analyses = self.analyses_muscle
             self.column_stretch = 4
             enlargement_factor = size_factor_muscle
-        elif panel_to_activate == 2:
+        elif panel_to_activate == 3:
             self.active_analyses = self.analyses_ligament
             self.column_stretch = 4
             enlargement_factor = size_factor_ligament
@@ -853,7 +853,7 @@ class Viz:
         # Adjust muscle analyses if needed
         if self.active_analyses == self.analyses_muscle:
             if self.analyses_muscle is not None:
-                self.analyses_muscle.widget.update_all_graphs(
+                self.analyses_muscle.update_all_graphs(
                     skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
                 )
 
@@ -863,7 +863,7 @@ class Viz:
         # Adjust ligament analyses if needed
         if self.active_analyses == self.analyses_ligament:
             if self.analyses_ligament is not None:
-                self.analyses_ligament.widget.update_all_graphs(
+                self.analyses_ligament.update_all_graphs(
                     skip_ligament_length, skip_moment_arm, skip_passive_forces
                 )
 
@@ -1237,7 +1237,8 @@ class Viz:
         ligaments = self.ligamentsPointsInGlobal.get_data(Q=self.Q)
         for idx in range(self.model.nbLigaments()):
             for k, pts in enumerate(self.model.ligament(idx).position().pointsInGlobal()):
-                self.ligaments[idx].loc[{"channel": k, "time": 0}] = np.append(ligaments[idx], 1)
+                self.ligaments[idx].loc[{"channel": k, "time": 0}] = np.append(ligaments[k], 1)
+
         self.vtk_model.update_ligament(self.ligaments)
 
     def __set_wrapping_from_q(self):
