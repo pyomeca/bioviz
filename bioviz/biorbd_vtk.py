@@ -1150,7 +1150,7 @@ class VtkModel(QtWidgets.QWidget):
             self.ligament_actors[i].SetMapper(mapper)
             self.ligament_actors[i].GetProperty().SetColor(self.ligament_color)
             self.ligament_actors[i].GetProperty().SetOpacity(self.ligament_opacity)
-            self.ligament_actors[i].GetProperty().SetLineWidth(5)
+            self.ligament_actors[i].GetProperty().SetLineWidth(2)
 
             self.parent_window.ren.AddActor(self.ligament_actors[i])
 
