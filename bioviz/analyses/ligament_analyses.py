@@ -102,9 +102,7 @@ class LigamentAnalyses:
             self.checkboxes_ligament.append(QCheckBox())
             self.checkboxes_ligament[l].setPalette(self.main_window.palette_active)
             self.checkboxes_ligament[l].setText(name)
-            self.checkboxes_ligament[l].toggled.connect(
-                partial(self.update_all_graphs, False, False, False)
-            )
+            self.checkboxes_ligament[l].toggled.connect(partial(self.update_all_graphs, False, False, False))
             ligament_layout.addWidget(self.checkboxes_ligament[l])
 
             # Add the plot to the axes
@@ -139,7 +137,9 @@ class LigamentAnalyses:
 
     def update_all_graphs(self, skip_ligament_length, skip_moment_arm, skip_passive_forces):
         x_axis, length, moment_arm, passive_forces = self.__compute_all_values()
-        self.__update_specific_plot(self.canvas_ligament_length, self.ax_ligament_length, x_axis, length, skip_ligament_length)
+        self.__update_specific_plot(
+            self.canvas_ligament_length, self.ax_ligament_length, x_axis, length, skip_ligament_length
+        )
         self.__update_specific_plot(self.canvas_moment_arm, self.ax_moment_arm, x_axis, moment_arm, skip_moment_arm)
 
         self.__update_specific_plot(

@@ -861,15 +861,11 @@ class Viz:
                     skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
                 )
 
-    def __update_ligament_analyses_graphs(
-        self, skip_ligament_length, skip_moment_arm, skip_passive_forces
-    ):
+    def __update_ligament_analyses_graphs(self, skip_ligament_length, skip_moment_arm, skip_passive_forces):
         # Adjust ligament analyses if needed
         if self.active_analyses == self.analyses_ligament:
             if self.analyses_ligament is not None:
-                self.analyses_ligament.update_all_graphs(
-                    skip_ligament_length, skip_moment_arm, skip_passive_forces
-                )
+                self.analyses_ligament.update_all_graphs(skip_ligament_length, skip_moment_arm, skip_passive_forces)
 
     def __animate_from_slider(self):
         # Move the avatar
@@ -1239,9 +1235,11 @@ class Viz:
             return
 
         ligaments = self.ligamentsPointsInGlobal.get_data(Q=self.Q)
+        cmp = 0
         for idx in range(self.model.nbLigaments()):
             for k, pts in enumerate(self.model.ligament(idx).position().pointsInGlobal()):
-                self.ligaments[idx].loc[{"channel": k, "time": 0}] = np.append(ligaments[k], 1)
+                self.ligaments[idx].loc[{"channel": k, "time": 0}] = np.append(ligaments[cmp], 1)
+                cmp += 1
 
         self.vtk_model.update_ligament(self.ligaments)
 
