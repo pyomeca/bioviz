@@ -220,6 +220,7 @@ class VtkModel(QtWidgets.QWidget):
         mesh_color=(0, 0, 0),
         patch_color=(0.89, 0.855, 0.788),
         mesh_opacity=0.8,
+        mesh_linewidth=1,
         force_wireframe=False,
         wrapping_color=(0, 0, 1),
         wrapping_opacity=1.0,
@@ -301,6 +302,7 @@ class VtkModel(QtWidgets.QWidget):
         self.force_wireframe = force_wireframe
         self.patch_color = patch_color
         self.mesh_opacity = mesh_opacity
+        self.mesh_linewidth = mesh_linewidth
         self.mesh_actors = list()
 
         self.all_muscles = []
@@ -947,6 +949,7 @@ class VtkModel(QtWidgets.QWidget):
 
             poly_line = self.mesh_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
+            self.mesh_actors[i].GetProperty().SetLineWidth(self.mesh_linewidth)
 
     def set_muscle_color(self, muscle_color):
         """
