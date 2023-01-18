@@ -31,7 +31,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
-from .analyses import MuscleAnalyses, C3dEditorAnalyses
+from .analyses import MuscleAnalyses, C3dEditorAnalyses, LigamentAnalyses
 from .interfaces_collection import InterfacesCollections
 from .qt_ui.rectangle_on_slider import RectangleOnSlider
 from ._version import __version__, check_version
@@ -79,6 +79,7 @@ class Viz:
         show_soft_contacts=True,
         soft_contacts_color=(0.11, 0.63, 0.95),
         show_muscles=True,
+        show_ligaments=True,
         show_wrappings=True,
         show_analyses_panel=True,
         background_color=(0.5, 0.5, 0.5),
@@ -116,6 +117,7 @@ class Viz:
             show_markers = False
             show_contacts = False
             show_muscles = False
+            show_ligaments = False
             show_wrappings = False
             show_soft_contacts = False
 
@@ -178,11 +180,17 @@ class Viz:
         self.show_segments_center_of_mass = show_segments_center_of_mass
         self.show_local_ref_frame = show_local_ref_frame
         self.biorbd_compiled_with_muscles = hasattr(biorbd.Model, "nbMuscles")
+        self.biorbd_compiled_with_ligaments = hasattr(biorbd.Model, "nbLigaments")
 
         if self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0:
             self.show_muscles = show_muscles
         else:
             self.show_muscles = False
+            show_wrappings = False
+        if self.biorbd_compiled_with_ligaments and self.model.nbLigaments() > 0:
+            self.show_ligaments = show_ligaments
+        else:
+            self.show_ligaments = False
             show_wrappings = False
         self.show_wrappings = show_wrappings
 
@@ -230,9 +238,17 @@ class Viz:
             for group_idx in range(self.model.nbMuscleGroups()):
                 for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                     musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                    tp = np.zeros((3, len(musc.position().musclesPointsInGlobal()), 1))
+                    tp = np.zeros((3, len(musc.position().pointsInGlobal()), 1))
                     self.muscles.append(Mesh(vertex=tp))
             self.musclesPointsInGlobal = InterfacesCollections.MusclesPointsInGlobal(self.model)
+        if self.show_ligaments:
+            self.model.updateLigaments(self.Q, True)
+            self.ligaments = []
+            for ligament_idx in range(self.model.nbLigaments()):
+                ligament = self.model.ligament(ligament_idx)
+                tp = np.zeros((3, len(ligament.position().pointsInGlobal()), 1))
+                self.ligaments.append(Mesh(vertex=tp))
+            self.ligamentsPointsInGlobal = InterfacesCollections.LigamentsPointsInGlobal(self.model)
         if self.show_local_ref_frame or self.show_global_ref_frame:
             self.rt = []
             self.allGlobalJCS = InterfacesCollections.AllGlobalJCS(self.model)
@@ -245,8 +261,11 @@ class Viz:
         if self.show_wrappings:
             self.wraps_base = []
             self.wraps_current = []
-            for m in range(self.model.nbMuscles()):
-                path_modifier = self.model.muscle(m).pathModifier()
+            for m in range(self.model.nbMuscles() + self.model.nbLigaments()):
+                if m < self.model.nbMuscles():
+                    path_modifier = self.model.muscle(m).pathModifier()
+                else:
+                    path_modifier = self.model.ligament(m - self.model.nbMuscles()).pathModifier()
                 wraps = []
                 wraps_current = []
                 for w in range(path_modifier.nbWraps()):
@@ -321,6 +340,7 @@ class Viz:
             self.analyses_layout = QHBoxLayout()
             self.analyses_c3d_editor: AnalysePanel | None = None
             self.analyses_muscle: AnalysePanel | None = None
+            self.analyses_ligament: AnalysePanel | None = None
 
             self.c3d_file_name = None
             self.radio_c3d_editor_model: QRadioButton | None = None
@@ -338,6 +358,8 @@ class Viz:
 
         # Reset also muscle analyses graphs
         self.__update_muscle_analyses_graphs(False, False, False, False)
+        # Reset also ligament analyses graphs
+        self.__update_ligament_analyses_graphs(False, False, False)
 
     def copy_q_to_clipboard(self):
         pandas.DataFrame(self.Q[np.newaxis, :]).to_clipboard(sep=",", index=False, header=False)
@@ -360,6 +382,7 @@ class Viz:
 
         self.model.UpdateKinematicsCustom(self.Q)
         self.__set_muscles_from_q()
+        self.__set_ligaments_from_q()
         self.__set_rt_from_q()
         self.__set_meshes_from_q()
         self.__set_global_center_of_mass_from_q()
@@ -476,6 +499,7 @@ class Viz:
         # Prepare the sliders
         options_layout = QVBoxLayout()
         radio_muscle = None
+        radio_ligament = None
 
         if self.has_model:
             options_layout.addStretch()  # Centralize the sliders
@@ -511,6 +535,7 @@ class Viz:
                 slider.setPageStep(self.double_factor)
                 slider.setValue(0)
                 slider.valueChanged.connect(self.__move_avatar_from_sliders)
+                slider.sliderReleased.connect(partial(self.__update_ligament_analyses_graphs, False, False, False))
                 slider.sliderReleased.connect(partial(self.__update_muscle_analyses_graphs, False, False, False, False))
                 slider_layout.addWidget(slider)
 
@@ -578,6 +603,12 @@ class Viz:
             radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 2))
             radio_muscle.setText("Muscles")
             option_analyses_layout.addWidget(radio_muscle)
+            # Add the ligaments analyses
+            radio_ligament = QRadioButton()
+            radio_ligament.setPalette(self.palette_active)
+            radio_ligament.toggled.connect(lambda: self.__select_analyses_panel(radio_ligament, 3))
+            radio_ligament.setText("Ligaments")
+            option_analyses_layout.addWidget(radio_ligament)
             # Add the layout to the interface
             option_analyses_group.setLayout(option_analyses_layout)
             options_layout.addWidget(option_analyses_group)
@@ -675,11 +706,16 @@ class Viz:
             self.analyses_c3d_editor = C3dEditorAnalyses(main_window=self)
             if self.show_muscles:
                 self.analyses_muscle = MuscleAnalyses(main_window=self)
+            if self.show_ligaments:
+                self.analyses_ligament = LigamentAnalyses(main_window=self)
             if biorbd.currentLinearAlgebraBackend() == 1:
+                radio_ligament.setEnabled(False)
                 radio_muscle.setEnabled(False)
             else:
+                radio_ligament.setEnabled(self.biorbd_compiled_with_ligaments and self.model.nbLigaments() > 0)
                 radio_muscle.setEnabled(self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0)
             self.__select_analyses_panel(radio_muscle, 0)
+            self.__select_analyses_panel(radio_ligament, 0)
 
     def __select_analyses_panel(self, radio_button, panel_to_activate):
         if not radio_button.isChecked():
@@ -692,6 +728,7 @@ class Viz:
         size_factor_none = 1
         size_c3d_editor_creation = 1.5
         size_factor_muscle = 1.40
+        size_factor_ligament = 1.40
 
         # Find the size factor to get back to normal size
         if self.active_analyses is None:
@@ -700,6 +737,8 @@ class Viz:
             reduction_factor = size_c3d_editor_creation
         elif self.active_analyses == self.analyses_muscle:
             reduction_factor = size_factor_muscle
+        elif self.active_analyses == self.analyses_ligament:
+            reduction_factor = size_factor_ligament
         else:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
 
@@ -716,6 +755,10 @@ class Viz:
             self.active_analyses = self.analyses_muscle
             self.column_stretch = 4
             enlargement_factor = size_factor_muscle
+        elif panel_to_activate == 3:
+            self.active_analyses = self.analyses_ligament
+            self.column_stretch = 4
+            enlargement_factor = size_factor_ligament
         else:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
 
@@ -745,6 +788,7 @@ class Viz:
 
         # Update graphs if needed
         self.__update_muscle_analyses_graphs(False, False, False, False)
+        self.__update_ligament_analyses_graphs(False, False, False)
 
     def __move_avatar_from_sliders(self):
         for i, slide in enumerate(self.sliders):
@@ -813,9 +857,15 @@ class Viz:
         # Adjust muscle analyses if needed
         if self.active_analyses == self.analyses_muscle:
             if self.analyses_muscle is not None:
-                self.analyses_muscle.widget.update_all_graphs(
+                self.analyses_muscle.update_all_graphs(
                     skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
                 )
+
+    def __update_ligament_analyses_graphs(self, skip_ligament_length, skip_moment_arm, skip_passive_forces):
+        # Adjust ligament analyses if needed
+        if self.active_analyses == self.analyses_ligament:
+            if self.analyses_ligament is not None:
+                self.analyses_ligament.update_all_graphs(skip_ligament_length, skip_moment_arm, skip_passive_forces)
 
     def __animate_from_slider(self):
         # Move the avatar
@@ -831,6 +881,8 @@ class Viz:
 
         # Update graph of muscle analyses
         self.__update_muscle_analyses_graphs(True, True, True, True)
+        # Update graph of ligament analyses
+        self.__update_ligament_analyses_graphs(True, True, True)
 
         # Refresh the window
         self.refresh_window()
@@ -938,6 +990,9 @@ class Viz:
         # Add the combobox in muscle analyses
         if self.show_muscles:
             self.analyses_muscle.add_movement_to_dof_choice()
+        # Add the combobox in ligament analyses
+        if self.show_ligaments:
+            self.analyses_ligament.add_movement_to_dof_choice()
 
     def __set_movement_slider(self):
         # Activate the start button
@@ -1169,11 +1224,24 @@ class Viz:
         for group_idx in range(self.model.nbMuscleGroups()):
             for muscle_idx in range(self.model.muscleGroup(group_idx).nbMuscles()):
                 musc = self.model.muscleGroup(group_idx).muscle(muscle_idx)
-                for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
+                for k, pts in enumerate(musc.position().pointsInGlobal()):
                     self.muscles[idx].loc[{"channel": k, "time": 0}] = np.append(muscles[cmp], 1)
                     cmp += 1
                 idx += 1
         self.vtk_model.update_muscle(self.muscles)
+
+    def __set_ligaments_from_q(self):
+        if not self.show_ligaments:
+            return
+
+        ligaments = self.ligamentsPointsInGlobal.get_data(Q=self.Q)
+        cmp = 0
+        for idx in range(self.model.nbLigaments()):
+            for k, pts in enumerate(self.model.ligament(idx).position().pointsInGlobal()):
+                self.ligaments[idx].loc[{"channel": k, "time": 0}] = np.append(ligaments[cmp], 1)
+                cmp += 1
+
+        self.vtk_model.update_ligament(self.ligaments)
 
     def __set_wrapping_from_q(self):
         if not self.show_wrappings:
@@ -1181,15 +1249,27 @@ class Viz:
 
         for i, wraps in enumerate(self.wraps_base):
             for j, wrap in enumerate(wraps):
-                if self.model.muscle(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
-                    rt = (
-                        biorbd.WrappingHalfCylinder(self.model.muscle(i).pathModifier().object(j))
-                        .RT(self.model, self.Q)
-                        .to_array()
-                    )
-                    self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
+                if i < self.model.nbMuscles():
+                    if self.model.muscle(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
+                        rt = (
+                            biorbd.WrappingHalfCylinder(self.model.muscle(i).pathModifier().object(j))
+                            .RT(self.model, self.Q)
+                            .to_array()
+                        )
+                        self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
+                    else:
+                        raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
+
                 else:
-                    raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
+                    if self.model.ligaments(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
+                        rt = (
+                            biorbd.WrappingHalfCylinder(self.model.ligaments(i).pathModifier().object(j))
+                            .RT(self.model, self.Q)
+                            .to_array()
+                        )
+                        self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
+                    else:
+                        raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
         self.vtk_model.update_wrapping(self.wraps_current)
 
     def __set_rt_from_q(self):

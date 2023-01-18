@@ -185,7 +185,7 @@ class InterfacesCollections:
             for group_idx in range(self.m.nbMuscleGroups()):
                 for muscle_idx in range(self.m.muscleGroup(group_idx).nbMuscles()):
                     musc = self.m.muscleGroup(group_idx).muscle(muscle_idx)
-                    for k, pts in enumerate(musc.position().musclesPointsInGlobal()):
+                    for k, pts in enumerate(musc.position().pointsInGlobal()):
                         self.data.append(pts.to_array()[:, np.newaxis])
                     idx += 1
 
@@ -194,6 +194,37 @@ class InterfacesCollections:
             for g in self.groups:
                 for m in g:
                     self.data.append(np.array(m(Q)))
+
+    class LigamentsPointsInGlobal(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+
+        def _prepare_function_for_casadi(self):
+            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.ligaments = []
+            for ligament_idx in range(self.m.nbLigaments()):
+                ligament = self.m.ligament(ligament_idx)
+                for via in range(len(ligament.ligamentsPointsInGlobal())):
+                    self.ligaments.append(
+                        casadi.Function(
+                            "pointsInGlobal", [Qsym], [ligament.ligamentsPointsInGlobal(self.m, Qsym)[via].to_mx()]
+                        ).expand()
+                    )
+
+        def _get_data_from_eigen(self, Q=None):
+            self.data = []
+            self.m.updateLigaments(Q, True)
+            idx = 0
+            for ligament_idx in range(self.m.nbLigaments()):
+                ligament = self.m.ligament(ligament_idx)
+                for k, pts in enumerate(ligament.position().pointsInGlobal()):
+                    self.data.append(pts.to_array()[:, np.newaxis])
+                idx += 1
+
+        def _get_data_from_casadi(self, Q=None):
+            self.data = []
+            for l in self.ligaments:
+                self.data.append(np.array(l(Q)))
 
     class MeshColor:
         @staticmethod

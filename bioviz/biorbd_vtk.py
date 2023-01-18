@@ -226,6 +226,8 @@ class VtkModel(QtWidgets.QWidget):
         wrapping_opacity=1.0,
         muscle_color=(150 / 255, 15 / 255, 15 / 255),
         muscle_opacity=1.0,
+        ligament_color=(77 / 255, 0 / 255, 128 / 255),
+        ligament_opacity=1.0,
         rt_length=0.1,
         rt_width=2,
         force_color=(85, 78, 0),
@@ -307,6 +309,11 @@ class VtkModel(QtWidgets.QWidget):
         self.muscle_color = muscle_color
         self.muscle_opacity = muscle_opacity
         self.muscle_actors = list()
+
+        self.all_ligaments = []
+        self.ligament_color = ligament_color
+        self.ligament_opacity = ligament_opacity
+        self.ligament_actors = list()
 
         self.all_wrappings = []
         self.wrapping_color = wrapping_color
@@ -1065,6 +1072,129 @@ class VtkModel(QtWidgets.QWidget):
                 points.InsertNextPoint(mesh[0:3, j])
 
             poly_line = self.muscle_actors[i].GetMapper().GetInput()
+            poly_line.SetPoints(points)
+
+    def set_ligament_color(self, ligament_color):
+        """
+        Dynamically change the color of the ligaments
+        Parameters
+        ----------
+        ligament_color : tuple(int)
+            Color the ligaments should be drawn
+        """
+        self.ligament_color = ligament_color
+        self.update_ligaments(self.all_ligaments)
+
+    def set_ligament_opacity(self, ligament_opacity):
+        """
+        Dynamically change the opacity of the ligaments
+        Parameters
+        ----------
+        ligament_opacity : float
+            Opacity of the ligaments (0.0 is completely transparent, 1.0 completely opaque)
+        Returns
+        -------
+
+        """
+        self.ligament_opacity = ligament_opacity
+        self.update_ligament(self.all_ligaments)
+
+    def new_ligament_set(self, all_ligaments):
+        """
+        Define a new ligament set. This function must be called each time the number of ligaments change
+        Parameters
+        ----------
+        all_ligaments : MeshCollection
+            One frame of mesh
+
+        """
+        if isinstance(all_ligaments, Mesh):
+            lig_tp = []
+            lig_tp.append(all_ligaments)
+            all_ligaments = lig_tp
+
+        if not isinstance(all_ligaments, list):
+            raise TypeError("Please send a list of ligament to update_ligament")
+        self.all_ligaments = all_ligaments
+
+        # Remove previous actors from the scene
+        for actor in self.ligament_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.ligament_actors = list()
+
+        # Create the geometry of a point (the coordinate) points = vtkPoints()
+        for (i, mesh) in enumerate(self.all_ligaments):
+            if mesh.time.size != 1:
+                raise IndexError("ligaments should be from one frame only")
+
+            points = vtkPoints()
+            for j in range(mesh.channel.size):
+                points.InsertNextPoint([0, 0, 0])
+
+            # Create an array for each triangle
+            cell = vtkCellArray()
+            for j in range(mesh.triangles.shape[1]):  # For each triangle
+                line = vtkPolyLine()
+                line.GetPointIds().SetNumberOfIds(4)
+                for k in range(len(mesh.triangles[:, j])):  # For each index
+                    line.GetPointIds().SetId(k, mesh.triangles[k, j])
+                line.GetPointIds().SetId(3, mesh.triangles[0, j])  # Close the triangle
+                cell.InsertNextCell(line)
+            poly_line = vtkPolyData()
+            poly_line.SetPoints(points)
+            poly_line.SetLines(cell)
+
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(poly_line)
+
+            # Create an actor
+            self.ligament_actors.append(vtkActor())
+            self.ligament_actors[i].SetMapper(mapper)
+            self.ligament_actors[i].GetProperty().SetColor(self.ligament_color)
+            self.ligament_actors[i].GetProperty().SetOpacity(self.ligament_opacity)
+            self.ligament_actors[i].GetProperty().SetLineWidth(5)
+
+            self.parent_window.ren.AddActor(self.ligament_actors[i])
+
+        # Update marker position
+        self.update_ligament(self.all_ligaments)
+
+    def update_ligament(self, all_ligaments):
+        """
+        Update position of the ligaments on the screen (but do not repaint)
+        Parameters
+        ----------
+        all_ligaments : MeshCollection
+            One frame of ligament mesh
+
+        """
+        if isinstance(all_ligaments, Mesh):
+            lig_tp = []
+            lig_tp.append(all_ligaments)
+            all_ligaments = lig_tp
+
+        for i, ligament in enumerate(all_ligaments):
+            if ligament.time.size != 1:
+                raise IndexError("ligament should be from one frame only")
+
+            if len(self.all_ligaments) <= i or ligament.channel.size != self.all_ligaments[i].channel.size:
+                self.new_ligament_set(all_ligaments)
+                return  # Prevent calling update_markers recursively
+
+        if not isinstance(all_ligaments, list):
+            raise TypeError("Please send a list of ligaments to update_ligament")
+
+        self.all_ligaments = all_ligaments
+
+        for (i, mesh) in enumerate(self.all_ligaments):
+            points = vtkPoints()
+            n_vertex = mesh.channel.size
+            mesh = np.array(mesh)
+            for j in range(n_vertex):
+                points.InsertNextPoint(mesh[0:3, j])
+
+            poly_line = self.ligament_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
 
     def set_wrapping_color(self, wrapping_color):
