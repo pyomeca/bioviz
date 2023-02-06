@@ -8,6 +8,7 @@ import sys
 import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QPalette, QColor
+import threading
 
 from vtk import (
     vtkActor,
@@ -41,10 +42,11 @@ from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from pyomeca import Markers, Rototrans
 from .mesh import Mesh
 
-first = True
-if first:
+first = threading.local()
+first.value = True
+if first.value:
     app = QtWidgets.QApplication(sys.argv)
-    first = False
+    first.value = False
 
 
 class VtkWindow(QtWidgets.QMainWindow):
