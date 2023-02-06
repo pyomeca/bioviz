@@ -863,7 +863,7 @@ class VtkModel(QtWidgets.QWidget):
         self.mesh_actors = list()
 
         # Create the geometry of a point (the coordinate) points = vtkPoints()
-        for (i, mesh) in enumerate(self.all_meshes):
+        for i, mesh in enumerate(self.all_meshes):
             if mesh.time.size != 1:
                 raise IndexError("Mesh should be from one frame only")
 
@@ -942,7 +942,7 @@ class VtkModel(QtWidgets.QWidget):
 
         self.all_meshes = all_meshes
 
-        for (i, mesh) in enumerate(self.all_meshes):
+        for i, mesh in enumerate(self.all_meshes):
             points = vtkPoints()
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
@@ -1002,7 +1002,7 @@ class VtkModel(QtWidgets.QWidget):
         self.muscle_actors = list()
 
         # Create the geometry of a point (the coordinate) points = vtkPoints()
-        for (i, mesh) in enumerate(self.all_muscles):
+        for i, mesh in enumerate(self.all_muscles):
             if mesh.time.size != 1:
                 raise IndexError("Muscles should be from one frame only")
 
@@ -1066,7 +1066,7 @@ class VtkModel(QtWidgets.QWidget):
 
         self.all_muscles = all_muscles
 
-        for (i, mesh) in enumerate(self.all_muscles):
+        for i, mesh in enumerate(self.all_muscles):
             points = vtkPoints()
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
@@ -1125,7 +1125,7 @@ class VtkModel(QtWidgets.QWidget):
         self.ligament_actors = list()
 
         # Create the geometry of a point (the coordinate) points = vtkPoints()
-        for (i, mesh) in enumerate(self.all_ligaments):
+        for i, mesh in enumerate(self.all_ligaments):
             if mesh.time.size != 1:
                 raise IndexError("ligaments should be from one frame only")
 
@@ -1189,7 +1189,7 @@ class VtkModel(QtWidgets.QWidget):
 
         self.all_ligaments = all_ligaments
 
-        for (i, mesh) in enumerate(self.all_ligaments):
+        for i, mesh in enumerate(self.all_ligaments):
             points = vtkPoints()
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
@@ -1248,7 +1248,7 @@ class VtkModel(QtWidgets.QWidget):
         self.wrapping_actors[seg] = list()
 
         # Create the geometry of a point (the coordinate) points = vtkPoints()
-        for (i, wrapping) in enumerate(self.all_wrappings[seg]):
+        for i, wrapping in enumerate(self.all_wrappings[seg]):
             if wrapping.time.size != 1:
                 raise IndexError("Mesh should be from one frame only")
 
@@ -1314,7 +1314,7 @@ class VtkModel(QtWidgets.QWidget):
 
             self.all_wrappings[seg] = wrappings
 
-            for (i, wrapping) in enumerate(self.all_wrappings[seg]):
+            for i, wrapping in enumerate(self.all_wrappings[seg]):
                 points = vtkPoints()
                 n_vertex = wrapping.channel.size
                 wrapping = np.array(wrapping)
