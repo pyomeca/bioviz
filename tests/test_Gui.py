@@ -9,7 +9,6 @@ def get_test_folder():
 
 
 def test_model_load():
-
     model_path = f"{get_test_folder()}/../examples/pyomecaman.bioMod"
 
     # From path
