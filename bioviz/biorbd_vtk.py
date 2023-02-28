@@ -1,6 +1,7 @@
 """
 Visualization toolkit in pyomeca
 """
+from dataclasses import dataclass
 import os
 import time
 import sys
@@ -198,6 +199,15 @@ class VtkWindow(QtWidgets.QMainWindow):
                 self.setMaximumSize(self.maximum_size)
 
 
+@dataclass
+class _MarkerInternal:
+    data: Markers
+    size: float
+    color: tuple[float, float, float]
+    opacity: float
+    actors: list[QVTKRenderWindowInteractor, ...]
+
+
 class VtkModel(QtWidgets.QWidget):
     def __init__(
         self,
@@ -205,6 +215,9 @@ class VtkModel(QtWidgets.QWidget):
         markers_size=0.010,
         markers_color=(1, 1, 1),
         markers_opacity=1.0,
+        experimental_markers_size=0.010,
+        experimental_markers_color=(1, 1, 1),
+        experimental_markers_opacity=1.0,
         contacts_color=(0, 1, 0),
         contacts_size=0.01,
         contacts_opacity=1.0,
@@ -258,11 +271,19 @@ class VtkModel(QtWidgets.QWidget):
         self.setAutoFillBackground(True)
         self.setPalette(palette)
 
-        self.markers = Markers()
-        self.markers_size = markers_size
-        self.markers_color = markers_color
-        self.markers_opacity = markers_opacity
-        self.markers_actors = list()
+        self.markers = {
+            "model": _MarkerInternal(
+                data=Markers(), color=markers_color, size=markers_size, opacity=markers_opacity, actors=list()
+            ),
+            "experimental": _MarkerInternal(
+                data=Markers(),
+                color=experimental_markers_color,
+                size=experimental_markers_size,
+                opacity=experimental_markers_opacity,
+                actors=list(),
+            ),
+        }
+        self.markers_link_actors: list[QVTKRenderWindowInteractor, ...] = list()
 
         self.contacts = Markers()
         self.contacts_size = contacts_size
@@ -343,10 +364,36 @@ class VtkModel(QtWidgets.QWidget):
         markers_color : tuple(int)
             Color the markers should be drawn (1 is max brightness)
         """
-        self.markers_color = markers_color
-        self.update_markers(self.markers)
+        self._set_markers_color(markers_color, key="model")
+
+    def set_experimental_markers_color(self, markers_color):
+        """
+        Dynamically change the color of the markers
+        Parameters
+        ----------
+        markers_color : tuple(int)
+            Color the markers should be drawn (1 is max brightness)
+        """
+        self._set_markers_color(markers_color, key="experimental")
+
+    def _set_markers_color(self, markers_color, key):
+        """
+        Dynamically change the color of the markers
+        Parameters
+        ----------
+        markers_color : tuple(int)
+            Color the markers should be drawn (1 is max brightness)
+        """
+        self.markers_color[key] = markers_color
+        self._update_markers(self.markers, key)
 
     def set_markers_size(self, markers_size):
+        self._set_markers_size(markers_size, "model")
+
+    def set_experimental_markers_size(self, markers_size):
+        self._set_markers_size(markers_size, "experimental")
+
+    def _set_markers_size(self, markers_size, key):
         """
         Dynamically change the size of the markers
         Parameters
@@ -354,10 +401,16 @@ class VtkModel(QtWidgets.QWidget):
         markers_size : float
             Size the markers should be drawn
         """
-        self.markers_size = markers_size
-        self.update_markers(self.markers)
+        self.markers_size[key] = markers_size
+        self._update_markers(self.markers, key)
 
     def set_markers_opacity(self, markers_opacity):
+        self._set_markers_opacity(markers_opacity, "model")
+
+    def set_experimental_markers_opacity(self, markers_opacity):
+        self._set_markers_opacity(markers_opacity, "experimental")
+
+    def _set_markers_opacity(self, markers_opacity, key):
         """
         Dynamically change the opacity of the markers
         Parameters
@@ -368,10 +421,10 @@ class VtkModel(QtWidgets.QWidget):
         -------
 
         """
-        self.markers_opacity = markers_opacity
-        self.update_markers(self.markers)
+        self.markers_opacity[key] = markers_opacity
+        self._update_markers(self.markers, key)
 
-    def new_marker_set(self, markers):
+    def _new_marker_set(self, markers, key):
         """
         Define a new marker set. This function must be called each time the number of markers change
         Parameters
@@ -382,12 +435,12 @@ class VtkModel(QtWidgets.QWidget):
         """
         if len(markers.shape) > 2 and markers.shape[2] > 1:
             raise IndexError("Markers should be from one frame only")
-        self.markers = markers
+        self.markers[key].data = markers
 
         # Remove previous actors from the scene
-        for actor in self.markers_actors:
+        for actor in self.markers[key].actors:
             self.parent_window.ren.RemoveActor(actor)
-        self.markers_actors = list()
+        self.markers[key].actors = list()
 
         # Create the geometry of a point (the coordinate) points = vtk.vtkPoints()
         for i in range(markers.channel.size):
@@ -395,15 +448,39 @@ class VtkModel(QtWidgets.QWidget):
             mapper = vtkPolyDataMapper()
 
             # Create an actor
-            self.markers_actors.append(vtkActor())
-            self.markers_actors[i].SetMapper(mapper)
+            self.markers[key].actors.append(vtkActor())
+            self.markers[key].actors[i].SetMapper(mapper)
 
-            self.parent_window.ren.AddActor(self.markers_actors[i])
+            self.parent_window.ren.AddActor(self.markers[key].actors[i])
 
         # Update marker position
-        self.update_markers(self.markers)
+        self._update_markers(self.markers[key].data, key)
 
     def update_markers(self, markers):
+        self._update_markers(markers, "model")
+
+    def update_experimental_markers(
+        self, markers, with_link: bool = True, virtual_to_experimental_markers_indices: list[int, ...] = None
+    ):
+        """
+        Update position of the experimental markers on the screen (but do not repaint)
+        Parameters
+        ----------
+        markers : Markers3d
+            One frame of markers
+        with_link : bool
+            If links to the virtual markers should be added (implies that coll to update_markers was done prior
+        virtual_to_experimental_markers_indices : list[int, ...]
+            A list that links the virtual markers indices to the experimental marker indices. If left None,
+            it is assumed to be a one to one (0=>0, 1=>1, ..., n_virtual_markers=>n_experimental_markers)
+        """
+        self._update_markers(markers, "experimental")
+        if with_link:
+            if virtual_to_experimental_markers_indices is None:
+                virtual_to_experimental_markers_indices = tuple(range(self.markers["model"].data.channel.size))
+            self._update_experimental_marker_link(virtual_to_experimental_markers_indices)
+
+    def _update_markers(self, markers, key):
         """
         Update position of the markers on the screen (but do not repaint)
         Parameters
@@ -415,21 +492,89 @@ class VtkModel(QtWidgets.QWidget):
 
         if len(markers.shape) > 2 and markers.shape[2] > 1:
             raise IndexError("Markers should be from one frame only")
-        if markers.channel.size != self.markers.channel.size:
-            self.new_marker_set(markers)
+        if markers.channel.size != self.markers[key].data.channel.size:
+            self._new_marker_set(markers, key)
             return  # Prevent calling update_markers recursively
-        self.markers = markers
+        self.markers[key].data = markers
         markers = np.array(markers)
 
-        for i, actor in enumerate(self.markers_actors):
+        for i, actor in enumerate(self.markers[key].actors):
             # mapper = actors.GetNextActor().GetMapper()
             mapper = actor.GetMapper()
-            self.markers_actors[i].GetProperty().SetColor(self.markers_color)
-            self.markers_actors[i].GetProperty().SetOpacity(self.markers_opacity)
+            self.markers[key].actors[i].GetProperty().SetColor(self.markers[key].color)
+            self.markers[key].actors[i].GetProperty().SetOpacity(self.markers[key].opacity)
             source = vtkSphereSource()
             source.SetCenter(markers[0:3, i])
-            source.SetRadius(self.markers_size)
+            source.SetRadius(self.markers[key].size)
             mapper.SetInputConnection(source.GetOutputPort())
+
+    def _new_experimental_marker_link(self, virtual_to_experimental_markers_indices):
+        """
+        Define a new marker link. This function must be called each time the number of markers change
+        Parameters
+        """
+
+        # Remove previous actors from the scene
+        for actor in self.markers_link_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.markers_link_actors = list()
+
+        cells = vtkCellArray()
+        for i, j in enumerate(virtual_to_experimental_markers_indices):
+            if j is None:
+                continue
+            points = vtkPoints()
+            points.InsertNextPoint(self.markers["model"].data[:3, j, 0].data)
+            points.InsertNextPoint(self.markers["experimental"].data[:3, i, 0].data)
+
+            # Create the polygons
+            poly = vtkPolyLine()
+            poly.GetPointIds().SetNumberOfIds(2)  # make a line
+            poly.GetPointIds().SetId(0, 0)
+            poly.GetPointIds().SetId(1, 1)
+            cells.InsertNextCell(poly)
+
+            poly_data = vtkPolyData()
+            poly_data.SetPoints(points)
+            poly_data.SetLines(cells)
+
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(poly_data)
+
+            # Create an actor
+            self.markers_link_actors.append(vtkActor())
+            self.markers_link_actors[-1].SetMapper(mapper)
+            self.markers_link_actors[-1].GetProperty().SetColor((1, 0, 0))
+
+            self.parent_window.ren.AddActor(self.markers_link_actors[-1])
+
+        # Update marker position
+        self._update_experimental_marker_link(virtual_to_experimental_markers_indices)
+
+    def _update_experimental_marker_link(self, virtual_to_experimental_markers_indices):
+        """
+        Update position of the line between experimental markers and virtual markers on the screen (but do not repaint)
+        Parameters
+        """
+
+        if len(self.markers_link_actors) != len(
+            tuple(i for i in virtual_to_experimental_markers_indices if i is not None)
+        ):
+            self._new_experimental_marker_link(virtual_to_experimental_markers_indices)
+            return  # Prevent calling update_markers recursively
+
+        cmp = 0
+        for i, j in enumerate(virtual_to_experimental_markers_indices):
+            if j is None:
+                continue
+            points = vtkPoints()
+            points.InsertNextPoint(self.markers["model"].data[:3, j, 0].data)
+            points.InsertNextPoint(self.markers["experimental"].data[:3, i, 0].data)
+
+            poly_line = self.markers_link_actors[cmp].GetMapper().GetInput()
+            poly_line.SetPoints(points)
+            cmp += 1
 
     def set_contacts_color(self, contacts_color):
         """

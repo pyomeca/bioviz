@@ -146,7 +146,6 @@ class Viz:
             soft_contacts_size=soft_contacts_size,
             soft_contacts_color=soft_contacts_color,
         )
-        self.vtk_model_markers: VtkModel | None = None
         self.is_executing = False
         self.animation_warning_already_shown = False
 
@@ -161,6 +160,7 @@ class Viz:
         self.show_experimental_markers = False
         self.experimental_markers = None
         self.experimental_markers_color = experimental_markers_color
+        self.virtual_to_experimental_markers_indices = None
         self.show_experimental_forces = False
         self.experimental_forces = None
         self.segment_forces = []
@@ -348,6 +348,10 @@ class Viz:
 
         # Update everything at the position Q=0
         self.set_q(self.Q)
+        if self.show_floor:
+            self.__set_floor()
+        if self.show_gravity_vector:
+            self.__set_gravity_vector()
 
     def reset_q(self):
         self.Q = np.zeros(self.Q.shape)
@@ -386,8 +390,6 @@ class Viz:
         self.__set_rt_from_q()
         self.__set_meshes_from_q()
         self.__set_global_center_of_mass_from_q()
-        self.__set_gravity_vector()
-        self.__set_floor()
         self.__set_segments_center_of_mass_from_q()
         self.__set_markers_from_q()
         self.__set_contacts_from_q()
@@ -1032,11 +1034,31 @@ class Viz:
     def load_c3d(self, data, auto_start=True, ignore_animation_warning=True):
         self.load_experimental_markers(data, auto_start, ignore_animation_warning)
 
-    def load_experimental_markers(self, data, auto_start=True, ignore_animation_warning=True):
+    def load_experimental_markers(
+        self,
+        data,
+        auto_start=True,
+        ignore_animation_warning=True,
+        experimental_markers_mapping_to_virtual: list[int, ...] = None,
+    ):
         if isinstance(data, str):
             self.experimental_markers = Markers.from_c3d(data)
             if self.experimental_markers.units == "mm":
                 self.experimental_markers = self.experimental_markers * 0.001
+
+            # Try to find a correspondence between the loaded experimental markers and the model
+            self.virtual_to_experimental_markers_indices = experimental_markers_mapping_to_virtual
+            if self.virtual_to_experimental_markers_indices is None:
+                try:
+                    virtual_marker_names = [n.to_string() for n in self.model.markerNames()]
+                    exp_marker_names = list(self.experimental_markers.channel.data)
+                    self.virtual_to_experimental_markers_indices = [
+                        virtual_marker_names.index(name) if name in virtual_marker_names else None
+                        for name in exp_marker_names
+                    ]
+                except ValueError:
+                    # Did not find direct correspondence
+                    pass
 
             self.c3d_file_name = data
             self.radio_c3d_editor_model.setEnabled(True)
@@ -1048,11 +1070,6 @@ class Viz:
             raise RuntimeError(
                 f"Wrong type of experimental markers data ({type(data)}). "
                 f"Allowed type are numpy array (3xNxT), data array (3xNxT) or .c3d file (str)."
-            )
-
-        if not self.vtk_model_markers:
-            self.vtk_model_markers = VtkModel(
-                self.vtk_window, markers_color=self.experimental_markers_color, markers_size=self.vtk_markers_size
             )
 
         self.__set_movement_slider()
@@ -1110,7 +1127,11 @@ class Viz:
 
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
-        self.vtk_model_markers.update_markers(self.experimental_markers[:, :, t : t + 1].isel(time=[0]))
+        self.vtk_model.update_experimental_markers(
+            self.experimental_markers[:, :, t : t + 1].isel(time=[0]),
+            with_link=True,
+            virtual_to_experimental_markers_indices=self.virtual_to_experimental_markers_indices,
+        )
 
     def __set_experimental_forces_from_frame(self):
         if not self.show_experimental_forces:
