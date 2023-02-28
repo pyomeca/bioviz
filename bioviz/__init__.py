@@ -348,6 +348,10 @@ class Viz:
 
         # Update everything at the position Q=0
         self.set_q(self.Q)
+        if self.show_floor:
+            self.__set_floor()
+        if self.show_gravity_vector:
+            self.__set_gravity_vector()
 
     def reset_q(self):
         self.Q = np.zeros(self.Q.shape)
@@ -386,8 +390,6 @@ class Viz:
         self.__set_rt_from_q()
         self.__set_meshes_from_q()
         self.__set_global_center_of_mass_from_q()
-        self.__set_gravity_vector()
-        self.__set_floor()
         self.__set_segments_center_of_mass_from_q()
         self.__set_markers_from_q()
         self.__set_contacts_from_q()
