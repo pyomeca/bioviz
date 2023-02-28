@@ -1034,7 +1034,13 @@ class Viz:
     def load_c3d(self, data, auto_start=True, ignore_animation_warning=True):
         self.load_experimental_markers(data, auto_start, ignore_animation_warning)
 
-    def load_experimental_markers(self, data, auto_start=True, ignore_animation_warning=True, experimental_markers_mapping_to_virtual: list[int, ...] = None):
+    def load_experimental_markers(
+        self,
+        data,
+        auto_start=True,
+        ignore_animation_warning=True,
+        experimental_markers_mapping_to_virtual: list[int, ...] = None,
+    ):
         if isinstance(data, str):
             self.experimental_markers = Markers.from_c3d(data)
             if self.experimental_markers.units == "mm":
@@ -1046,7 +1052,10 @@ class Viz:
                 try:
                     virtual_marker_names = [n.to_string() for n in self.model.markerNames()]
                     exp_marker_names = list(self.experimental_markers.channel.data)
-                    self.virtual_to_experimental_markers_indices = [virtual_marker_names.index(name) if name in virtual_marker_names else None for name in exp_marker_names]
+                    self.virtual_to_experimental_markers_indices = [
+                        virtual_marker_names.index(name) if name in virtual_marker_names else None
+                        for name in exp_marker_names
+                    ]
                 except ValueError:
                     # Did not find direct correspondence
                     pass
@@ -1118,7 +1127,11 @@ class Viz:
 
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
-        self.vtk_model.update_experimental_markers(self.experimental_markers[:, :, t : t + 1].isel(time=[0]), with_link=True, virtual_to_experimental_markers_indices=self.virtual_to_experimental_markers_indices)
+        self.vtk_model.update_experimental_markers(
+            self.experimental_markers[:, :, t : t + 1].isel(time=[0]),
+            with_link=True,
+            virtual_to_experimental_markers_indices=self.virtual_to_experimental_markers_indices,
+        )
 
     def __set_experimental_forces_from_frame(self):
         if not self.show_experimental_forces:

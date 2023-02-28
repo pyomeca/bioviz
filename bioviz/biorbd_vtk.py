@@ -281,7 +281,7 @@ class VtkModel(QtWidgets.QWidget):
                 size=experimental_markers_size,
                 opacity=experimental_markers_opacity,
                 actors=list(),
-            )
+            ),
         }
         self.markers_link_actors: list[QVTKRenderWindowInteractor, ...] = list()
 
@@ -459,7 +459,9 @@ class VtkModel(QtWidgets.QWidget):
     def update_markers(self, markers):
         self._update_markers(markers, "model")
 
-    def update_experimental_markers(self, markers, with_link: bool = True, virtual_to_experimental_markers_indices: list[int, ...] = None):
+    def update_experimental_markers(
+        self, markers, with_link: bool = True, virtual_to_experimental_markers_indices: list[int, ...] = None
+    ):
         """
         Update position of the experimental markers on the screen (but do not repaint)
         Parameters
@@ -556,7 +558,9 @@ class VtkModel(QtWidgets.QWidget):
         Parameters
         """
 
-        if len(self.markers_link_actors) != len(tuple(i for i in virtual_to_experimental_markers_indices if i is not None)):
+        if len(self.markers_link_actors) != len(
+            tuple(i for i in virtual_to_experimental_markers_indices if i is not None)
+        ):
             self._new_experimental_marker_link(virtual_to_experimental_markers_indices)
             return  # Prevent calling update_markers recursively
 
