@@ -1303,3 +1303,88 @@ class Viz:
             else:
                 self.rt[k] = Rototrans(np.eye(4)) * np.nan
         self.vtk_model.update_rt(self.rt)
+
+
+
+class Kinogram(Viz):
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        """
+        Creates a kinogram of the movement loaded
+        """
+        super(Kinogram, self).__init__(*args, **kwargs)
+        self.list_animated_Q = None
+
+    def stop_recording(self):
+        raise RuntimeError("To use start_recoding, please use bioviz.Viz")
+
+    def start_recording(self, save_path: str = None):
+        raise RuntimeError("To use stop_recoding, please use bioviz.Viz")
+
+    def load_movement(self, all_q, auto_start=True, ignore_animation_warning=True):
+        if type(all_q) == list:
+            self.list_animated_Q = [q.T for q in all_q]
+        else:
+            self.list_animated_Q = [all_q.T]
+
+    def exec(self,
+             frame_step: int | tuple | list = 5,
+             figsize: tuple | None = None,
+             save_path: str = "kinogram"):
+        """
+        Creates the kinogram and save it
+        """
+        # Cannot import elsewhere because of VTK
+        import matplotlib.pyplot as plt
+        import matplotlib.image as mpimg
+
+        if not save_path.endswith(".png") and not save_path.endswith(".svg"):
+            save_path += ".svg"
+
+        if figsize is None:
+            figsize = (5*len(self.list_animated_Q), 5)
+
+        if type(frame_step) == int:
+            frame_step = [frame_step for _ in range(len(self.list_animated_Q))]
+
+        self.maximize()
+        fig, ax = plt.subplots(1,
+                               len(self.list_animated_Q),
+                               figsize=figsize)
+        fig.subplots_adjust(hspace=0, wspace=0)
+        for i_phase in range(len(self.list_animated_Q)):
+            self.animated_Q = self.list_animated_Q[i_phase]
+            self._load_movement()
+
+            # Taking snapshot
+            Q_this_time = self.list_animated_Q[i_phase]
+            n_shooting_this_time = Q_this_time.shape[0]
+            snap_idx = list(range(0, n_shooting_this_time, frame_step[i_phase]))
+            nb_images = len(snap_idx)
+            for i_snap, snap in enumerate(snap_idx):
+                self.movement_slider[0].setValue(snap)
+                snap_save_path_this_time = f"{save_path[:-4]}_snapshot-{snap}.png"
+                self.snapshot(snap_save_path_this_time)
+                self.refresh_window()
+                img = mpimg.imread(snap_save_path_this_time)
+                img = np.concatenate((img, np.ones((img.shape[0], img.shape[1], 1))), axis=2)
+
+                # Remove background to transparent
+                for pixel_y in range(img.shape[0]):
+                    for pixel_x in range(img.shape[1]):
+                        if np.all(img[pixel_y, pixel_x, :3] == 1):
+                            img[pixel_y, pixel_x, 3] = 0
+
+                alpha = 1 / nb_images * (i_snap + 1)
+                ax[i_phase].imshow(img, alpha=alpha)
+
+            ax[i_phase].axis('off')
+            ax[i_phase].set_frame_on(False)
+
+        plt.savefig(save_path, bbox_inches="tight")
+        plt.show()
+
+        return
