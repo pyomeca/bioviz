@@ -1305,7 +1305,6 @@ class Viz:
         self.vtk_model.update_rt(self.rt)
 
 
-
 class Kinogram(Viz):
     def __init__(
         self,
@@ -1330,10 +1329,7 @@ class Kinogram(Viz):
         else:
             self.list_animated_Q = [all_q.T]
 
-    def exec(self,
-             frame_step: int | tuple | list = 5,
-             figsize: tuple | None = None,
-             save_path: str = "kinogram"):
+    def exec(self, frame_step: int | tuple | list = 5, figsize: tuple | None = None, save_path: str = "kinogram"):
         """
         Creates the kinogram and save it
         """
@@ -1345,15 +1341,13 @@ class Kinogram(Viz):
             save_path += ".svg"
 
         if figsize is None:
-            figsize = (5*len(self.list_animated_Q), 5)
+            figsize = (5 * len(self.list_animated_Q), 5)
 
         if type(frame_step) == int:
             frame_step = [frame_step for _ in range(len(self.list_animated_Q))]
 
         self.maximize()
-        fig, ax = plt.subplots(1,
-                               len(self.list_animated_Q),
-                               figsize=figsize)
+        fig, ax = plt.subplots(1, len(self.list_animated_Q), figsize=figsize)
         fig.subplots_adjust(hspace=0, wspace=0)
         for i_phase in range(len(self.list_animated_Q)):
             self.animated_Q = self.list_animated_Q[i_phase]
@@ -1381,7 +1375,7 @@ class Kinogram(Viz):
                 alpha = 1 / nb_images * (i_snap + 1)
                 ax[i_phase].imshow(img, alpha=alpha)
 
-            ax[i_phase].axis('off')
+            ax[i_phase].axis("off")
             ax[i_phase].set_frame_on(False)
 
         plt.savefig(save_path, bbox_inches="tight")
