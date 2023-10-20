@@ -342,7 +342,7 @@ class Viz:
             self.analyses_muscle: AnalysePanel | None = None
             self.analyses_ligament: AnalysePanel | None = None
 
-            self.c3d__file__name = None
+            self.c3d_file_name = None
             self.radio_c3d_editor_model: QRadioButton | None = None
             self.add_options_panel()
 
@@ -1060,7 +1060,7 @@ class Viz:
                     # Did not find direct correspondence
                     pass
 
-            self.c3d__file__name = data
+            self.c3d_file_name = data
             self.radio_c3d_editor_model.setEnabled(True)
 
         elif isinstance(data, (np.ndarray, xr.DataArray)):
