@@ -342,16 +342,16 @@ class Viz:
             self.analyses_muscle: AnalysePanel | None = None
             self.analyses_ligament: AnalysePanel | None = None
 
-            self.c3d_file_name = None
+            self.c3d__file__name = None
             self.radio_c3d_editor_model: QRadioButton | None = None
             self.add_options_panel()
 
         # Update everything at the position Q=0
         self.set_q(self.Q)
         if self.show_floor:
-            self.__set_floor()
+            self._set_floor()
         if self.show_gravity_vector:
-            self.__set_gravity_vector()
+            self._set_gravity_vector()
 
     def reset_q(self):
         self.Q = np.zeros(self.Q.shape)
@@ -361,9 +361,9 @@ class Viz:
         self.set_q(self.Q)
 
         # Reset also muscle analyses graphs
-        self.__update_muscle_analyses_graphs(False, False, False, False)
+        self._update_muscle_analyses_graphs(False, False, False, False)
         # Reset also ligament analyses graphs
-        self.__update_ligament_analyses_graphs(False, False, False)
+        self._update_ligament_analyses_graphs(False, False, False)
 
     def copy_q_to_clipboard(self):
         pandas.DataFrame(self.Q[np.newaxis, :]).to_clipboard(sep=",", index=False, header=False)
@@ -385,16 +385,16 @@ class Viz:
         self.Q = Q
 
         self.model.UpdateKinematicsCustom(self.Q)
-        self.__set_muscles_from_q()
-        self.__set_ligaments_from_q()
-        self.__set_rt_from_q()
-        self.__set_meshes_from_q()
-        self.__set_global_center_of_mass_from_q()
-        self.__set_segments_center_of_mass_from_q()
-        self.__set_markers_from_q()
-        self.__set_contacts_from_q()
-        self.__set_soft_contacts_from_q()
-        self.__set_wrapping_from_q()
+        self._set_muscles_from_q()
+        self._set_ligaments_from_q()
+        self._set_rt_from_q()
+        self._set_meshes_from_q()
+        self._set_global_center_of_mass_from_q()
+        self._set_segments_center_of_mass_from_q()
+        self._set_markers_from_q()
+        self._set_contacts_from_q()
+        self._set_soft_contacts_from_q()
+        self._set_wrapping_from_q()
 
         # Update the sliders
         if self.show_analyses_panel:
@@ -441,7 +441,7 @@ class Viz:
             idx = (idx,)
         for i in idx:
             self.show_segment_is_on[i] = not self.show_segment_is_on[i]
-        self.__set_meshes_from_q()
+        self._set_meshes_from_q()
 
         # Compute which marker index to remove
         offset_marker = 0
@@ -451,8 +451,8 @@ class Viz:
             if not self.show_segment_is_on[s]:
                 self.idx_markers_to_remove += list(range(offset_marker, offset_marker + nb_markers))
             offset_marker += nb_markers
-        self.__set_markers_from_q()
-        self.__set_rt_from_q()
+        self._set_markers_from_q()
+        self._set_rt_from_q()
 
     def refresh_window(self):
         """
@@ -473,7 +473,7 @@ class Viz:
             if self.is_recording:
                 self.add_frame()
                 if self.movement_slider[0].value() == self.movement_last_frame:
-                    self.__start_stop_animation()
+                    self._start_stop_animation()
         self.refresh_window()
 
     def resize(self, width: int, height: int):
@@ -536,9 +536,9 @@ class Viz:
                 slider.setMaximum(int(ranges[i][1] * self.double_factor))
                 slider.setPageStep(self.double_factor)
                 slider.setValue(0)
-                slider.valueChanged.connect(self.__move_avatar_from_sliders)
-                slider.sliderReleased.connect(partial(self.__update_ligament_analyses_graphs, False, False, False))
-                slider.sliderReleased.connect(partial(self.__update_muscle_analyses_graphs, False, False, False, False))
+                slider.valueChanged.connect(self._move_avatar_from_sliders)
+                slider.sliderReleased.connect(partial(self._update_ligament_analyses_graphs, False, False, False))
+                slider.sliderReleased.connect(partial(self._update_muscle_analyses_graphs, False, False, False, False))
                 slider_layout.addWidget(slider)
 
                 # Add the value
@@ -586,7 +586,7 @@ class Viz:
             radio_none = QRadioButton()
             radio_none.setPalette(self.palette_active)
             radio_none.setChecked(True)
-            radio_none.toggled.connect(lambda: self.__select_analyses_panel(radio_none, 0))
+            radio_none.toggled.connect(lambda: self._select_analyses_panel(radio_none, 0))
             radio_none.setText("None")
             option_analyses_layout.addWidget(radio_none)
             # Add the no analyses
@@ -594,7 +594,7 @@ class Viz:
             self.radio_c3d_editor_model.setPalette(self.palette_active)
             self.radio_c3d_editor_model.setChecked(False)
             self.radio_c3d_editor_model.toggled.connect(
-                lambda: self.__select_analyses_panel(self.radio_c3d_editor_model, 1)
+                lambda: self._select_analyses_panel(self.radio_c3d_editor_model, 1)
             )
             self.radio_c3d_editor_model.setText("C3D event editor")
             self.radio_c3d_editor_model.setEnabled(False)
@@ -602,13 +602,13 @@ class Viz:
             # Add the muscles analyses
             radio_muscle = QRadioButton()
             radio_muscle.setPalette(self.palette_active)
-            radio_muscle.toggled.connect(lambda: self.__select_analyses_panel(radio_muscle, 2))
+            radio_muscle.toggled.connect(lambda: self._select_analyses_panel(radio_muscle, 2))
             radio_muscle.setText("Muscles")
             option_analyses_layout.addWidget(radio_muscle)
             # Add the ligaments analyses
             radio_ligament = QRadioButton()
             radio_ligament.setPalette(self.palette_active)
-            radio_ligament.toggled.connect(lambda: self.__select_analyses_panel(radio_ligament, 3))
+            radio_ligament.toggled.connect(lambda: self._select_analyses_panel(radio_ligament, 3))
             radio_ligament.setText("Ligaments")
             option_analyses_layout.addWidget(radio_ligament)
             # Add the layout to the interface
@@ -630,12 +630,12 @@ class Viz:
         if self.has_model:
             load_push_button = QPushButton("Load movement")
             load_push_button.setPalette(self.palette_active)
-            load_push_button.released.connect(self.__load_movement_from_button)
+            load_push_button.released.connect(self._load_movement_from_button)
             load_buttons_layout.addWidget(load_push_button)
 
         load_c3d_push_button = QPushButton("Load C3D")
         load_c3d_push_button.setPalette(self.palette_active)
-        load_c3d_push_button.released.connect(self.__load_experimental_data_from_button)
+        load_c3d_push_button.released.connect(self._load_experimental_data_from_button)
         load_buttons_layout.addWidget(load_c3d_push_button)
 
         animation_slider_layout.addLayout(load_buttons_layout)
@@ -645,7 +645,7 @@ class Viz:
         self.play_stop_push_button.setIcon(self.start_icon)
         self.play_stop_push_button.setPalette(self.palette_active)
         self.play_stop_push_button.setEnabled(False)
-        self.play_stop_push_button.released.connect(self.__start_stop_animation)
+        self.play_stop_push_button.released.connect(self._start_stop_animation)
         animation_slider_layout.addWidget(self.play_stop_push_button)
 
         slider = QSlider(Qt.Horizontal)
@@ -653,7 +653,7 @@ class Viz:
         slider.setMaximum(100)
         slider.setValue(0)
         slider.setEnabled(False)
-        slider.valueChanged.connect(self.__animate_from_slider)
+        slider.valueChanged.connect(self._animate_from_slider)
         animation_slider_layout.addWidget(slider)
 
         self.record_push_button = QPushButton()
@@ -716,15 +716,15 @@ class Viz:
             else:
                 radio_ligament.setEnabled(self.biorbd_compiled_with_ligaments and self.model.nbLigaments() > 0)
                 radio_muscle.setEnabled(self.biorbd_compiled_with_muscles and self.model.nbMuscles() > 0)
-            self.__select_analyses_panel(radio_muscle, 0)
-            self.__select_analyses_panel(radio_ligament, 0)
+            self._select_analyses_panel(radio_muscle, 0)
+            self._select_analyses_panel(radio_ligament, 0)
 
-    def __select_analyses_panel(self, radio_button, panel_to_activate):
+    def _select_analyses_panel(self, radio_button, panel_to_activate):
         if not radio_button.isChecked():
             return
 
         # Hide previous analyses panel if necessary
-        self.__hide_analyses_panel()
+        self._hide_analyses_panel()
 
         # The bigger the factor is, the bigger the main screen remains
         size_factor_none = 1
@@ -765,14 +765,14 @@ class Viz:
             raise RuntimeError("Non-existing panel asked... This should never happen, please report this issue!")
 
         # Activate the required panel
-        self.__show_local_ref_frame()
+        self._show_local_ref_frame()
 
         # Enlarge the main window
         self.vtk_window.resize(
             int(self.vtk_window.size().width() * enlargement_factor / reduction_factor), self.vtk_window.size().height()
         )
 
-    def __hide_analyses_panel(self):
+    def _hide_analyses_panel(self):
         if self.active_analyses is None:
             return
         # Remove from main window
@@ -780,7 +780,7 @@ class Viz:
         self.vtk_window.main_layout.removeWidget(self.active_analyses.widget)
         self.vtk_window.main_layout.setColumnStretch(2, 0)
 
-    def __show_local_ref_frame(self):
+    def _show_local_ref_frame(self):
         # Give the parent as main window
         if self.active_analyses is not None:
             self.active_analyses.on_activate()
@@ -789,10 +789,10 @@ class Viz:
             self.active_analyses.widget.setVisible(True)
 
         # Update graphs if needed
-        self.__update_muscle_analyses_graphs(False, False, False, False)
-        self.__update_ligament_analyses_graphs(False, False, False)
+        self._update_muscle_analyses_graphs(False, False, False, False)
+        self._update_ligament_analyses_graphs(False, False, False)
 
-    def __move_avatar_from_sliders(self):
+    def _move_avatar_from_sliders(self):
         for i, slide in enumerate(self.sliders):
             self.Q[i] = slide[1].value() / self.double_factor
             slide[2].setText(f" {self.Q[i]:.2f}")
@@ -853,7 +853,7 @@ class Viz:
         self.movement_slider_ending_shade.value = frame
         self.movement_slider_ending_shade.update()
 
-    def __update_muscle_analyses_graphs(
+    def _update_muscle_analyses_graphs(
         self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
     ):
         # Adjust muscle analyses if needed
@@ -863,13 +863,13 @@ class Viz:
                     skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
                 )
 
-    def __update_ligament_analyses_graphs(self, skip_ligament_length, skip_moment_arm, skip_passive_forces):
+    def _update_ligament_analyses_graphs(self, skip_ligament_length, skip_moment_arm, skip_passive_forces):
         # Adjust ligament analyses if needed
         if self.active_analyses == self.analyses_ligament:
             if self.analyses_ligament is not None:
                 self.analyses_ligament.update_all_graphs(skip_ligament_length, skip_moment_arm, skip_passive_forces)
 
-    def __animate_from_slider(self):
+    def _animate_from_slider(self):
         # Move the avatar
         self.movement_slider[1].setText(f"{self.movement_slider[0].value()}")
         if self.animated_Q is not None:
@@ -878,18 +878,18 @@ class Viz:
             self.Q = copy.copy(self.animated_Q[t, :])  # 1-based
             self.set_q(self.Q, refresh_window=False)
 
-        self.__set_experimental_markers_from_frame()
-        self.__set_experimental_forces_from_frame()
+        self._set_experimental_markers_from_frame()
+        self._set_experimental_forces_from_frame()
 
         # Update graph of muscle analyses
-        self.__update_muscle_analyses_graphs(True, True, True, True)
+        self._update_muscle_analyses_graphs(True, True, True, True)
         # Update graph of ligament analyses
-        self.__update_ligament_analyses_graphs(True, True, True)
+        self._update_ligament_analyses_graphs(True, True, True)
 
         # Refresh the window
         self.refresh_window()
 
-    def __start_stop_animation(self):
+    def _start_stop_animation(self):
         if not self.is_executing and not self.animation_warning_already_shown:
             QMessageBox.warning(
                 self.vtk_window,
@@ -961,7 +961,7 @@ class Viz:
             self.record_push_button.setIcon(self.record_icon)
             self.stop_record_push_button.setEnabled(False)
 
-    def __load_movement_from_button(self):
+    def _load_movement_from_button(self):
         # Load the actual movement
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
@@ -976,18 +976,18 @@ class Viz:
             self.animated_Q = scipy.io.loadmat(file_name[0])["Q2"].transpose()
         else:  # Otherwise assume this is a numpy array
             self.animated_Q = np.load(file_name[0]).T
-        self.__load_movement()
+        self._load_movement()
 
     def load_movement(self, all_q, auto_start=True, ignore_animation_warning=True):
         self.animated_Q = all_q.T
-        self.__load_movement()
+        self._load_movement()
         if ignore_animation_warning:
             self.animation_warning_already_shown = True
         if auto_start:
-            self.__start_stop_animation()
+            self._start_stop_animation()
 
-    def __load_movement(self):
-        self.__set_movement_slider()
+    def _load_movement(self):
+        self._set_movement_slider()
 
         # Add the combobox in muscle analyses
         if self.show_muscles:
@@ -996,7 +996,7 @@ class Viz:
         if self.show_ligaments:
             self.analyses_ligament.add_movement_to_dof_choice()
 
-    def __set_movement_slider(self):
+    def _set_movement_slider(self):
         # Activate the start button
         self.is_animating = False
         self.play_stop_push_button.setEnabled(True)
@@ -1022,7 +1022,7 @@ class Viz:
         # Put back to first frame
         self.movement_slider[0].setValue(1)
 
-    def __load_experimental_data_from_button(self):
+    def _load_experimental_data_from_button(self):
         # Load the actual movement
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
@@ -1060,7 +1060,7 @@ class Viz:
                     # Did not find direct correspondence
                     pass
 
-            self.c3d_file_name = data
+            self.c3d__file__name = data
             self.radio_c3d_editor_model.setEnabled(True)
 
         elif isinstance(data, (np.ndarray, xr.DataArray)):
@@ -1072,13 +1072,13 @@ class Viz:
                 f"Allowed type are numpy array (3xNxT), data array (3xNxT) or .c3d file (str)."
             )
 
-        self.__set_movement_slider()
+        self._set_movement_slider()
         self.show_experimental_markers = True
 
         if ignore_animation_warning:
             self.animation_warning_already_shown = True
         if auto_start:
-            self.__start_stop_animation()
+            self._start_stop_animation()
 
     def load_experimental_forces(
         self, data, segments=None, normalization_ratio=0.2, auto_start=True, ignore_animation_warning=True
@@ -1105,14 +1105,14 @@ class Viz:
         self.force_normalization_ratio = normalization_ratio
 
         self.show_experimental_forces = True
-        self.__set_movement_slider()
+        self._set_movement_slider()
 
         if ignore_animation_warning:
             self.animation_warning_already_shown = True
         if auto_start:
-            self.__start_stop_animation()
+            self._start_stop_animation()
 
-    def __set_markers_from_q(self):
+    def _set_markers_from_q(self):
         if not self.show_markers:
             return
 
@@ -1121,7 +1121,7 @@ class Viz:
             self.markers[0:3, self.idx_markers_to_remove, :] = np.nan
         self.vtk_model.update_markers(self.markers.isel(time=[0]))
 
-    def __set_experimental_markers_from_frame(self):
+    def _set_experimental_markers_from_frame(self):
         if not self.show_experimental_markers:
             return
 
@@ -1133,7 +1133,7 @@ class Viz:
             virtual_to_experimental_markers_indices=self.virtual_to_experimental_markers_indices,
         )
 
-    def __set_experimental_forces_from_frame(self):
+    def _set_experimental_forces_from_frame(self):
         if not self.show_experimental_forces:
             return
 
@@ -1172,21 +1172,21 @@ class Viz:
             segment_jcs, self.experimental_forces[:, :, t : t + 1], max_forces, self.force_normalization_ratio
         )
 
-    def __set_contacts_from_q(self):
+    def _set_contacts_from_q(self):
         if not self.show_contacts:
             return
 
         self.contacts[0:3, :, :] = self.Contacts.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_contacts(self.contacts.isel(time=[0]))
 
-    def __set_soft_contacts_from_q(self):
+    def _set_soft_contacts_from_q(self):
         if not self.show_soft_contacts:
             return
 
         self.soft_contacts[0:3, :, :] = self.SoftContacts.get_data(Q=self.Q, compute_kin=False)
         self.vtk_model.update_soft_contacts(self.soft_contacts.isel(time=[0]))
 
-    def __set_global_center_of_mass_from_q(self):
+    def _set_global_center_of_mass_from_q(self):
         if not self.show_global_center_of_mass:
             return
 
@@ -1194,7 +1194,7 @@ class Viz:
         self.global_center_of_mass.loc[{"channel": 0, "time": 0}] = com.squeeze()
         self.vtk_model.update_global_center_of_mass(self.global_center_of_mass.isel(time=[0]))
 
-    def __set_gravity_vector(self):
+    def _set_gravity_vector(self):
         if not self.show_gravity_vector:
             return
 
@@ -1205,7 +1205,7 @@ class Viz:
         id_matrix = np.identity(4)
         self.vtk_model.new_gravity_vector(id_matrix, gravity, length, normalization_ratio=0.3, vector_color=(0, 0, 0))
 
-    def __set_floor(self):
+    def _set_floor(self):
         if not self.show_floor:
             return
 
@@ -1215,7 +1215,7 @@ class Viz:
         scale = (scale, scale, scale) if isinstance(scale, (int, float)) else scale
         self.vtk_model.new_floor(origin=origin, normal=normal, color=self.floor_color, scale=scale)
 
-    def __set_segments_center_of_mass_from_q(self):
+    def _set_segments_center_of_mass_from_q(self):
         if not self.show_segments_center_of_mass:
             return
 
@@ -1224,7 +1224,7 @@ class Viz:
             self.segments_center_of_mass.loc[{"channel": k, "time": 0}] = com.squeeze()
         self.vtk_model.update_segments_center_of_mass(self.segments_center_of_mass.isel(time=[0]))
 
-    def __set_meshes_from_q(self):
+    def _set_meshes_from_q(self):
         if not self.show_meshes:
             return
 
@@ -1235,7 +1235,7 @@ class Viz:
                 self.mesh[m][0:3, :, :] = np.nan
         self.vtk_model.update_mesh(self.mesh)
 
-    def __set_muscles_from_q(self):
+    def _set_muscles_from_q(self):
         if not self.show_muscles:
             return
 
@@ -1251,7 +1251,7 @@ class Viz:
                 idx += 1
         self.vtk_model.update_muscle(self.muscles)
 
-    def __set_ligaments_from_q(self):
+    def _set_ligaments_from_q(self):
         if not self.show_ligaments:
             return
 
@@ -1264,7 +1264,7 @@ class Viz:
 
         self.vtk_model.update_ligament(self.ligaments)
 
-    def __set_wrapping_from_q(self):
+    def _set_wrapping_from_q(self):
         if not self.show_wrappings:
             return
 
@@ -1279,7 +1279,7 @@ class Viz:
                         )
                         self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
                     else:
-                        raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
+                        raise NotImplementedError("_set_wrapping_from_q is not ready for these wrapping object")
 
                 else:
                     if self.model.ligaments(i).pathModifier().object(j).typeOfNode() == biorbd.WRAPPING_HALF_CYLINDER:
@@ -1290,10 +1290,10 @@ class Viz:
                         )
                         self.wraps_current[i][j][0:3, :, 0] = np.dot(rt, wrap[:, :, 0])[0:3, :]
                     else:
-                        raise NotImplementedError("__set_wrapping_from_q is not ready for these wrapping object")
+                        raise NotImplementedError("_set_wrapping_from_q is not ready for these wrapping object")
         self.vtk_model.update_wrapping(self.wraps_current)
 
-    def __set_rt_from_q(self):
+    def _set_rt_from_q(self):
         if not self.show_local_ref_frame:
             return
 
