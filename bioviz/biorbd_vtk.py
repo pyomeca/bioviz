@@ -1098,6 +1098,88 @@ class VtkModel(QtWidgets.QWidget):
             poly_line.SetPoints(points)
             self.mesh_actors[i].GetProperty().SetLineWidth(self.mesh_linewidth)
 
+    def new_mesh_vtk_set(self, all_meshes, rototranslation_matrices):
+        """
+        Define a new mesh set. This function must be called each time the number of meshes change
+        Parameters
+        ----------
+        all_meshes : MeshCollection
+            One frame of mesh
+
+        """
+
+        # # Remove previous actors from the scene
+        # for actor in self.mesh_actors:
+        #     self.parent_window.ren.RemoveActor(actor)
+        self.mesh_actors = list()
+        self.all_meshes = all_meshes
+        self.all_meshes_transforms = []
+
+        for i, (mesh, rototrans) in enumerate(zip(self.all_meshes, rototranslation_matrices)):
+            # Create a 4x4 transformation matrix
+            matrix = vtkMatrix4x4()
+
+            # Assuming you have a 3x3 rotation matrix 'rotation_matrix' and a translation vector 'translation_vector'
+            rotation_matrix = rototrans[:3, :3]
+            translation_vector = rototrans[:3, 3]
+
+            # Set the elements of the VTK matrix
+            for i in range(3):
+                for j in range(3):
+                    matrix.SetElement(i, j, rotation_matrix[i, j])
+                matrix.SetElement(i, 3, translation_vector[i])
+
+            # Create a transform and set the matrix
+            transform = vtkTransform()
+            transform.SetMatrix(matrix)
+
+            self.all_meshes_transforms.append(transform)
+
+            # Apply the transform to the mesh
+            transform_filter = vtkTransformPolyDataFilter()
+            print(mesh)
+            transform_filter.SetInputConnection(mesh)
+            transform_filter.SetTransform(transform)
+            transform_filter.Update()
+
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputConnection(transform_filter.GetOutputPort())
+
+            # Create an actor
+            self.mesh_actors.append(vtkActor())
+            self.mesh_actors[i].SetMapper(mapper)
+            self.mesh_actors[i].GetProperty().SetColor(self.patch_color[i])
+            self.mesh_actors[i].GetProperty().SetOpacity(self.mesh_opacity)
+
+            self.parent_window.ren.AddActor(self.mesh_actors[i])
+
+        self.update_mesh_vtk(rototranslation_matrices)
+
+    def update_mesh_vtk(self, rototranslation_matrices):
+        """
+        Update position of the mesh on the screen (but do not repaint)
+        Parameters
+        ----------
+        rototranslation_matrices
+
+        """
+
+        for i, rototrans in enumerate(rototranslation_matrices):
+            # Create a 4x4 transformation matrix
+            matrix = vtkMatrix4x4()
+
+            # Assuming you have a 3x3 rotation matrix 'rotation_matrix' and a translation vector 'translation_vector'
+            rotation_matrix = rototrans[:3, :3]
+            translation_vector = rototrans[:3, 3]
+
+            # Set the elements of the VTK matrix
+            for i in range(3):
+                for j in range(3):
+                    matrix.SetElement(i, j, rotation_matrix[i, j])
+                matrix.SetElement(i, 3, translation_vector[i])
+
+            self.all_meshes_transforms[i].SetMatrix(matrix)
+
     def set_muscle_color(self, muscle_color):
         """
         Dynamically change the color of the muscles
