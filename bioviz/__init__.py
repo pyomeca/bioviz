@@ -32,7 +32,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
 
 from .analyses import MuscleAnalyses, C3dEditorAnalyses, LigamentAnalyses
-from .interfaces_collection import InterfacesCollections
+from .interfaces_collection import InterfacesCollections, reader_mesh_file
 from .qt_ui.rectangle_on_slider import RectangleOnSlider
 from ._version import __version__, check_version
 
@@ -195,7 +195,9 @@ class Viz:
         self.show_wrappings = show_wrappings
 
         if sum([len(i) for i in self.model.meshPoints(np.zeros(self.model.nbQ()))]) > 0:
-            self.show_meshes = show_meshes
+            # self.show_meshes = show_meshes
+            self.show_meshes = False
+            self.show_meshes_vtk = show_meshes
         else:
             self.show_meshes = 0
 
@@ -232,6 +234,16 @@ class Viz:
                 )
                 self.mesh.append(Mesh(vertex=vertices, triangles=triangles.T))
                 self.show_segment_is_on[i] = True
+
+        if self.show_meshes_vtk:
+
+            self.mesh_vtk = []
+
+            for i in range(self.model.nbSegment()):
+                self.mesh_vtk.append(
+                    reader_mesh_file(self.model.segment(i).characteristics().mesh().path().absolutePath().to_string())
+                )
+
         if self.show_muscles:
             self.model.updateMuscles(self.Q, True)
             self.muscles = []
@@ -389,6 +401,7 @@ class Viz:
         self._set_ligaments_from_q()
         self._set_rt_from_q()
         self._set_meshes_from_q()
+        self._set_meshes_vtk_from_q()
         self._set_global_center_of_mass_from_q()
         self._set_segments_center_of_mass_from_q()
         self._set_markers_from_q()
@@ -1234,6 +1247,16 @@ class Viz:
             else:
                 self.mesh[m][0:3, :, :] = np.nan
         self.vtk_model.update_mesh(self.mesh)
+
+    def _set_meshes_vtk_from_q(self):
+        if not self.show_meshes_vtk:
+            return
+
+        mesh_rotation_matrices = self.allGlobalJCS.get_data(Q=self.Q, compute_kin=False)
+
+        self.vtk_model.new_mesh_vtk_set(self.mesh_vtk, mesh_rotation_matrices)
+
+        self.vtk_model.update_mesh_vtk(self.mesh_vtk)
 
     def _set_muscles_from_q(self):
         if not self.show_muscles:

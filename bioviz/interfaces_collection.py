@@ -6,6 +6,7 @@ except ImportError:
     import biorbd_casadi as biorbd
     import casadi
 
+import vtk
 
 class InterfacesCollections:
     class BiorbdFunc:
@@ -269,6 +270,19 @@ class InterfacesCollections:
                 vertices[:, :, 0] = self.segments[i](Q)
                 self.data.append(vertices)
 
+    class MeshFiles:
+        def __init__(self, model):
+            self.m = model
+
+        def _prepare_function_for_casadi(self):
+            pass
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            pass
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            pass
+
     class AllGlobalJCS(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
@@ -292,3 +306,21 @@ class InterfacesCollections:
             self.data = []
             for i in range(self.m.nbSegment()):
                 self.data.append(np.array(self.jcs[i](Q)))
+
+
+def reader_mesh_file(filename: str):
+    if filename.endswith(".stl") or filename.endswith(".STL"):
+
+        reader = vtk.vtkSTLReader()
+        reader.SetFileName(filename)
+
+    elif filename.endswith(".vtp"):
+
+        reader = vtk.vtkXMLPolyDataReader()
+        reader.SetFileName(filename)
+
+    else:
+
+        raise RuntimeError(f"Unrecognized file extension of {filename}")
+
+    return reader.GetOutputPort()
