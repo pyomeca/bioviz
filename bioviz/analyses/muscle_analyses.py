@@ -90,6 +90,7 @@ class MuscleAnalyses:
         self.ax_passive_forces.set_facecolor(background_color)
         self.ax_passive_forces.set_title("Passive forces")
         self.ax_passive_forces.set_ylabel("Passive forces coeff")
+        self.ax_passive_forces.set_ylim((0, 1))
 
         # Add active forces
         self.canvas_active_forces = FigureCanvasQTAgg(plt.figure(facecolor=background_color))
@@ -100,6 +101,7 @@ class MuscleAnalyses:
         self.ax_active_forces.set_facecolor(background_color)
         self.ax_active_forces.set_title("Active forces")
         self.ax_active_forces.set_ylabel("Active forces coeff")
+        self.ax_active_forces.set_ylim((0, 1))
         self.active_forces_slider = QSlider()
         active_forces_layout.addWidget(self.active_forces_slider)
         self.active_forces_slider.setPalette(self.main_window.palette_active)
@@ -170,11 +172,21 @@ class MuscleAnalyses:
         self.__update_specific_plot(self.canvas_moment_arm, self.ax_moment_arm, x_axis, moment_arm, skip_moment_arm)
 
         self.__update_specific_plot(
-            self.canvas_passive_forces, self.ax_passive_forces, x_axis, passive_forces, skip_passive_forces
+            self.canvas_passive_forces,
+            self.ax_passive_forces,
+            x_axis,
+            passive_forces,
+            skip_passive_forces,
+            autoscale_y=False,
         )
 
         self.__update_specific_plot(
-            self.canvas_active_forces, self.ax_active_forces, x_axis, active_forces, skip_active_forces
+            self.canvas_active_forces,
+            self.ax_active_forces,
+            x_axis,
+            active_forces,
+            skip_active_forces,
+            autoscale_y=False,
         )
 
         self.__update_graph_size()
@@ -216,11 +228,11 @@ class MuscleAnalyses:
                     if mus.type() != biorbd.IDEALIZED_ACTUATOR:
                         active_forces[i, m] = biorbd.HillType(mus).FlCE(emg)
                     else:
-                        active_forces[i, m] = 0
+                        active_forces[i, m] = emg.activation()
 
         return x_axis, length, moment_arm, passive_forces, active_forces
 
-    def __update_specific_plot(self, canvas, ax, x, y, skip=False):
+    def __update_specific_plot(self, canvas, ax, x, y, skip=False, autoscale_y=True):
         # Plot all active muscles
         number_of_active = 0
         for m in range(self.n_mus):
@@ -237,8 +249,12 @@ class MuscleAnalyses:
         # If there is no data skip relim and vertical bar adjustment
         if number_of_active != 0:
             # relim so the plot looks nice
+            if not autoscale_y:
+                y_lim = ax.get_ylim()
             ax.relim()
             ax.autoscale(enable=True)
+            if not autoscale_y:
+                ax.set_ylim(y_lim)
 
             # Adjust axis label (give a generic name)
             if self.animation_checkbox.isChecked():

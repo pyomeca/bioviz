@@ -331,9 +331,7 @@ class Viz:
 
             self.n_max_events = 100
             self.last_event_index = -1
-            self.events: list[
-                dict[str:RectangleOnSlider, str:int, str:str], ...
-            ] = []  # event list of [marker/frame/event_name]
+            self.events: list[dict[str:RectangleOnSlider, str:int, str:str]] = []  # events [marker/frame/event_name]
 
             self.active_analyses: AnalysePanel | None = None
             self.column_stretch = 0
@@ -1039,7 +1037,7 @@ class Viz:
         data,
         auto_start=True,
         ignore_animation_warning=True,
-        experimental_markers_mapping_to_virtual: list[int, ...] = None,
+        experimental_markers_mapping_to_virtual: list[int] = None,
     ):
         if isinstance(data, str):
             self.experimental_markers = Markers.from_c3d(data)
