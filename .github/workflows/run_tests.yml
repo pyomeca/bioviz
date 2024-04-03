@@ -34,7 +34,6 @@ jobs:
         
       - name: Print mamba info
         run: | 
-          mamba config --show
           mamba info
           mamba list
           

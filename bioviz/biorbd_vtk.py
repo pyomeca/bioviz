@@ -1,6 +1,7 @@
 """
 Visualization toolkit in pyomeca
 """
+
 from dataclasses import dataclass
 import os
 import time
