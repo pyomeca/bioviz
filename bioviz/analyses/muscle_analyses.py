@@ -211,12 +211,11 @@ class MuscleAnalyses:
         active_forces = np.ndarray((self.n_point_for_q, self.n_mus))
         emg = biorbd.State(0, self.active_forces_slider.value() / 100)
         for i, q_mod in enumerate(all_q):
-            self.model.UpdateKinematicsCustom(biorbd.GeneralizedCoordinates(q_mod))
+            self.model.updateMuscles(biorbd.GeneralizedCoordinates(q_mod), True)
             for m in range(self.n_mus):
                 if self.checkboxes_muscle[m].isChecked():
                     mus_group_idx, mus_idx, cmp_mus = self.muscle_mapping[self.checkboxes_muscle[m].text()]
                     mus = self.model.muscleGroup(mus_group_idx).muscle(mus_idx)
-                    mus.updateOrientations(self.model, q_mod, 1)
                     muscles_length_jacobian = self.model.musclesLengthJacobian().to_array()
 
                     length[i, m] = mus.length(self.model, q_mod, False)
