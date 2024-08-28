@@ -37,7 +37,7 @@ from .qt_ui.rectangle_on_slider import RectangleOnSlider
 from ._version import __version__, check_version
 
 check_version(biorbd, "1.11.1", "2.0.0")
-check_version(pyomeca, "2020.0.1", "2020.1.0")
+check_version(pyomeca, "2024.0.0", "2024.1.0")
 
 
 from pyomeca import Markers
