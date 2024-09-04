@@ -5,7 +5,10 @@ from bioviz import Viz
 
 
 def get_base_folder():
-    return f"{os.getcwd()}/../"
+    """
+    Return the base folder path (one level up from the tests folder)
+    """
+    return f"{os.path.join(os.path.dirname(os.path.abspath(__file__)))}/.."
 
 
 def test_model_load():
