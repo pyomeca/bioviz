@@ -3,7 +3,7 @@ name: bioviz
 channels:
   - conda-forge
 dependencies:
-  - biorbd >=1.9.5
+  - biorbd >=1.11.2
   - matplotlib
   - pyomeca
   - ezc3d

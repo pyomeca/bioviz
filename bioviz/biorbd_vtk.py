@@ -1,6 +1,7 @@
 """
 Visualization toolkit in pyomeca
 """
+
 from dataclasses import dataclass
 import os
 import time
@@ -205,7 +206,7 @@ class _MarkerInternal:
     size: float
     color: tuple[float, float, float]
     opacity: float
-    actors: list[QVTKRenderWindowInteractor, ...]
+    actors: list[QVTKRenderWindowInteractor]
 
 
 class VtkModel(QtWidgets.QWidget):
@@ -283,7 +284,7 @@ class VtkModel(QtWidgets.QWidget):
                 actors=list(),
             ),
         }
-        self.markers_link_actors: list[QVTKRenderWindowInteractor, ...] = list()
+        self.markers_link_actors: list[QVTKRenderWindowInteractor] = list()
 
         self.contacts = Markers()
         self.contacts_size = contacts_size
@@ -460,7 +461,7 @@ class VtkModel(QtWidgets.QWidget):
         self._update_markers(markers, "model")
 
     def update_experimental_markers(
-        self, markers, with_link: bool = True, virtual_to_experimental_markers_indices: list[int, ...] = None
+        self, markers, with_link: bool = True, virtual_to_experimental_markers_indices: list[int] = None
     ):
         """
         Update position of the experimental markers on the screen (but do not repaint)
@@ -1841,7 +1842,7 @@ class VtkModel(QtWidgets.QWidget):
         Parameters
         ----------
         segment_rt : np.ndarray
-            homogeneous matrix in which coordinates are applied
+            homogenous matrix in which coordinates are applied
         gravity : np.ndarray
             gravity array with 3 application coordinates and 3 magnitude coordinates
         length : float

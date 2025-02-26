@@ -281,10 +281,7 @@ class InterfacesCollections:
 
         def _get_data_from_eigen(self, Q=None, compute_kin=True):
             self.data = []
-            if compute_kin:
-                allJCS = self.m.allGlobalJCS(Q)
-            else:
-                allJCS = self.m.allGlobalJCS()
+            allJCS = self.m.allGlobalJCS(Q, compute_kin)
             for jcs in allJCS:
                 self.data.append(jcs.to_array())
 
