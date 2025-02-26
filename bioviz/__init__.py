@@ -1360,7 +1360,7 @@ class Kinogram(Viz):
             nb_images = len(snap_idx)
             for i_snap, snap in enumerate(snap_idx):
                 self.movement_slider[0].setValue(snap)
-                snap_save_path_this_time = f"{save_path[:-4]}_snapshot-{snap}.png"
+                snap_save_path_this_time = f"{save_path[:-4]}_snapshot-{i_phase}-{snap}.png"
                 self.snapshot(snap_save_path_this_time)
                 self.refresh_window()
                 img = mpimg.imread(snap_save_path_this_time)
