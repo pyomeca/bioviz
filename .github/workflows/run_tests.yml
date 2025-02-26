@@ -24,21 +24,19 @@ jobs:
       - uses: actions/checkout@v2
       
       - name: Setup environment
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
-          use-mamba: true
           activate-environment: bioviz
           environment-file: environment.yml
         
-      - name: Print mamba info
+      - name: Print conda info
         run: | 
-          mamba info
-          mamba list
+          conda info
+          conda list
           
       - name: Install extra dependencies
-        run: mamba install pytest pytest-cov codecov -cconda-forge 
+        run: conda install pytest pytest-cov codecov -cconda-forge 
       
       - name: Install bioviz 
         run: python setup.py install
