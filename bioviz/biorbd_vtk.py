@@ -887,7 +887,7 @@ class VtkModel(QtWidgets.QWidget):
 
         # Set IMUs orientations
         self.n_experimental_imus = len(all_imus)
-        self.update_imus(all_imus)
+        self.update_experimental_imus(all_imus)
 
     def update_experimental_imus(self, all_imus):
         """
