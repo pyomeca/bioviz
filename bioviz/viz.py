@@ -1099,24 +1099,30 @@ class Viz:
         auto_start=True,
         ignore_animation_warning=True,
     ):
-        if isinstance(data, (np.ndarray, xr.DataArray)):
-            self.experimental_imus = (
-                data if isinstance(data, xr.DataArray) else xr.DataArray(data, dims=["rows", "cols", "segment", "time"])
+        if isinstance(data, dict):
+            # Dict is str corresponding to target segment, with 4X4XT, convert to DataArray 4x4x[segment names]xT
+            data = xr.DataArray(
+                np.stack([data[key] for key in data.keys()], axis=2),
+                dims=["x", "y", "segment", "time"],
+                coords={"segment": list(data.keys()), "time": np.arange(data[list(data.keys())[0]].shape[2])},
             )
-        else:
+
+        if not isinstance(data, xr.DataArray) or not len(data.shape) == 4:
             raise RuntimeError(
                 f"Wrong type of experimental imus data ({type(data)}). "
-                f"Allowed type are numpy array (4x4xNxT), data array (4x4xNxT)."
+                f"Allowed type data array (4x4x[segment names]xT)."
             )
 
-        if self.experimental_imus.shape[0] != 4 or self.experimental_imus.shape[1] != 4:
-            raise RuntimeError(f"Experimental IMU data should be 4x4xNxT. You have {self.experimental_imus.shape}.")
-        if self.experimental_imus.shape[2] != self.model.nbIMUs():
+        if data.shape[0] != 4 or data.shape[1] != 4:
+            raise RuntimeError(f"Experimental IMU data should be 4x4xNxT. You have {data.shape}.")
+        # Check the third dimension is the segment names
+        if not all([isinstance(name, str) for name in data.coords["segment"].values]):
             raise RuntimeError(
-                f"Number of IMUs in the experimental data ({self.experimental_imus.shape[2]}) "
-                f"must match the number of IMUs in the model ({self.model.nbIMUs()})."
+                "The third dimension of the experimental IMU data should be the segment names. "
+                f"You have {data.coords['segment'].values()}."
             )
 
+        self.experimental_imus = data
         self.show_experimental_imus = True
         self._set_movement_slider()
 
@@ -1187,8 +1193,17 @@ class Viz:
         data_tp = self.experimental_imus[:, :, :, t : t + 1].isel(time=[0])
 
         data = []
-        for index in range(data_tp.shape[2]):
-            data.append(Rototrans(data_tp[:, :, index, 0:1].to_numpy()))
+        imu_names = [str(name) for name in data_tp.segment.values]
+        segment_names = [segment.name().to_string() for segment in self.model.segments()]
+        rt = [rt.to_array() for rt in self.model.allGlobalJCS(self.Q)]
+        for name in imu_names:
+            if name not in segment_names:
+                continue  # Cannot project this IMU on the model
+            segment_index = segment_names.index(name)
+            data_index = imu_names.index(name)
+            data_imu = data_tp.isel(segment=data_index).to_numpy()
+            data_imu[:3, 3, 0] = rt[segment_index][:3, 3]
+            data.append(Rototrans(data_imu))
 
         self.vtk_model.update_experimental_imus(data)
 
