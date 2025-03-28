@@ -27,9 +27,7 @@ from vtk import (
     vtkOggTheoraWriter,
     vtkWindowToImageFilter,
     vtkPolygon,
-    vtkExtractEdges,
     vtkArrowSource,
-    vtkNamedColors,
     vtkMath,
     vtkMatrix4x4,
     vtkMinimalStandardRandomSequence,
@@ -219,6 +217,10 @@ class VtkModel(QtWidgets.QWidget):
         experimental_markers_size=0.010,
         experimental_markers_color=(1, 1, 1),
         experimental_markers_opacity=1.0,
+        imus_length=0.025,
+        imus_width=5,
+        imus_wire_color=(0, 0, 0),
+        experimental_imus_wire_color=(0, 1, 1),
         contacts_color=(0, 1, 0),
         contacts_size=0.01,
         contacts_opacity=1.0,
@@ -285,6 +287,18 @@ class VtkModel(QtWidgets.QWidget):
             ),
         }
         self.markers_link_actors: list[QVTKRenderWindowInteractor] = list()
+
+        self.all_imus = []
+        self.n_imus = 0
+        self.imus_length = imus_length
+        self.imus_width = imus_width
+        self.imus_rt_actors = list()
+        self.imus_wire_actors = list()
+        self.imus_wire_color = imus_wire_color
+        self.n_experimental_imus = 0
+        self.experimental_imus_rt_actors = list()
+        self.experimental_imus_wire_actors = list()
+        self.experimental_imus_wire_color = experimental_imus_wire_color
 
         self.contacts = Markers()
         self.contacts_size = contacts_size
@@ -577,6 +591,354 @@ class VtkModel(QtWidgets.QWidget):
             poly_line.SetPoints(points)
             cmp += 1
 
+    def new_imus_set(self, all_imus):
+        """
+        Define a new IMU set. This function must be called each time the number of imus change
+        Parameters
+        ----------
+        all_imus : Rototrans
+            One frame of all Rototrans to draw
+
+        """
+        if isinstance(all_imus, Rototrans):
+            imus_tp = []
+            imus_tp.append(all_imus[:, :])
+            all_imus = imus_tp
+
+        if not isinstance(all_imus, list):
+            raise TypeError("Please send a list of IMUs to new_imu_set")
+
+        # Remove previous actors from the scene
+        for actor in self.imus_rt_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.imus_rt_actors = list()
+        for actor in self.imus_wire_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.imus_wire_actors = list()
+
+        # Generate the RT actors
+        for i, imu in enumerate(all_imus):
+            if imu.time.size != 1:
+                raise IndexError("IMU should be from one frame only")
+
+            # Create the polyline which will hold the actors
+            lines_poly_data = vtkPolyData()
+
+            # Create four points of a generic system of axes
+            pts = vtkPoints()
+            pts.InsertNextPoint([0, 0, 0])
+            pts.InsertNextPoint([1, 0, 0])
+            pts.InsertNextPoint([0, 1, 0])
+            pts.InsertNextPoint([0, 0, 1])
+            lines_poly_data.SetPoints(pts)
+
+            # Create the first line(between Origin and P0)
+            line0 = vtkLine()
+            line0.GetPointIds().SetId(0, 0)
+            line0.GetPointIds().SetId(1, 1)
+
+            # Create the second line(between Origin and P1)
+            line1 = vtkLine()
+            line1.GetPointIds().SetId(0, 0)
+            line1.GetPointIds().SetId(1, 2)
+
+            # Create the second line(between Origin and P1)
+            line2 = vtkLine()
+            line2.GetPointIds().SetId(0, 0)
+            line2.GetPointIds().SetId(1, 3)
+
+            # Create a vtkCellArray container and store the lines in it
+            lines = vtkCellArray()
+            lines.InsertNextCell(line0)
+            lines.InsertNextCell(line1)
+            lines.InsertNextCell(line2)
+
+            # Add the lines to the polydata container
+            lines_poly_data.SetLines(lines)
+
+            # Create a vtkUnsignedCharArray container and store the colors in it
+            colors = vtkUnsignedCharArray()
+            colors.SetNumberOfComponents(3)
+            colors.InsertNextTuple([255, 0, 0])
+            colors.InsertNextTuple([0, 255, 0])
+            colors.InsertNextTuple([0, 0, 255])
+            lines_poly_data.GetCellData().SetScalars(colors)
+
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(lines_poly_data)
+
+            # Create an actor
+            self.imus_rt_actors.append(vtkActor())
+            self.imus_rt_actors[i].SetMapper(mapper)
+            self.imus_rt_actors[i].GetProperty().SetLineWidth(self.imus_width)
+
+            self.parent_window.ren.AddActor(self.imus_rt_actors[i])
+
+        # Generate the box wire actors
+        for i, imu in enumerate(all_imus):
+            points = vtkPoints()
+            points.InsertNextPoint([-1, -1, -1])
+            points.InsertNextPoint([-1, 1, -1])
+            points.InsertNextPoint([-1, -1, 1])
+            points.InsertNextPoint([-1, 1, 1])
+            points.InsertNextPoint([1, -1, -1])
+            points.InsertNextPoint([1, 1, -1])
+            points.InsertNextPoint([1, -1, 1])
+            points.InsertNextPoint([1, 1, 1])
+
+            # Create a wireframe box
+            all_wires = [[0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3], [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]]
+            cells = vtkCellArray()
+            for wire in all_wires:
+                poly = vtkPolyLine()
+                poly.GetPointIds().SetNumberOfIds(2)
+                poly.GetPointIds().SetId(0, wire[0])
+                poly.GetPointIds().SetId(1, wire[1])
+                cells.InsertNextCell(poly)
+
+            poly_data = vtkPolyData()
+            poly_data.SetPoints(points)
+            poly_data.SetLines(cells)
+
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(poly_data)
+
+            # Create an actor
+            self.imus_wire_actors.append(vtkActor())
+            self.imus_wire_actors[i].SetMapper(mapper)
+            self.imus_wire_actors[i].GetProperty().SetColor(self.imus_wire_color)
+
+            self.parent_window.ren.AddActor(self.imus_wire_actors[i])
+
+        # Set IMUs orientations
+        self.n_imus = len(all_imus)
+        self.update_imus(all_imus)
+
+    def update_imus(self, all_imus):
+        """
+        Update position of the Rototrans on the screen (but do not repaint)
+        Parameters
+        ----------
+        all_imus : RototransCollection
+            One frame of all Rototrans to draw
+
+        """
+        if isinstance(all_imus, Rototrans):
+            imus_tp = []
+            imus_tp.append(all_imus[:, :])
+            all_imus = imus_tp
+
+        if len(all_imus) != self.n_imus:
+            self.new_imus_set(all_imus)
+            return  # Prevent calling update_imus recursively
+
+        if not isinstance(all_imus, list):
+            raise TypeError("Please send a list of IMUs to new_imus_set")
+
+        self.all_imus = all_imus
+
+        for i, imu in enumerate(self.all_imus):
+            if imu.time.size != 1:
+                raise IndexError("IMU should be from one frame only")
+
+            # Update the end points of the RT axes and the origin
+            pts = vtkPoints()
+            pts.InsertNextPoint(imu.meca.translation)
+            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length)
+            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length)
+            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length)
+            lines_poly_data = self.imus_rt_actors[i].GetMapper().GetInput()
+            lines_poly_data.SetPoints(pts)
+
+            # Update the corners of the box
+            points = vtkPoints()
+            rototrans = np.array(imu.isel(time=0))
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3)
+            lines_poly_data = self.imus_wire_actors[i].GetMapper().GetInput()
+            lines_poly_data.SetPoints(points)
+
+    def new_experimental_imus_set(self, all_imus):
+        """
+        Define a new IMU set. This function must be called each time the number of imus change
+        Parameters
+        ----------
+        all_imus : Rototrans
+            One frame of all Rototrans to draw
+
+        """
+        if isinstance(all_imus, Rototrans):
+            imus_tp = []
+            imus_tp.append(all_imus[:, :])
+            all_imus = imus_tp
+
+        if not isinstance(all_imus, list):
+            raise TypeError("Please send a list of IMUs to new_imu_set")
+
+        # Remove previous actors from the scene
+        for actor in self.experimental_imus_rt_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.experimental_imus_rt_actors = list()
+        for actor in self.experimental_imus_wire_actors:
+            self.parent_window.ren.RemoveActor(actor)
+        self.experimental_imus_wire_actors = list()
+
+        # Generate the RT actors
+        for i, imu in enumerate(all_imus):
+            if imu.time.size != 1:
+                raise IndexError("IMU should be from one frame only")
+
+            # Create the polyline which will hold the actors
+            lines_poly_data = vtkPolyData()
+
+            # Create four points of a generic system of axes
+            pts = vtkPoints()
+            pts.InsertNextPoint([0, 0, 0])
+            pts.InsertNextPoint([1, 0, 0])
+            pts.InsertNextPoint([0, 1, 0])
+            pts.InsertNextPoint([0, 0, 1])
+            lines_poly_data.SetPoints(pts)
+
+            # Create the first line(between Origin and P0)
+            line0 = vtkLine()
+            line0.GetPointIds().SetId(0, 0)
+            line0.GetPointIds().SetId(1, 1)
+
+            # Create the second line(between Origin and P1)
+            line1 = vtkLine()
+            line1.GetPointIds().SetId(0, 0)
+            line1.GetPointIds().SetId(1, 2)
+
+            # Create the second line(between Origin and P1)
+            line2 = vtkLine()
+            line2.GetPointIds().SetId(0, 0)
+            line2.GetPointIds().SetId(1, 3)
+
+            # Create a vtkCellArray container and store the lines in it
+            lines = vtkCellArray()
+            lines.InsertNextCell(line0)
+            lines.InsertNextCell(line1)
+            lines.InsertNextCell(line2)
+
+            # Add the lines to the polydata container
+            lines_poly_data.SetLines(lines)
+
+            # Create a vtkUnsignedCharArray container and store the colors in it
+            colors = vtkUnsignedCharArray()
+            colors.SetNumberOfComponents(3)
+            colors.InsertNextTuple([255, 0, 0])
+            colors.InsertNextTuple([0, 255, 0])
+            colors.InsertNextTuple([0, 0, 255])
+            lines_poly_data.GetCellData().SetScalars(colors)
+
+            # Create a mapper
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(lines_poly_data)
+
+            # Create an actor
+            self.experimental_imus_rt_actors.append(vtkActor())
+            self.experimental_imus_rt_actors[i].SetMapper(mapper)
+            self.experimental_imus_rt_actors[i].GetProperty().SetLineWidth(self.imus_width)
+
+            self.parent_window.ren.AddActor(self.experimental_imus_rt_actors[i])
+
+        # Generate the box wire actors
+        for i, imu in enumerate(all_imus):
+            points = vtkPoints()
+            points.InsertNextPoint([-1, -1, -1])
+            points.InsertNextPoint([-1, 1, -1])
+            points.InsertNextPoint([-1, -1, 1])
+            points.InsertNextPoint([-1, 1, 1])
+            points.InsertNextPoint([1, -1, -1])
+            points.InsertNextPoint([1, 1, -1])
+            points.InsertNextPoint([1, -1, 1])
+            points.InsertNextPoint([1, 1, 1])
+
+            # Create a wireframe box
+            all_wires = [[0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3], [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]]
+            cells = vtkCellArray()
+            for wire in all_wires:
+                poly = vtkPolyLine()
+                poly.GetPointIds().SetNumberOfIds(2)
+                poly.GetPointIds().SetId(0, wire[0])
+                poly.GetPointIds().SetId(1, wire[1])
+                cells.InsertNextCell(poly)
+
+            poly_data = vtkPolyData()
+            poly_data.SetPoints(points)
+            poly_data.SetLines(cells)
+
+            mapper = vtkPolyDataMapper()
+            mapper.SetInputData(poly_data)
+
+            # Create an actor
+            self.experimental_imus_wire_actors.append(vtkActor())
+            self.experimental_imus_wire_actors[i].SetMapper(mapper)
+            self.experimental_imus_wire_actors[i].GetProperty().SetColor(self.experimental_imus_wire_color)
+
+            self.parent_window.ren.AddActor(self.experimental_imus_wire_actors[i])
+
+        # Set IMUs orientations
+        self.n_experimental_imus = len(all_imus)
+        self.update_imus(all_imus)
+
+    def update_experimental_imus(self, all_imus):
+        """
+        Update position of the Rototrans on the screen (but do not repaint)
+        Parameters
+        ----------
+        all_imus : RototransCollection
+            One frame of all Rototrans to draw
+
+        """
+        if isinstance(all_imus, Rototrans):
+            imus_tp = []
+            imus_tp.append(all_imus[:, :])
+            all_imus = imus_tp
+
+        if len(all_imus) != self.n_experimental_imus:
+            self.new_experimental_imus_set(all_imus)
+            return  # Prevent calling update_imus recursively
+
+        if not isinstance(all_imus, list):
+            raise TypeError("Please send a list of IMUs to new_imus_set")
+
+        self.all_experimental_imus = all_imus
+
+        for i, imu in enumerate(self.all_experimental_imus):
+            if imu.time.size != 1:
+                raise IndexError("IMU should be from one frame only")
+
+            # Update the end points of the RT axes and the origin
+            pts = vtkPoints()
+            pts.InsertNextPoint(imu.meca.translation)
+            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length)
+            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length)
+            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length)
+            lines_poly_data = self.experimental_imus_rt_actors[i].GetMapper().GetInput()
+            lines_poly_data.SetPoints(pts)
+
+            # Update the corners of the box
+            points = vtkPoints()
+            rototrans = np.array(imu.isel(time=0))
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3)
+            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3)
+            lines_poly_data = self.experimental_imus_wire_actors[i].GetMapper().GetInput()
+            lines_poly_data.SetPoints(points)
+
     def set_contacts_color(self, contacts_color):
         """
         Dynamically change the color of the contacts
@@ -642,7 +1004,7 @@ class VtkModel(QtWidgets.QWidget):
 
             self.parent_window.ren.AddActor(self.contacts_actors[i])
 
-        # Update marker position
+        # Update contact position
         self.update_contacts(self.contacts)
 
     def update_contacts(self, contacts):
@@ -737,7 +1099,7 @@ class VtkModel(QtWidgets.QWidget):
             self.soft_contacts_actors[i].SetMapper(mapper)
 
             self.parent_window.ren.AddActor(self.soft_contacts_actors[i])
-        # Update marker position
+        # Update soft contact position
         self.update_soft_contacts(self.soft_contacts)
 
     def update_soft_contacts(self, soft_contacts):
@@ -834,7 +1196,7 @@ class VtkModel(QtWidgets.QWidget):
 
             self.parent_window.ren.AddActor(self.global_center_of_mass_actors[i])
 
-        # Update marker position
+        # Update center of mass position
         self.update_global_center_of_mass(self.global_center_of_mass)
 
     def update_global_center_of_mass(self, global_center_of_mass):
@@ -930,7 +1292,7 @@ class VtkModel(QtWidgets.QWidget):
 
             self.parent_window.ren.AddActor(self.segments_center_of_mass_actors[i])
 
-        # Update marker position
+        # Update center of mass position
         self.update_segments_center_of_mass(self.segments_center_of_mass)
 
     def update_segments_center_of_mass(self, segments_center_of_mass):
@@ -1058,7 +1420,7 @@ class VtkModel(QtWidgets.QWidget):
 
             self.parent_window.ren.AddActor(self.mesh_actors[i])
 
-        # Update marker position
+        # Update mesh position
         self.update_mesh(self.all_meshes)
 
     def update_mesh(self, all_meshes):
@@ -1081,7 +1443,7 @@ class VtkModel(QtWidgets.QWidget):
 
             if len(self.all_meshes) <= i or mesh.channel.size != self.all_meshes[i].channel.size:
                 self.new_mesh_set(all_meshes)
-                return  # Prevent calling update_markers recursively
+                return  # Prevent calling update_mesh recursively
 
         if not isinstance(all_meshes, list):
             raise TypeError("Please send a list of mesh to update_mesh")
@@ -1182,7 +1544,7 @@ class VtkModel(QtWidgets.QWidget):
 
             self.parent_window.ren.AddActor(self.muscle_actors[i])
 
-        # Update marker position
+        # Update nuscle position
         self.update_muscle(self.all_muscles)
 
     def update_muscle(self, all_muscles):
@@ -1205,7 +1567,7 @@ class VtkModel(QtWidgets.QWidget):
 
             if len(self.all_muscles) <= i or muscle.channel.size != self.all_muscles[i].channel.size:
                 self.new_muscle_set(all_muscles)
-                return  # Prevent calling update_markers recursively
+                return  # Prevent calling update_muscles recursively
 
         if not isinstance(all_muscles, list):
             raise TypeError("Please send a list of muscles to update_muscle")
@@ -1305,7 +1667,7 @@ class VtkModel(QtWidgets.QWidget):
 
             self.parent_window.ren.AddActor(self.ligament_actors[i])
 
-        # Update marker position
+        # Update ligament position
         self.update_ligament(self.all_ligaments)
 
     def update_ligament(self, all_ligaments):
@@ -1328,7 +1690,7 @@ class VtkModel(QtWidgets.QWidget):
 
             if len(self.all_ligaments) <= i or ligament.channel.size != self.all_ligaments[i].channel.size:
                 self.new_ligament_set(all_ligaments)
-                return  # Prevent calling update_markers recursively
+                return  # Prevent calling update_ligament recursively
 
         if not isinstance(all_ligaments, list):
             raise TypeError("Please send a list of ligaments to update_ligament")
@@ -1427,7 +1789,7 @@ class VtkModel(QtWidgets.QWidget):
 
             self.parent_window.ren.AddActor(self.wrapping_actors[seg][i])
 
-        # # Update marker position
+        # # Update wrapping position
         # self.update_wrapping(self.all_wrappings)
 
     def update_wrapping(self, all_wrappings):
@@ -1453,7 +1815,7 @@ class VtkModel(QtWidgets.QWidget):
                     or wrapping.channel.size != self.all_wrappings[seg][i].channel.size
                 ):
                     self.new_wrapping_set(wrappings, seg)
-                    # return  # Prevent calling update_markers recursively
+                    # return  # Prevent calling update_wrapping recursively
 
             if not isinstance(wrappings, list):
                 raise TypeError("Please send a list of wrapping to update_wrapping")
@@ -1801,7 +2163,7 @@ class VtkModel(QtWidgets.QWidget):
         """
         if self.all_forces == []:
             self.new_force_set(segment_jcs, all_forces, max_forces, normalization_ratio)
-            return  # Prevent calling update_markers recursively
+            return  # Prevent calling update_force recursively
 
         self.max_forces = max_forces
         self.all_forces = all_forces

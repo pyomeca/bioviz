@@ -75,6 +75,7 @@ class Viz:
         experimental_markers_color=(1, 1, 1),
         markers_size=0.010,
         show_contacts=True,
+        show_imus=True,
         contacts_size=0.010,
         show_soft_contacts=True,
         soft_contacts_color=(0.11, 0.63, 0.95),
@@ -115,6 +116,7 @@ class Viz:
             show_segments_center_of_mass = False
             show_local_ref_frame = False
             show_markers = False
+            show_imus = False
             show_contacts = False
             show_muscles = False
             show_ligaments = False
@@ -161,12 +163,15 @@ class Viz:
         self.experimental_markers = None
         self.experimental_markers_color = experimental_markers_color
         self.virtual_to_experimental_markers_indices = None
+        self.show_experimental_imus = False
+        self.experimental_imus = None
         self.show_experimental_forces = False
         self.experimental_forces = None
         self.segment_forces = []
         self.experimental_forces_color = experimental_forces_color
         self.force_normalization_ratio = None
 
+        self.show_imus = show_imus
         self.show_contacts = show_contacts
         self.show_soft_contacts = show_soft_contacts
         self.soft_contacts_color = soft_contacts_color
@@ -209,6 +214,11 @@ class Viz:
             self.markers = Markers(np.ndarray((3, self.model.nbMarkers(), 1)))
         if show_gravity_vector:
             self.Gravity = InterfacesCollections.Gravity(self.model)
+        if self.show_imus:
+            self.IMUs = InterfacesCollections.IMUs(self.model)
+            self.imus = []
+            for i, imu in enumerate(self.IMUs.get_data(Q=self.Q, compute_kin=False)):
+                self.imus.append(Rototrans(imu))
         if self.show_contacts:
             self.Contacts = InterfacesCollections.Contact(self.model)
             self.contacts = Markers(np.ndarray((3, self.model.nbContacts(), 1)))
@@ -385,6 +395,7 @@ class Viz:
         self.model.UpdateKinematicsCustom(self.Q)
         self._set_muscles_from_q()
         self._set_ligaments_from_q()
+        self._set_imus_from_q()
         self._set_rt_from_q()
         self._set_meshes_from_q()
         self._set_global_center_of_mass_from_q()
@@ -450,6 +461,7 @@ class Viz:
                 self.idx_markers_to_remove += list(range(offset_marker, offset_marker + nb_markers))
             offset_marker += nb_markers
         self._set_markers_from_q()
+        self._set_imus_from_q()
         self._set_rt_from_q()
 
     def refresh_window(self):
@@ -877,6 +889,7 @@ class Viz:
             self.set_q(self.Q, refresh_window=False)
 
         self._set_experimental_markers_from_frame()
+        self._set_experimental_imus_from_frame()
         self._set_experimental_forces_from_frame()
 
         # Update graph of muscle analyses
@@ -1005,6 +1018,8 @@ class Viz:
         experiment_shape = 0
         if self.experimental_forces is not None:
             experiment_shape = self.experimental_forces.shape[2]
+        if self.experimental_imus is not None:
+            experiment_shape = max(self.experimental_imus.shape[3], experiment_shape)
         if self.experimental_markers is not None:
             experiment_shape = max(self.experimental_markers.shape[2], experiment_shape)
 
@@ -1078,6 +1093,38 @@ class Viz:
         if auto_start:
             self._start_stop_animation()
 
+    def load_experimental_imus(
+        self,
+        data,
+        auto_start=True,
+        ignore_animation_warning=True,
+    ):
+        if isinstance(data, (np.ndarray, xr.DataArray)):
+            self.experimental_imus = (
+                data if isinstance(data, xr.DataArray) else xr.DataArray(data, dims=["rows", "cols", "segment", "time"])
+            )
+        else:
+            raise RuntimeError(
+                f"Wrong type of experimental imus data ({type(data)}). "
+                f"Allowed type are numpy array (4x4xNxT), data array (4x4xNxT)."
+            )
+
+        if self.experimental_imus.shape[0] != 4 or self.experimental_imus.shape[1] != 4:
+            raise RuntimeError(f"Experimental IMU data should be 4x4xNxT. You have {self.experimental_imus.shape}.")
+        if self.experimental_imus.shape[2] != self.model.nbIMUs():
+            raise RuntimeError(
+                f"Number of IMUs in the experimental data ({self.experimental_imus.shape[2]}) "
+                f"must match the number of IMUs in the model ({self.model.nbIMUs()})."
+            )
+
+        self.show_experimental_imus = True
+        self._set_movement_slider()
+
+        if ignore_animation_warning:
+            self.animation_warning_already_shown = True
+        if auto_start:
+            self._start_stop_animation()
+
     def load_experimental_forces(
         self, data, segments=None, normalization_ratio=0.2, auto_start=True, ignore_animation_warning=True
     ):
@@ -1131,6 +1178,20 @@ class Viz:
             virtual_to_experimental_markers_indices=self.virtual_to_experimental_markers_indices,
         )
 
+    def _set_experimental_imus_from_frame(self):
+        if not self.show_experimental_imus:
+            return
+
+        t_slider = self.movement_slider[0].value() - 1
+        t = t_slider if t_slider < self.experimental_imus.shape[3] else self.experimental_imus.shape[3] - 1
+        data_tp = self.experimental_imus[:, :, :, t : t + 1].isel(time=[0])
+
+        data = []
+        for index in range(data_tp.shape[2]):
+            data.append(Rototrans(data_tp[:, :, index, 0:1].to_numpy()))
+
+        self.vtk_model.update_experimental_imus(data)
+
     def _set_experimental_forces_from_frame(self):
         if not self.show_experimental_forces:
             return
@@ -1169,6 +1230,17 @@ class Viz:
         self.vtk_model.update_force(
             segment_jcs, self.experimental_forces[:, :, t : t + 1], max_forces, self.force_normalization_ratio
         )
+
+    def _set_imus_from_q(self):
+        if not self.show_imus:
+            return
+
+        for k, imu in enumerate(self.IMUs.get_data(Q=self.Q, compute_kin=False)):
+            if self.show_segment_is_on[k]:
+                self.imus[k] = Rototrans(imu)
+            else:
+                self.imus[k] = Rototrans(np.eye(4)) * np.nan
+        self.vtk_model.update_imus(self.imus)
 
     def _set_contacts_from_q(self):
         if not self.show_contacts:

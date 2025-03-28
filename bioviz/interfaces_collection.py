@@ -58,6 +58,24 @@ class InterfacesCollections:
             if self.m.nbMarkers():
                 self.data[:, :, 0] = np.array(self.markers(Q))
 
+    class IMUs(BiorbdFunc):
+        def __init__(self, model):
+            super().__init__(model)
+
+        def _prepare_function_for_casadi(self):
+            Qsym = casadi.MX.sym("Q", self.m.nbQ(), 1)
+            self.imus = []
+            for i in range(self.m.nbIMUs()):
+                self.imus.append(casadi.Function("allIMUs", [Qsym], [self.m.IMU(Qsym)[i].to_mx()]))
+
+        def _get_data_from_eigen(self, Q=None, compute_kin=True):
+            self.data = [imus.to_array() for imus in self.m.IMU(Q, compute_kin)]
+
+        def _get_data_from_casadi(self, Q=None, compute_kin=True):
+            self.data = []
+            for i in range(self.m.nbIMUs()):
+                self.data.append(np.array(self.imus[i](Q)))
+
     class Contact(BiorbdFunc):
         def __init__(self, model):
             super().__init__(model)
