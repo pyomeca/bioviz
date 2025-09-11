@@ -1,8 +1,8 @@
 from enum import Enum, auto
 
-from PyQt5.QtWidgets import QWidget, QSlider
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter
+from PyQt6.QtWidgets import QWidget, QSlider
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPainter, QColorConstants
 
 
 class RectangleOnSlider(QWidget):
@@ -11,7 +11,7 @@ class RectangleOnSlider(QWidget):
         ExpandRight = auto()
         FixedSize = auto()
 
-    def __init__(self, parent, expand: Expand = Expand.FixedSize, size: int = 10, color=Qt.gray):
+    def __init__(self, parent, expand: Expand = Expand.FixedSize, size: int = 10, color=QColorConstants.Gray):
         if not isinstance(parent, QSlider):
             raise RuntimeError("RectangleOnSlider must be used on a QSlider")
         self.slider: QSlider = parent
@@ -35,8 +35,8 @@ class RectangleOnSlider(QWidget):
 
         paint = QPainter()
         paint.begin(self)
-        paint.setPen(Qt.black)
-        paint.setBrush(self.color if not self.is_selected else Qt.black)
+        paint.setPen(QColorConstants.Black)
+        paint.setBrush(self.color if not self.is_selected else QColorConstants.Black)
         paint.setOpacity(0.75)
 
         position = int(self._compute_value_position(self.value))

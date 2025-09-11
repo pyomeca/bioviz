@@ -8,8 +8,8 @@ import time
 import sys
 
 import numpy as np
-from PyQt5 import QtWidgets
-from PyQt5.QtGui import QPalette, QColor
+from PyQt6 import QtWidgets
+from PyQt6.QtGui import QPalette, QColor
 import threading
 
 from vtk import (
@@ -27,9 +27,7 @@ from vtk import (
     vtkOggTheoraWriter,
     vtkWindowToImageFilter,
     vtkPolygon,
-    vtkExtractEdges,
     vtkArrowSource,
-    vtkNamedColors,
     vtkMath,
     vtkMatrix4x4,
     vtkMinimalStandardRandomSequence,
