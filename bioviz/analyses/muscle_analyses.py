@@ -289,7 +289,7 @@ class MuscleAnalyses:
         if number_of_active != 0:
             # relim so the plot looks nice
             y_lim = None
-            if analyse_type.y_lim():
+            if analyse_type.y_lim() is not None:
                 y_lim = analyse_type.y_lim()
             elif not autoscale_y:
                 y_lim = ax.get_ylim()
