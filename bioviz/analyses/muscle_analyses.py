@@ -232,12 +232,12 @@ class MuscleAnalyses:
     def __compute_all_values(self) -> tuple[np.ndarray, dict[_AnalysesTypes, np.ndarray]]:
         q_idx = self.dof_mapping[self.current_dof]
         x_axis, all_q = self.__generate_x_axis(q_idx)
-        length = np.ndarray((self.n_point_for_q, self.n_mus)) * np.nan
-        moment_arm = np.ndarray((self.n_point_for_q, self.n_mus)) * np.nan
-        passive_forces = np.ndarray((self.n_point_for_q, self.n_mus)) * np.nan
-        active_forces = np.ndarray((self.n_point_for_q, self.n_mus)) * np.nan
+        length = np.full((self.n_point_for_q, self.n_mus), np.nan)
+        moment_arm = np.full((self.n_point_for_q, self.n_mus), np.nan)
+        passive_forces = np.full((self.n_point_for_q, self.n_mus), np.nan)
+        active_forces = np.full((self.n_point_for_q, self.n_mus), np.nan)
         emg = biorbd.State(0, self.activation_slider.value() / 100)
-        forces = np.ndarray((self.n_point_for_q, self.n_mus)) * np.nan
+        forces = np.full((self.n_point_for_q, self.n_mus), np.nan)
         states = self.model.stateSet()
         for state in states:
             state.setActivation(self.activation_slider.value() / 100)
