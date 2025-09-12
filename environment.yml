@@ -8,6 +8,6 @@ dependencies:
   - pyomeca
   - ezc3d
   - vtk
-  - pyqt
+  - pyqt >=6
   - packaging
   - setuptools
