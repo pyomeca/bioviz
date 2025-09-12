@@ -2,7 +2,7 @@ from functools import partial
 from copy import copy
 
 import numpy as np
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QVBoxLayout,
@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QScrollArea,
     QLabel,
     QWidget,
-    QSlider,
+    QFrame,
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib import pyplot as plt
@@ -117,7 +117,7 @@ class LigamentAnalyses:
 
         radio_ligament.setLayout(ligament_layout)
         ligaments_scroll = QScrollArea()
-        ligaments_scroll.setFrameShape(0)
+        ligaments_scroll.setFrameShape(QFrame.Shape.NoFrame)
         ligaments_scroll.setWidgetResizable(True)
         ligaments_scroll.setWidget(radio_ligament)
         selector_layout.addWidget(ligaments_scroll)
@@ -168,7 +168,7 @@ class LigamentAnalyses:
             for l in range(self.model.nbLigaments()):
                 if self.checkboxes_ligament[l].isChecked():
                     lig = self.model.ligament(l)
-                    lig.updateOrientations(self.model, q_mod, 1)
+                    lig.updateOrientations(self.model, q_mod, np.zeros(self.model.nbQdot()))
                     ligaments_length_jacobian = self.model.ligamentsLengthJacobian().to_array()
 
                     length[i, l] = lig.length(self.model, q_mod, False)
@@ -186,7 +186,7 @@ class LigamentAnalyses:
                     ax.get_lines()[m].set_data(x, y[:, m])
                 number_of_active += 1
             else:
-                ax.get_lines()[m].set_data(np.nan, np.nan)
+                ax.get_lines()[m].set_data([], [])
 
         # If there is no data skip relim and vertical bar adjustment
         if number_of_active != 0:

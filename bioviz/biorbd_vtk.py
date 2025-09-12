@@ -8,8 +8,8 @@ import time
 import sys
 
 import numpy as np
-from PyQt5 import QtWidgets
-from PyQt5.QtGui import QPalette, QColor
+from PyQt6 import QtWidgets
+from PyQt6.QtGui import QPalette, QColor
 import threading
 
 from vtk import (

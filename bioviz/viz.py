@@ -15,21 +15,22 @@ except ImportError:
     import casadi
 import pyomeca
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, Rototrans
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QSlider,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QFileDialog,
+    QFrame,
     QScrollArea,
     QWidget,
     QMessageBox,
     QRadioButton,
     QGroupBox,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPalette, QColor, QPixmap, QIcon
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPalette, QColor, QPixmap, QIcon, QColorConstants
 
 from .analyses import MuscleAnalyses, C3dEditorAnalyses, LigamentAnalyses
 from .interfaces_collection import InterfacesCollections
@@ -369,7 +370,7 @@ class Viz:
         self.set_q(self.Q)
 
         # Reset also muscle analyses graphs
-        self._update_muscle_analyses_graphs(False, False, False, False)
+        self._update_muscle_analyses_graphs()
         # Reset also ligament analyses graphs
         self._update_ligament_analyses_graphs(False, False, False)
 
@@ -502,10 +503,10 @@ class Viz:
         self.vtk_window.showMaximized()
 
     def set_viz_palette(self):
-        self.palette_active.setColor(QPalette.WindowText, QColor(Qt.black))
-        self.palette_active.setColor(QPalette.ButtonText, QColor(Qt.black))
+        self.palette_active.setColor(QPalette.ColorRole.WindowText, QColor(QColorConstants.Black))
+        self.palette_active.setColor(QPalette.ColorRole.ButtonText, QColor(QColorConstants.Black))
 
-        self.palette_inactive.setColor(QPalette.WindowText, QColor(Qt.gray))
+        self.palette_inactive.setColor(QPalette.ColorRole.WindowText, QColor(QColorConstants.Gray))
 
     def add_options_panel(self):
         # Prepare the sliders
@@ -540,7 +541,7 @@ class Viz:
                 slider_layout.addWidget(name_label)
 
                 # Add the slider
-                slider = QSlider(Qt.Horizontal)
+                slider = QSlider(Qt.Orientation.Horizontal)
                 slider.setMinimumSize(100, 0)
                 slider.setMinimum(int(ranges[i][0] * self.double_factor))
                 slider.setMaximum(int(ranges[i][1] * self.double_factor))
@@ -548,7 +549,7 @@ class Viz:
                 slider.setValue(0)
                 slider.valueChanged.connect(self._move_avatar_from_sliders)
                 slider.sliderReleased.connect(partial(self._update_ligament_analyses_graphs, False, False, False))
-                slider.sliderReleased.connect(partial(self._update_muscle_analyses_graphs, False, False, False, False))
+                slider.sliderReleased.connect(partial(self._update_muscle_analyses_graphs))
                 slider_layout.addWidget(slider)
 
                 # Add the value
@@ -567,7 +568,7 @@ class Viz:
             sliders_widget = QWidget()
             sliders_widget.setLayout(sliders_layout)
             sliders_scroll = QScrollArea()
-            sliders_scroll.setFrameShape(0)
+            sliders_scroll.setFrameShape(QFrame.Shape.NoFrame)
             sliders_scroll.setWidgetResizable(True)
             sliders_scroll.setWidget(sliders_widget)
             options_layout.addWidget(sliders_scroll)
@@ -658,7 +659,7 @@ class Viz:
         self.play_stop_push_button.released.connect(self._start_stop_animation)
         animation_slider_layout.addWidget(self.play_stop_push_button)
 
-        slider = QSlider(Qt.Horizontal)
+        slider = QSlider(Qt.Orientation.Horizontal)
         slider.setMinimum(0)
         slider.setMaximum(100)
         slider.setValue(0)
@@ -696,7 +697,7 @@ class Viz:
 
         # We must add all the event markers here because for some reason they are ignored once processEvents is called
         for i in range(self.n_max_events):
-            event_marker = RectangleOnSlider(self.movement_slider[0], color=Qt.blue)
+            event_marker = RectangleOnSlider(self.movement_slider[0], color=QColorConstants.Blue)
             event_marker.value = -1
             event_marker.update()
             self.events.append({"marker": event_marker, "frame": -1, "name": ""})
@@ -799,7 +800,7 @@ class Viz:
             self.active_analyses.widget.setVisible(True)
 
         # Update graphs if needed
-        self._update_muscle_analyses_graphs(False, False, False, False)
+        self._update_muscle_analyses_graphs()
         self._update_ligament_analyses_graphs(False, False, False)
 
     def _move_avatar_from_sliders(self):
@@ -863,15 +864,11 @@ class Viz:
         self.movement_slider_ending_shade.value = frame
         self.movement_slider_ending_shade.update()
 
-    def _update_muscle_analyses_graphs(
-        self, skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
-    ):
+    def _update_muscle_analyses_graphs(self):
         # Adjust muscle analyses if needed
         if self.active_analyses == self.analyses_muscle:
-            if self.analyses_muscle is not None:
-                self.analyses_muscle.update_all_graphs(
-                    skip_muscle_length, skip_moment_arm, skip_passive_forces, skip_active_forces
-                )
+            if self.analyses_muscle is not None and self.analyses_muscle.animation_checkbox.isChecked():
+                self.analyses_muscle.update_all_graphs()
 
     def _update_ligament_analyses_graphs(self, skip_ligament_length, skip_moment_arm, skip_passive_forces):
         # Adjust ligament analyses if needed
@@ -893,7 +890,7 @@ class Viz:
         self._set_experimental_forces_from_frame()
 
         # Update graph of muscle analyses
-        self._update_muscle_analyses_graphs(True, True, True, True)
+        self._update_muscle_analyses_graphs()
         # Update graph of ligament analyses
         self._update_ligament_analyses_graphs(True, True, True)
 
@@ -1029,7 +1026,7 @@ class Viz:
         self.movement_slider[0].setMinimum(1)
         self.movement_slider[0].setMaximum(self.movement_last_frame)
         pal = QPalette()
-        pal.setColor(QPalette.WindowText, QColor(Qt.black))
+        pal.setColor(QPalette.ColorRole.WindowText, QColor(QColorConstants.Black))
         self.movement_slider[1].setPalette(pal)
 
         # Put back to first frame

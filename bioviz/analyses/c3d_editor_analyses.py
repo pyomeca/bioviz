@@ -3,7 +3,7 @@ import os
 from typing import Callable
 
 import ezc3d
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QBoxLayout,
     QHBoxLayout,
     QVBoxLayout,
@@ -14,7 +14,8 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QFileDialog,
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColorConstants
 
 try:
     import biorbd
@@ -31,7 +32,7 @@ class C3dEditorAnalyses:
 
         # Centralize the materials
         main_layout = QVBoxLayout(self.widget)
-        main_layout.setAlignment(Qt.AlignCenter)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Set time trial
         time_set_layout = QVBoxLayout()
@@ -46,12 +47,12 @@ class C3dEditorAnalyses:
         self.add_event_button: QWidget | None = None
         self.add_subtitle("Events setter", self.events_layout)
         self.event_colors = (
-            ("red", Qt.red),
-            ("green", Qt.green),
-            ("blue", Qt.blue),
-            ("magenta", Qt.magenta),
-            ("cyan", Qt.cyan),
-            ("yellow", Qt.yellow),
+            ("red", QColorConstants.Red),
+            ("green", QColorConstants.Green),
+            ("blue", QColorConstants.Blue),
+            ("magenta", QColorConstants.Magenta),
+            ("cyan", QColorConstants.Cyan),
+            ("yellow", QColorConstants.Yellow),
         )
         self.event_buttons = []
         self.current_event_selected = -1
@@ -60,7 +61,7 @@ class C3dEditorAnalyses:
         event_editor_layout = QVBoxLayout()
         self.add_subtitle("Event editor", event_editor_layout)
         move_event_layout = QHBoxLayout()
-        move_event_layout.setAlignment(Qt.AlignCenter)
+        move_event_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.previous_event_button = self.add_button(
             "<", layout=move_event_layout, callback=lambda _: self._select_event(-1)
         )
@@ -74,7 +75,7 @@ class C3dEditorAnalyses:
         self.current_event_text = self.add_subtitle("", layout=event_editor_layout)
         self.selected_event_name = self.add_subtitle("No event selected", event_editor_layout)
         event_change_info_layout = QHBoxLayout()
-        event_change_info_layout.setAlignment(Qt.AlignCenter)
+        event_change_info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.selected_event_frame_text = self.add_text("Change frame: ", event_change_info_layout)
         frame_editor_layout = QVBoxLayout()
         self.selected_event_frame_edit = self.add_text("", frame_editor_layout, editable=True)
@@ -110,7 +111,7 @@ class C3dEditorAnalyses:
 
     def add_subtitle(self, title, layout: QBoxLayout) -> QLabel:
         head_layout = QHBoxLayout()
-        head_layout.setAlignment(Qt.AlignCenter)
+        head_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         qlabel = self.add_text(title, layout=head_layout)
         layout.addLayout(head_layout)
         return qlabel
