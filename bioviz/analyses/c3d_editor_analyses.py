@@ -3,7 +3,13 @@ import os
 from typing import Callable
 
 import ezc3d
-from PyQt6.QtWidgets import (
+
+try:
+    import biorbd
+except ImportError:
+    import biorbd_casadi as biorbd
+
+from ..qt_ui import (
     QBoxLayout,
     QHBoxLayout,
     QVBoxLayout,
@@ -13,14 +19,9 @@ from PyQt6.QtWidgets import (
     QWidget,
     QLineEdit,
     QFileDialog,
+    Qt,
+    QColorConstants,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColorConstants
-
-try:
-    import biorbd
-except ImportError:
-    import biorbd_casadi as biorbd
 
 
 class C3dEditorAnalyses:

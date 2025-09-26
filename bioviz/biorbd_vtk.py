@@ -6,12 +6,10 @@ from dataclasses import dataclass
 import os
 import time
 import sys
-
-import numpy as np
-from PyQt6 import QtWidgets
-from PyQt6.QtGui import QPalette, QColor
 import threading
 
+import numpy as np
+from .qt_ui import QApplication, QMainWindow, QFrame, QGridLayout, QWidget, QPalette, QColor
 from vtk import (
     vtkActor,
     vtkCellArray,
@@ -36,20 +34,19 @@ from vtk import (
     vtkPlaneSource,
     vtkPNGWriter,
 )
-
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-
 from pyomeca import Markers, Rototrans
+
 from .mesh import Mesh
 
 first = threading.local()
 first.value = True
 if first.value:
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     first.value = False
 
 
-class VtkWindow(QtWidgets.QMainWindow):
+class VtkWindow(QMainWindow):
     def __init__(self, background_color=(0, 0, 0)):
         """
         Main window of a bioviz object. If one is interested in placing the main window inside another widget, they
@@ -60,8 +57,8 @@ class VtkWindow(QtWidgets.QMainWindow):
         background_color : tuple(int)
             Color of the background
         """
-        QtWidgets.QMainWindow.__init__(self)
-        self.frame = QtWidgets.QFrame()
+        QMainWindow.__init__(self)
+        self.frame = QFrame()
         self.setCentralWidget(self.frame)
 
         self.ren = vtkRenderer()
@@ -77,7 +74,7 @@ class VtkWindow(QtWidgets.QMainWindow):
         self.interactor.Initialize()
         self.change_background_color(background_color)
 
-        self.main_layout = QtWidgets.QGridLayout()
+        self.main_layout = QGridLayout()
         self.main_layout.addWidget(self.avatar_widget)
         self.frame.setLayout(self.main_layout)
         self.video_recorder = vtkOggTheoraWriter()
@@ -207,7 +204,7 @@ class _MarkerInternal:
     actors: list[QVTKRenderWindowInteractor]
 
 
-class VtkModel(QtWidgets.QWidget):
+class VtkModel(QWidget):
     def __init__(
         self,
         parent,
@@ -266,7 +263,7 @@ class VtkModel(QtWidgets.QWidget):
         rt_length : int
             Length of the axes of the system of axes
         """
-        QtWidgets.QWidget.__init__(self, parent)
+        QWidget.__init__(self, parent)
         self.parent_window = parent
 
         palette = QPalette()

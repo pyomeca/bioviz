@@ -4,8 +4,16 @@ from copy import copy
 from typing import Any
 
 import numpy as np
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib import pyplot as plt
+
+try:
+    import biorbd
+except ImportError:
+    import biorbd_casadi as biorbd
+
+from ..qt_ui import (
+    Qt,
     QGridLayout,
     QHBoxLayout,
     QVBoxLayout,
@@ -18,13 +26,6 @@ from PyQt6.QtWidgets import (
     QWidget,
     QSlider,
 )
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib import pyplot as plt
-
-try:
-    import biorbd
-except ImportError:
-    import biorbd_casadi as biorbd
 
 
 class _AnalysesTypes(Enum):

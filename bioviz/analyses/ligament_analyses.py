@@ -2,7 +2,15 @@ from functools import partial
 from copy import copy
 
 import numpy as np
-from PyQt6.QtWidgets import (
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib import pyplot as plt
+
+try:
+    import biorbd
+except ImportError:
+    import biorbd_casadi as biorbd
+
+from ..qt_ui import (
     QGridLayout,
     QHBoxLayout,
     QVBoxLayout,
@@ -14,13 +22,6 @@ from PyQt6.QtWidgets import (
     QWidget,
     QFrame,
 )
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib import pyplot as plt
-
-try:
-    import biorbd
-except ImportError:
-    import biorbd_casadi as biorbd
 
 
 class LigamentAnalyses:

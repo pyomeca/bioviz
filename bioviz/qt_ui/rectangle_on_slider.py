@@ -1,8 +1,6 @@
 from enum import Enum, auto
 
-from PyQt6.QtWidgets import QWidget, QSlider
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPainter, QColorConstants
+from . import QWidget, QSlider, QPainter, QColorConstants
 
 
 class RectangleOnSlider(QWidget):
