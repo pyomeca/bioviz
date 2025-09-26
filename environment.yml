@@ -7,4 +7,4 @@ dependencies:
   - matplotlib
   - pyomeca
   - vtk
-  - pyqt >=6
+  - pyqt

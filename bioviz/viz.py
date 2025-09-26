@@ -14,8 +14,11 @@ except ImportError:
     import biorbd_casadi as biorbd
     import casadi
 import pyomeca
+
 from .biorbd_vtk import VtkModel, VtkWindow, Mesh, Rototrans
-from PyQt6.QtWidgets import (
+from .analyses import MuscleAnalyses, C3dEditorAnalyses, LigamentAnalyses
+from .interfaces_collection import InterfacesCollections
+from .qt_ui import (
     QSlider,
     QVBoxLayout,
     QHBoxLayout,
@@ -28,12 +31,13 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QRadioButton,
     QGroupBox,
+    Qt,
+    QPalette,
+    QColor,
+    QPixmap,
+    QIcon,
+    QColorConstants,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette, QColor, QPixmap, QIcon, QColorConstants
-
-from .analyses import MuscleAnalyses, C3dEditorAnalyses, LigamentAnalyses
-from .interfaces_collection import InterfacesCollections
 from .qt_ui.rectangle_on_slider import RectangleOnSlider
 from ._version import __version__, check_version
 
