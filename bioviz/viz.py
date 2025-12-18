@@ -1179,11 +1179,17 @@ class Viz:
 
         t_slider = self.movement_slider[0].value() - 1
         t = t_slider if t_slider < self.experimental_markers.shape[2] else self.experimental_markers.shape[2] - 1
+        self.set_experimental_markers(self.experimental_markers[:, :, t : t + 1].isel(time=[0]), refresh_window=False)
+
+    def set_experimental_markers(self, experimental_markers: xr.DataArray, refresh_window: bool = True):
         self.vtk_model.update_experimental_markers(
-            self.experimental_markers[:, :, t : t + 1].isel(time=[0]),
+            experimental_markers,
             with_link=True,
             virtual_to_experimental_markers_indices=self.virtual_to_experimental_markers_indices,
         )
+
+        if refresh_window:
+            self.refresh_window()
 
     def _set_experimental_imus_from_frame(self):
         if not self.show_experimental_imus:
