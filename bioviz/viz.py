@@ -1393,7 +1393,7 @@ class Viz:
             if self.show_segment_is_on[k]:
                 self.rt[k] = Rototrans(rt)
             else:
-                self.rt[k] = Rototrans(np.eye(4)) * np.nan
+                self.rt[k] = (Rototrans(np.eye(4)) * np.nan)
         self.vtk_model.update_rt(self.rt)
 
 
