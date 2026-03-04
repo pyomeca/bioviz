@@ -540,8 +540,16 @@ class VtkModel(QWidget):
             if j is None:
                 continue
             points = vtkPoints()
-            points.InsertNextPoint(np.array(self.markers["model"].data[:3, j, 0].data).reshape(3, ))
-            points.InsertNextPoint(np.array(self.markers["experimental"].data[:3, i, 0].data).reshape(3, ))
+            points.InsertNextPoint(
+                np.array(self.markers["model"].data[:3, j, 0].data).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(self.markers["experimental"].data[:3, i, 0].data).reshape(
+                    3,
+                )
+            )
 
             # Create the polygons
             poly = vtkPolyLine()
@@ -585,8 +593,16 @@ class VtkModel(QWidget):
             if j is None:
                 continue
             points = vtkPoints()
-            points.InsertNextPoint(np.array(self.markers["model"].data[:3, j, 0].data).reshape(3, ))
-            points.InsertNextPoint(np.array(self.markers["experimental"].data[:3, i, 0].data).reshape(3, ))
+            points.InsertNextPoint(
+                np.array(self.markers["model"].data[:3, j, 0].data).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(self.markers["experimental"].data[:3, i, 0].data).reshape(
+                    3,
+                )
+            )
 
             poly_line = self.markers_link_actors[cmp].GetMapper().GetInput()
             poly_line.SetPoints(points)
@@ -627,10 +643,26 @@ class VtkModel(QWidget):
 
             # Create four points of a generic system of axes
             pts = vtkPoints()
-            pts.InsertNextPoint(np.array([0, 0, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([1, 0, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([0, 1, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([0, 0, 1]).reshape(3, ))
+            pts.InsertNextPoint(
+                np.array([0, 0, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([1, 0, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([0, 1, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([0, 0, 1]).reshape(
+                    3,
+                )
+            )
             lines_poly_data.SetPoints(pts)
 
             # Create the first line(between Origin and P0)
@@ -679,14 +711,46 @@ class VtkModel(QWidget):
         # Generate the box wire actors
         for i, imu in enumerate(all_imus):
             points = vtkPoints()
-            points.InsertNextPoint(np.array([-1, -1, -1]).reshape(3, ))
-            points.InsertNextPoint(np.array([-1, 1, -1]).reshape(3, ))
-            points.InsertNextPoint(np.array([-1, -1, 1]).reshape(3, ))
-            points.InsertNextPoint(np.array([-1, 1, 1]).reshape(3, ))
-            points.InsertNextPoint(np.array([1, -1, -1]).reshape(3, ))
-            points.InsertNextPoint(np.array([1, 1, -1]).reshape(3, ))
-            points.InsertNextPoint(np.array([1, -1, 1]).reshape(3, ))
-            points.InsertNextPoint(np.array([1, 1, 1]).reshape(3, ))
+            points.InsertNextPoint(
+                np.array([-1, -1, -1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([-1, 1, -1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([-1, -1, 1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([-1, 1, 1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([1, -1, -1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([1, 1, -1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([1, -1, 1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([1, 1, 1]).reshape(
+                    3,
+                )
+            )
 
             # Create a wireframe box
             all_wires = [[0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3], [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]]
@@ -745,24 +809,72 @@ class VtkModel(QWidget):
 
             # Update the end points of the RT axes and the origin
             pts = vtkPoints()
-            pts.InsertNextPoint(np.array(imu.meca.translation).reshape(3, ))
-            pts.InsertNextPoint(np.array(imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length).reshape(3, ))
-            pts.InsertNextPoint(np.array(imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length).reshape(3, ))
-            pts.InsertNextPoint(np.array(imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length).reshape(3, ))
+            pts.InsertNextPoint(
+                np.array(imu.meca.translation).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length).reshape(
+                    3,
+                )
+            )
             lines_poly_data = self.imus_rt_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(pts)
 
             # Update the corners of the box
             points = vtkPoints()
             rototrans = np.array(imu.isel(time=0))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3).reshape(3, ))
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
             lines_poly_data = self.imus_wire_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(points)
 
@@ -801,10 +913,26 @@ class VtkModel(QWidget):
 
             # Create four points of a generic system of axes
             pts = vtkPoints()
-            pts.InsertNextPoint(np.array([0, 0, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([1, 0, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([0, 1, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([0, 0, 1]).reshape(3, ))
+            pts.InsertNextPoint(
+                np.array([0, 0, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([1, 0, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([0, 1, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([0, 0, 1]).reshape(
+                    3,
+                )
+            )
             lines_poly_data.SetPoints(pts)
 
             # Create the first line(between Origin and P0)
@@ -853,14 +981,46 @@ class VtkModel(QWidget):
         # Generate the box wire actors
         for i, imu in enumerate(all_imus):
             points = vtkPoints()
-            points.InsertNextPoint(np.array([-1, -1, -1]).reshape(3, ))
-            points.InsertNextPoint(np.array([-1, 1, -1]).reshape(3, ))
-            points.InsertNextPoint(np.array([-1, -1, 1]).reshape(3, ))
-            points.InsertNextPoint(np.array([-1, 1, 1]).reshape(3, ))
-            points.InsertNextPoint(np.array([1, -1, -1]).reshape(3, ))
-            points.InsertNextPoint(np.array([1, 1, -1]).reshape(3, ))
-            points.InsertNextPoint(np.array([1, -1, 1]).reshape(3, ))
-            points.InsertNextPoint(np.array([1, 1, 1]).reshape(3, ))
+            points.InsertNextPoint(
+                np.array([-1, -1, -1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([-1, 1, -1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([-1, -1, 1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([-1, 1, 1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([1, -1, -1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([1, 1, -1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([1, -1, 1]).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array([1, 1, 1]).reshape(
+                    3,
+                )
+            )
 
             # Create a wireframe box
             all_wires = [[0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3], [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]]
@@ -919,24 +1079,72 @@ class VtkModel(QWidget):
 
             # Update the end points of the RT axes and the origin
             pts = vtkPoints()
-            pts.InsertNextPoint(np.array(imu.meca.translation).reshape(3, ))
-            pts.InsertNextPoint(np.array(imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length).reshape(3, ))
-            pts.InsertNextPoint(np.array(imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length).reshape(3, ))
-            pts.InsertNextPoint(np.array(imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length).reshape(3, ))
+            pts.InsertNextPoint(
+                np.array(imu.meca.translation).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length).reshape(
+                    3,
+                )
+            )
             lines_poly_data = self.experimental_imus_rt_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(pts)
 
             # Update the corners of the box
             points = vtkPoints()
             rototrans = np.array(imu.isel(time=0))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3).reshape(3, ))
-            points.InsertNextPoint(np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3).reshape(3, ))
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
+            points.InsertNextPoint(
+                np.array(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3).reshape(
+                    3,
+                )
+            )
             lines_poly_data = self.experimental_imus_wire_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(points)
 
@@ -1600,7 +1808,11 @@ class VtkModel(QWidget):
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
             for j in range(n_vertex):
-                points.InsertNextPoint(np.array(mesh[0:3, j]).reshape(3, ))
+                points.InsertNextPoint(
+                    np.array(mesh[0:3, j]).reshape(
+                        3,
+                    )
+                )
 
             poly_line = self.muscle_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
@@ -1723,7 +1935,11 @@ class VtkModel(QWidget):
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
             for j in range(n_vertex):
-                points.InsertNextPoint(np.array(mesh[0:3, j]).reshape(3, ))
+                points.InsertNextPoint(
+                    np.array(mesh[0:3, j]).reshape(
+                        3,
+                    )
+                )
 
             poly_line = self.ligament_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
@@ -1848,7 +2064,11 @@ class VtkModel(QWidget):
                 n_vertex = wrapping.channel.size
                 wrapping = np.array(wrapping)
                 for j in range(n_vertex):
-                    points.InsertNextPoint(np.array(wrapping[0:3, j]).reshape(3, ))
+                    points.InsertNextPoint(
+                        np.array(wrapping[0:3, j]).reshape(
+                            3,
+                        )
+                    )
 
                 poly_line = self.wrapping_actors[seg][i].GetMapper().GetInput()
                 poly_line.SetPoints(points)
@@ -1884,10 +2104,26 @@ class VtkModel(QWidget):
 
             # Create four points of a generic system of axes
             pts = vtkPoints()
-            pts.InsertNextPoint(np.array([0, 0, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([1, 0, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([0, 1, 0]).reshape(3, ))
-            pts.InsertNextPoint(np.array([0, 0, 1]).reshape(3, ))
+            pts.InsertNextPoint(
+                np.array([0, 0, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([1, 0, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([0, 1, 0]).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array([0, 0, 1]).reshape(
+                    3,
+                )
+            )
             lines_poly_data.SetPoints(pts)
 
             # Create the first line(between Origin and P0)
