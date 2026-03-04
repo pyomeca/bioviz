@@ -516,7 +516,11 @@ class VtkModel(QWidget):
             self.markers[key].actors[i].GetProperty().SetColor(self.markers[key].color)
             self.markers[key].actors[i].GetProperty().SetOpacity(self.markers[key].opacity)
             source = vtkSphereSource()
-            source.SetCenter(np.array(markers[0:3, i]).reshape(3, ))
+            source.SetCenter(
+                np.array(markers[0:3, i]).reshape(
+                    3,
+                )
+            )
             source.SetRadius(self.markers[key].size)
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1028,7 +1032,11 @@ class VtkModel(QWidget):
             self.contacts_actors[i].GetProperty().SetColor(self.contacts_color)
             self.contacts_actors[i].GetProperty().SetOpacity(self.contacts_opacity)
             source = vtkSphereSource()
-            source.SetCenter(np.array(contacts[0:3, i]).reshape(3, ))
+            source.SetCenter(
+                np.array(contacts[0:3, i]).reshape(
+                    3,
+                )
+            )
             source.SetRadius(self.contacts_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1123,7 +1131,11 @@ class VtkModel(QWidget):
             self.soft_contacts_actors[i].GetProperty().SetColor(self.soft_contacts_color)
             self.soft_contacts_actors[i].GetProperty().SetOpacity(self.soft_contacts_opacity)
             source = vtkSphereSource()
-            source.SetCenter(np.array(soft_contacts[0:3, i]).reshape(3, ))
+            source.SetCenter(
+                np.array(soft_contacts[0:3, i]).reshape(
+                    3,
+                )
+            )
             source.SetRadius(self.soft_contacts_size[i])
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1219,7 +1231,11 @@ class VtkModel(QWidget):
             self.global_center_of_mass_actors[i].GetProperty().SetColor(self.global_center_of_mass_color)
             self.global_center_of_mass_actors[i].GetProperty().SetOpacity(self.global_center_of_mass_opacity)
             source = vtkSphereSource()
-            source.SetCenter(np.array(global_center_of_mass[0:3, i]).reshape(3, ))
+            source.SetCenter(
+                np.array(global_center_of_mass[0:3, i]).reshape(
+                    3,
+                )
+            )
             source.SetRadius(self.global_center_of_mass_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1315,7 +1331,11 @@ class VtkModel(QWidget):
             self.segments_center_of_mass_actors[i].GetProperty().SetColor(self.segments_center_of_mass_color)
             self.segments_center_of_mass_actors[i].GetProperty().SetOpacity(self.segments_center_of_mass_opacity)
             source = vtkSphereSource()
-            source.SetCenter(np.array(segments_center_of_mass[0:3, i]).reshape(3, ))
+            source.SetCenter(
+                np.array(segments_center_of_mass[0:3, i]).reshape(
+                    3,
+                )
+            )
             source.SetRadius(self.segments_center_of_mass_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1452,7 +1472,11 @@ class VtkModel(QWidget):
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
             for j in range(n_vertex):
-                points.InsertNextPoint(np.array(mesh[0:3, j]).reshape(3, ))
+                points.InsertNextPoint(
+                    np.array(mesh[0:3, j]).reshape(
+                        3,
+                    )
+                )
 
             poly_line = self.mesh_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
@@ -1942,10 +1966,26 @@ class VtkModel(QWidget):
 
             # Update the end points of the axes and the origin
             pts = vtkPoints()
-            pts.InsertNextPoint(np.array(rt.meca.translation).reshape(3, ))
-            pts.InsertNextPoint(np.array(rt.meca.translation + rt.isel(col=0)[0:3] * self.rt_length).reshape(3, ))
-            pts.InsertNextPoint(np.array(rt.meca.translation + rt.isel(col=1)[0:3] * self.rt_length).reshape(3, ))
-            pts.InsertNextPoint(np.array(rt.meca.translation + rt.isel(col=2)[0:3] * self.rt_length).reshape(3, ))
+            pts.InsertNextPoint(
+                np.array(rt.meca.translation).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(rt.meca.translation + rt.isel(col=0)[0:3] * self.rt_length).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(rt.meca.translation + rt.isel(col=1)[0:3] * self.rt_length).reshape(
+                    3,
+                )
+            )
+            pts.InsertNextPoint(
+                np.array(rt.meca.translation + rt.isel(col=2)[0:3] * self.rt_length).reshape(
+                    3,
+                )
+            )
 
             # Update polydata in mapper
             lines_poly_data = self.rt_actors[i].GetMapper().GetInput()
