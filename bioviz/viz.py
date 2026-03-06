@@ -1440,6 +1440,8 @@ class Kinogram(Viz):
 
         self.maximize()
         fig, ax = plt.subplots(1, len(self.list_animated_Q), figsize=figsize)
+        if len(self.list_animated_Q) == 1:
+            ax = [ax]
         fig.subplots_adjust(hspace=0, wspace=0)
         for i_phase in range(len(self.list_animated_Q)):
             self.animated_Q = self.list_animated_Q[i_phase]
