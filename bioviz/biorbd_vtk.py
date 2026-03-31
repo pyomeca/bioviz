@@ -516,7 +516,7 @@ class VtkModel(QWidget):
             self.markers[key].actors[i].GetProperty().SetColor(self.markers[key].color)
             self.markers[key].actors[i].GetProperty().SetOpacity(self.markers[key].opacity)
             source = vtkSphereSource()
-            source.SetCenter(markers[0:3, i])
+            source.SetCenter(markers[0:3, i].squeeze())
             source.SetRadius(self.markers[key].size)
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -536,8 +536,8 @@ class VtkModel(QWidget):
             if j is None:
                 continue
             points = vtkPoints()
-            points.InsertNextPoint(self.markers["model"].data[:3, j, 0].data)
-            points.InsertNextPoint(self.markers["experimental"].data[:3, i, 0].data)
+            points.InsertNextPoint(self.markers["model"].data[:3, j, 0].data.squeeze())
+            points.InsertNextPoint(self.markers["experimental"].data[:3, i, 0].data.squeeze())
 
             # Create the polygons
             poly = vtkPolyLine()
@@ -581,8 +581,8 @@ class VtkModel(QWidget):
             if j is None:
                 continue
             points = vtkPoints()
-            points.InsertNextPoint(self.markers["model"].data[:3, j, 0].data)
-            points.InsertNextPoint(self.markers["experimental"].data[:3, i, 0].data)
+            points.InsertNextPoint(self.markers["model"].data[:3, j, 0].data.squeeze())
+            points.InsertNextPoint(self.markers["experimental"].data[:3, i, 0].data.squeeze())
 
             poly_line = self.markers_link_actors[cmp].GetMapper().GetInput()
             poly_line.SetPoints(points)
@@ -741,24 +741,40 @@ class VtkModel(QWidget):
 
             # Update the end points of the RT axes and the origin
             pts = vtkPoints()
-            pts.InsertNextPoint(imu.meca.translation)
-            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length)
-            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length)
-            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length)
+            pts.InsertNextPoint(imu.meca.translation.squeeze())
+            pts.InsertNextPoint((imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length).squeeze())
+            pts.InsertNextPoint((imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length).squeeze())
+            pts.InsertNextPoint((imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length).squeeze())
             lines_poly_data = self.imus_rt_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(pts)
 
             # Update the corners of the box
             points = vtkPoints()
             rototrans = np.array(imu.isel(time=0))
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3)
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3).squeeze()
+            )
             lines_poly_data = self.imus_wire_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(points)
 
@@ -915,24 +931,40 @@ class VtkModel(QWidget):
 
             # Update the end points of the RT axes and the origin
             pts = vtkPoints()
-            pts.InsertNextPoint(imu.meca.translation)
-            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length)
-            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length)
-            pts.InsertNextPoint(imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length)
+            pts.InsertNextPoint(imu.meca.translation.squeeze())
+            pts.InsertNextPoint((imu.meca.translation + imu.isel(col=0)[0:3] * self.imus_length).squeeze())
+            pts.InsertNextPoint((imu.meca.translation + imu.isel(col=1)[0:3] * self.imus_length).squeeze())
+            pts.InsertNextPoint((imu.meca.translation + imu.isel(col=2)[0:3] * self.imus_length).squeeze())
             lines_poly_data = self.experimental_imus_rt_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(pts)
 
             # Update the corners of the box
             points = vtkPoints()
             rototrans = np.array(imu.isel(time=0))
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3)
-            points.InsertNextPoint(rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3)
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, -1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, -1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, -1, 1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [-1, 1, 1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, -1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, -1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [1, -1, 1]) * self.imus_length / 3).squeeze()
+            )
+            points.InsertNextPoint(
+                (rototrans[:3, 3] + (rototrans[:3, :3] @ [1, 1, 1]) * self.imus_length / 3).squeeze()
+            )
             lines_poly_data = self.experimental_imus_wire_actors[i].GetMapper().GetInput()
             lines_poly_data.SetPoints(points)
 
@@ -1028,7 +1060,7 @@ class VtkModel(QWidget):
             self.contacts_actors[i].GetProperty().SetColor(self.contacts_color)
             self.contacts_actors[i].GetProperty().SetOpacity(self.contacts_opacity)
             source = vtkSphereSource()
-            source.SetCenter(contacts[0:3, i])
+            source.SetCenter(contacts[0:3, i].squeeze())
             source.SetRadius(self.contacts_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1123,7 +1155,7 @@ class VtkModel(QWidget):
             self.soft_contacts_actors[i].GetProperty().SetColor(self.soft_contacts_color)
             self.soft_contacts_actors[i].GetProperty().SetOpacity(self.soft_contacts_opacity)
             source = vtkSphereSource()
-            source.SetCenter(soft_contacts[0:3, i])
+            source.SetCenter(soft_contacts[0:3, i].squeeze())
             source.SetRadius(self.soft_contacts_size[i])
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1219,7 +1251,7 @@ class VtkModel(QWidget):
             self.global_center_of_mass_actors[i].GetProperty().SetColor(self.global_center_of_mass_color)
             self.global_center_of_mass_actors[i].GetProperty().SetOpacity(self.global_center_of_mass_opacity)
             source = vtkSphereSource()
-            source.SetCenter(global_center_of_mass[0:3, i])
+            source.SetCenter(global_center_of_mass[0:3, i].squeeze())
             source.SetRadius(self.global_center_of_mass_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1315,7 +1347,7 @@ class VtkModel(QWidget):
             self.segments_center_of_mass_actors[i].GetProperty().SetColor(self.segments_center_of_mass_color)
             self.segments_center_of_mass_actors[i].GetProperty().SetOpacity(self.segments_center_of_mass_opacity)
             source = vtkSphereSource()
-            source.SetCenter(segments_center_of_mass[0:3, i])
+            source.SetCenter(segments_center_of_mass[0:3, i].squeeze())
             source.SetRadius(self.segments_center_of_mass_size)
             mapper.SetInputConnection(source.GetOutputPort())
 
@@ -1452,7 +1484,7 @@ class VtkModel(QWidget):
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
             for j in range(n_vertex):
-                points.InsertNextPoint(mesh[0:3, j])
+                points.InsertNextPoint(mesh[0:3, j].squeeze())
 
             poly_line = self.mesh_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
@@ -1576,7 +1608,7 @@ class VtkModel(QWidget):
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
             for j in range(n_vertex):
-                points.InsertNextPoint(mesh[0:3, j])
+                points.InsertNextPoint(mesh[0:3, j].squeeze())
 
             poly_line = self.muscle_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
@@ -1699,7 +1731,7 @@ class VtkModel(QWidget):
             n_vertex = mesh.channel.size
             mesh = np.array(mesh)
             for j in range(n_vertex):
-                points.InsertNextPoint(mesh[0:3, j])
+                points.InsertNextPoint(mesh[0:3, j].squeeze())
 
             poly_line = self.ligament_actors[i].GetMapper().GetInput()
             poly_line.SetPoints(points)
@@ -1824,12 +1856,12 @@ class VtkModel(QWidget):
                 n_vertex = wrapping.channel.size
                 wrapping = np.array(wrapping)
                 for j in range(n_vertex):
-                    points.InsertNextPoint(wrapping[0:3, j])
+                    points.InsertNextPoint(wrapping[0:3, j].squeeze())
 
                 poly_line = self.wrapping_actors[seg][i].GetMapper().GetInput()
                 poly_line.SetPoints(points)
 
-    def new_rt_set(self, all_rt):
+    def new_rt_set(self, all_rt: list[np.xarray.core.dataarray.DataArray]):
         """
         Define a new rt set. This function must be called each time the number of rt change
         Parameters
@@ -1913,7 +1945,7 @@ class VtkModel(QWidget):
         self.n_rt = len(all_rt)
         self.update_rt(all_rt)
 
-    def update_rt(self, all_rt):
+    def update_rt(self, all_rt: list[np.xarray.core.dataarray.DataArray]):
         """
         Update position of the Rototrans on the screen (but do not repaint)
         Parameters
@@ -1942,10 +1974,10 @@ class VtkModel(QWidget):
 
             # Update the end points of the axes and the origin
             pts = vtkPoints()
-            pts.InsertNextPoint(rt.meca.translation)
-            pts.InsertNextPoint(rt.meca.translation + rt.isel(col=0)[0:3] * self.rt_length)
-            pts.InsertNextPoint(rt.meca.translation + rt.isel(col=1)[0:3] * self.rt_length)
-            pts.InsertNextPoint(rt.meca.translation + rt.isel(col=2)[0:3] * self.rt_length)
+            pts.InsertNextPoint(rt.meca.translation.squeeze())
+            pts.InsertNextPoint((rt.meca.translation + rt.isel(col=0)[0:3] * self.rt_length).squeeze())
+            pts.InsertNextPoint((rt.meca.translation + rt.isel(col=1)[0:3] * self.rt_length).squeeze())
+            pts.InsertNextPoint((rt.meca.translation + rt.isel(col=2)[0:3] * self.rt_length).squeeze())
 
             # Update polydata in mapper
             lines_poly_data = self.rt_actors[i].GetMapper().GetInput()
