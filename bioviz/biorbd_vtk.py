@@ -10,6 +10,7 @@ import threading
 
 import xarray as xr
 import numpy as np
+from numpy.typing import ArrayLike
 from .qt_ui import QApplication, QMainWindow, QFrame, QGridLayout, QWidget, QPalette, QColor
 from vtk import (
     vtkActor,
@@ -1862,7 +1863,7 @@ class VtkModel(QWidget):
                 poly_line = self.wrapping_actors[seg][i].GetMapper().GetInput()
                 poly_line.SetPoints(points)
 
-    def new_rt_set(self, all_rt: list[np.array | np.ndarray | xr.DataArray]):
+    def new_rt_set(self, all_rt: list[ArrayLike | xr.DataArray]):
         """
         Define a new rt set. This function must be called each time the number of rt change
         Parameters
@@ -1946,7 +1947,7 @@ class VtkModel(QWidget):
         self.n_rt = len(all_rt)
         self.update_rt(all_rt)
 
-    def update_rt(self, all_rt: list[np.array | np.ndarray | xr.DataArray]):
+    def update_rt(self, all_rt: list[ArrayLike | xr.DataArray]):
         """
         Update position of the Rototrans on the screen (but do not repaint)
         Parameters
